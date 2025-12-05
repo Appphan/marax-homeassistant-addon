@@ -248,14 +248,48 @@
         .phase-editor-item {
             background: rgba(255, 255, 255, 0.08);
             border-radius: 12px;
-            padding: 20px;
+            padding: 0;
             margin-bottom: 20px;
             border: 2px solid rgba(255, 255, 255, 0.2);
             transition: all 0.3s;
+            overflow: hidden;
         }
         .phase-editor-item:hover {
             background: rgba(255, 255, 255, 0.12);
             border-color: rgba(255, 255, 255, 0.4);
+        }
+        .phase-editor-item.collapsed .phase-content {
+            display: none;
+        }
+        .phase-editor-item:not(.collapsed) .phase-content {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .phase-header-collapsible {
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            transition: background 0.3s;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .phase-header-collapsible:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .phase-content {
+            padding: 20px;
         }
         .phase-editor-grid {
             display: grid;
