@@ -631,10 +631,26 @@
             
             // Track brew start time
             if (brewState.isActive && brewStartTime === null) {
-                brewStartTime = Date.now() / 1000;
+                // Only set brewStartTime if ESP32's brewTime is small (< 5s), meaning brew just started
+                // Otherwise, ESP32's brewTime might be from a previous brew that didn't reset
+                if (brewState.brewTime === undefined || brewState.brewTime === null || brewState.brewTime < 5) {
+                    brewStartTime = Date.now() / 1000;
+                    brewEndTime = null;
+                    liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
+                    console.log('Brew started, resetting chart data. ESP32 brewTime:', brewState.brewTime);
+                } else {
+                    // ESP32's brewTime is already high - reset it
+                    console.log('ESP32 brewTime is high (' + brewState.brewTime + 's), resetting to 0');
+                    brewStartTime = Date.now() / 1000;
+                    brewEndTime = null;
+                    liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
+                }
+            }
+            
+            // Reset brewStartTime if brew ended
+            if (!brewState.isActive && brewStartTime !== null) {
+                brewStartTime = null;
                 brewEndTime = null;
-                liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
-                console.log('Brew started, resetting chart data');
             }
             
             // Track brew end time
@@ -896,12 +912,27 @@
                     
                     // Use ESP32's brew time if available, otherwise calculate from frontend start time
                     let brewTime = 0;
-                    if (brewState.brewTime !== undefined && brewState.brewTime !== null) {
-                        // Use ESP32's brew time (most accurate)
-                        brewTime = brewState.brewTime;
-                        // Sync frontend start time to match ESP32's time
+                    if (brewState.brewTime !== undefined && brewState.brewTime !== null && brewState.brewTime >= 0) {
+                        // Only sync if brew just started (brewTime < 5 seconds) or if we haven't set brewStartTime yet
                         if (brewStartTime === null) {
-                            brewStartTime = currentTime - brewTime;
+                            if (brewState.brewTime < 5) {
+                                // Brew just started - sync to ESP32's time
+                                brewStartTime = currentTime - brewState.brewTime;
+                                brewTime = brewState.brewTime;
+                            } else {
+                                // ESP32's brewTime is already high - this means brew was already active when page loaded
+                                // Reset to current time
+                                brewStartTime = currentTime;
+                                brewTime = 0;
+                            }
+                        } else {
+                            // Use ESP32's brew time if it's reasonable (< 300 seconds), otherwise use frontend calculation
+                            if (brewState.brewTime < 300) {
+                                brewTime = brewState.brewTime;
+                            } else {
+                                // ESP32's time seems wrong - use frontend calculation
+                                brewTime = currentTime - brewStartTime;
+                            }
                         }
                     } else {
                         // Fallback to frontend calculation
@@ -1364,14 +1395,20 @@
                     </div>
                     <div id="phases-container" style="margin-top: 20px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <h3>Phases</h3>
-                            <button type="button" class="button" onclick="addPhase()">+ Add Phase</button>
+                            <h3><i class="fas fa-layer-group"></i> Phases</h3>
+                            <button type="button" class="button" onclick="addPhase(); updateProfilePreview();"><i class="fas fa-plus"></i> Add Phase</button>
                         </div>
                         <div id="phases-list"></div>
+                        <div id="profile-preview-graph" style="margin-top: 20px; display: none;">
+                            <h4><i class="fas fa-chart-line"></i> Profile Preview</h4>
+                            <div class="chart-container" style="height: 250px;">
+                                <canvas id="profile-editor-chart"></canvas>
+                            </div>
+                        </div>
                     </div>
                     <div style="margin-top: 20px; display: flex; gap: 10px;">
-                        <button type="submit" class="button primary">Save Profile</button>
-                        <button type="button" class="button" onclick="closeProfileEditor()">Cancel</button>
+                        <button type="submit" class="button primary"><i class="fas fa-save"></i> Save Profile</button>
+                        <button type="button" class="button" onclick="closeProfileEditor()"><i class="fas fa-times"></i> Cancel</button>
                     </div>
                 </form>
             `;
@@ -1388,6 +1425,11 @@
                 // For new profiles, add one empty phase to start
                 addPhase();
             }
+            
+            // Initialize preview graph
+            setTimeout(() => {
+                updateProfilePreview();
+            }, 100);
             
             document.getElementById('profileModal').classList.add('active');
         }
@@ -1527,6 +1569,158 @@
                 </div>
             `;
             phasesList.appendChild(phaseDiv);
+            
+            // Update preview graph after adding phase
+            updateProfilePreview();
+            
+            // Add change listeners to update preview when values change
+            const inputs = phaseDiv.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.addEventListener('change', updateProfilePreview);
+                input.addEventListener('input', updateProfilePreview);
+            });
+        }
+        
+        let profileEditorChart = null;
+        
+        function updateProfilePreview() {
+            const phasesList = document.getElementById('phases-list');
+            const phaseItems = phasesList.querySelectorAll('.phase-editor-item');
+            
+            if (phaseItems.length === 0) {
+                document.getElementById('profile-preview-graph').style.display = 'none';
+                if (profileEditorChart) {
+                    profileEditorChart.destroy();
+                    profileEditorChart = null;
+                }
+                return;
+            }
+            
+            document.getElementById('profile-preview-graph').style.display = 'block';
+            
+            // Collect phase data from form
+            const phases = [];
+            phaseItems.forEach((item, idx) => {
+                const form = item.closest('form') || document.getElementById('profile-form');
+                if (!form) return;
+                
+                const formData = new FormData(form);
+                const phase = {
+                    name: formData.get(`phaseName_${idx}`) || `Phase ${idx + 1}`,
+                    targetPressureStart: parseFloat(formData.get(`targetPressureStart_${idx}`)) || 0,
+                    targetPressureEnd: parseFloat(formData.get(`targetPressureEnd_${idx}`)) || 0,
+                    targetFlowStart: parseFloat(formData.get(`targetFlowStart_${idx}`)) || 0,
+                    targetFlowEnd: parseFloat(formData.get(`targetFlowEnd_${idx}`)) || 0,
+                    minDuration: parseFloat(formData.get(`minDuration_${idx}`)) || 0,
+                    maxDuration: parseFloat(formData.get(`maxDuration_${idx}`)) || 0,
+                    useRamp: formData.get(`useRamp_${idx}`) === 'on',
+                    rampDuration: parseFloat(formData.get(`rampDuration_${idx}`)) || 0
+                };
+                phases.push(phase);
+            });
+            
+            // Calculate time points
+            let timePoints = [];
+            let pressurePoints = [];
+            let flowPoints = [];
+            let currentTime = 0;
+            
+            phases.forEach((phase, idx) => {
+                const phaseStart = currentTime;
+                const phaseDuration = phase.maxDuration > 0 ? phase.maxDuration : (phase.minDuration > 0 ? phase.minDuration : 10);
+                const phaseEnd = currentTime + phaseDuration;
+                
+                if (phase.useRamp && phase.rampDuration > 0) {
+                    // Add ramp points
+                    const rampSteps = 5;
+                    for (let i = 0; i <= rampSteps; i++) {
+                        const t = i / rampSteps;
+                        const time = phaseStart + (t * phase.rampDuration);
+                        const pressure = phase.targetPressureStart + t * (phase.targetPressureEnd - phase.targetPressureStart);
+                        const flow = phase.targetFlowStart + t * (phase.targetFlowEnd - phase.targetFlowStart);
+                        timePoints.push(time);
+                        pressurePoints.push(pressure);
+                        flowPoints.push(flow);
+                    }
+                    // Add end point
+                    timePoints.push(phaseEnd);
+                    pressurePoints.push(phase.targetPressureEnd);
+                    flowPoints.push(phase.targetFlowEnd);
+                } else {
+                    // Constant values
+                    timePoints.push(phaseStart);
+                    pressurePoints.push(phase.targetPressureStart);
+                    flowPoints.push(phase.targetFlowStart);
+                    
+                    timePoints.push(phaseEnd);
+                    pressurePoints.push(phase.targetPressureEnd);
+                    flowPoints.push(phase.targetFlowEnd);
+                }
+                
+                currentTime = phaseEnd;
+            });
+            
+            // Update or create chart
+            const canvas = document.getElementById('profile-editor-chart');
+            if (!canvas) return;
+            
+            if (profileEditorChart) {
+                profileEditorChart.destroy();
+            }
+            
+            profileEditorChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: timePoints.map(t => t.toFixed(1) + 's'),
+                    datasets: [
+                        {
+                            label: 'Pressure (bar)',
+                            data: pressurePoints,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            yAxisID: 'y',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Flow (ml/s)',
+                            data: flowPoints,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            yAxisID: 'y1',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Time (s)' }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: 'Pressure (bar)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: 'Flow (ml/s)' },
+                            grid: { drawOnChartArea: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    }
+                }
+            });
         }
         
         function updatePhaseFields(index) {
@@ -1542,6 +1736,8 @@
             document.querySelectorAll('.phase-editor-item').forEach((item, idx) => {
                 item.querySelector('h4').textContent = `Phase ${idx + 1}`;
             });
+            // Update preview after removing phase
+            updateProfilePreview();
         }
         
         async function saveProfile(event, profileId) {
@@ -1635,12 +1831,25 @@
             console.log('Saving profile:', esp32Profile);
             
             try {
-                await postAPI('profiles/send', esp32Profile);
-                showMessage('Profile saved successfully', 'success');
+                // Show loading message
+                showMessage('Saving profile...', 'info');
+                
+                const response = await postAPI('profiles/send', esp32Profile);
+                console.log('Profile save response:', response);
+                
+                showMessage('Profile saved successfully!', 'success');
+                
+                // Close modal
                 closeProfileEditor();
+                
+                // Refresh profiles list
                 await updateProfiles(true);
+                
+                // Switch to profiles tab to see the new profile
+                showTab('profiles');
             } catch (error) {
-                showMessage('Failed to save profile: ' + error.message, 'error');
+                console.error('Error saving profile:', error);
+                showMessage('Failed to save profile: ' + (error.message || 'Unknown error'), 'error');
             }
         }
         
@@ -1650,6 +1859,11 @@
         
         function closeProfileEditor() {
             document.getElementById('profileModal').classList.remove('active');
+            // Clean up preview chart
+            if (profileEditorChart) {
+                profileEditorChart.destroy();
+                profileEditorChart = null;
+            }
         }
         
         async function stopBrew() {
