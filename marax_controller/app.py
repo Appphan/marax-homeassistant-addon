@@ -125,6 +125,18 @@ TOPIC_LEARNING_SHOT_COUNT = f"{MQTT_BASE_TOPIC}/learning/shot_count"
 TOPIC_LEARNING_PID_PARAMETERS = f"{MQTT_BASE_TOPIC}/learning/pid_parameters"
 TOPIC_CONTROL_SYSTEM = f"{MQTT_BASE_TOPIC}/control/system"
 TOPIC_CONTROL_STATUS = f"{MQTT_BASE_TOPIC}/control/status"
+TOPIC_SCALE_WEIGHT = f"{MQTT_BASE_TOPIC}/scale/weight"
+TOPIC_SCALE_TARGET_WEIGHT = f"{MQTT_BASE_TOPIC}/scale/weight/target"
+TOPIC_SCALE_TARE = f"{MQTT_BASE_TOPIC}/scale/tare"
+TOPIC_SCALE_BATTERY = f"{MQTT_BASE_TOPIC}/scale/battery"
+TOPIC_SHOT_NUMBER = f"{MQTT_BASE_TOPIC}/shot/shotnumber"
+TOPIC_SHOT_SET_COUNT = f"{MQTT_BASE_TOPIC}/shot/setcount"
+TOPIC_SHOT_DATA = f"{MQTT_BASE_TOPIC}/shot/data"
+TOPIC_SHOT_EVENT = f"{MQTT_BASE_TOPIC}/shot/event"
+TOPIC_SET_LEVER = f"{MQTT_BASE_TOPIC}/setlever"
+TOPIC_SET_TARGET_WEIGHT = f"{MQTT_BASE_TOPIC}/settargetweight"
+TOPIC_TIMER_RESET = f"{MQTT_BASE_TOPIC}/timer/reset"
+TOPIC_DEVICE_TELEMETRY = f"{MQTT_BASE_TOPIC}/device/telemetry"
 
 # Data storage
 device_data = {
@@ -145,7 +157,29 @@ device_data = {
         'steady_state_error': 0.0,
         'shot_count': 0
     },
-    'control_system': 'pid'
+    'control_system': 'pid',
+    'scale': {
+        'weight': 0.0,
+        'target_weight': 0.0,
+        'battery': 0,
+        'connected': False
+    },
+    'shot': {
+        'number': 0,
+        'time': 0,
+        'weight': 0.0,
+        'data': None,
+        'events': []
+    },
+    'settings': {
+        'lever_mode': False,
+        'weight_profiling': False
+    },
+    'telemetry': {
+        'wifi_rssi': 0,
+        'free_heap': 0,
+        'min_free_heap': 0
+    }
 }
 
 # MQTT Client
@@ -300,6 +334,46 @@ def on_message(client, userdata, msg):
         elif topic == TOPIC_CONTROL_STATUS:
             device_data['control_system'] = payload
             logger.debug(f"Updated control system: {payload}")
+        elif topic == TOPIC_SCALE_WEIGHT:
+            try:
+                device_data['scale']['weight'] = float(payload)
+            except:
+                pass
+        elif topic == TOPIC_SCALE_TARGET_WEIGHT:
+            try:
+                device_data['scale']['target_weight'] = float(payload)
+            except:
+                pass
+        elif topic == TOPIC_SCALE_BATTERY:
+            try:
+                device_data['scale']['battery'] = int(payload)
+            except:
+                pass
+        elif topic == TOPIC_SHOT_NUMBER:
+            try:
+                device_data['shot']['number'] = int(payload)
+            except:
+                pass
+        elif topic == TOPIC_SHOT_DATA:
+            try:
+                device_data['shot']['data'] = json.loads(payload)
+            except:
+                pass
+        elif topic == TOPIC_SHOT_EVENT:
+            try:
+                event_data = json.loads(payload)
+                # Keep last 10 events
+                device_data['shot']['events'].append(event_data)
+                if len(device_data['shot']['events']) > 10:
+                    device_data['shot']['events'].pop(0)
+            except:
+                pass
+        elif topic == TOPIC_DEVICE_TELEMETRY:
+            try:
+                telemetry_data = json.loads(payload)
+                device_data['telemetry'].update(telemetry_data)
+            except:
+                pass
         elif topic == TOPIC_PROFILE_LIST:
             try:
                 # Ignore our own "get" request message
@@ -708,6 +782,71 @@ def api_control_system():
 def api_control_status():
     """Get control system status"""
     return jsonify({'system': device_data.get('control_system', 'pid')})
+
+@app.route('/api/scale/tare', methods=['POST'])
+def api_scale_tare():
+    """Tare the scale"""
+    if mqtt_client and mqtt_connected:
+        mqtt_client.publish(TOPIC_SCALE_TARE, "", qos=1)
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'MQTT not connected'}), 503
+
+@app.route('/api/scale/status', methods=['GET'])
+def api_scale_status():
+    """Get scale status"""
+    return jsonify(device_data.get('scale', {}))
+
+@app.route('/api/shot/number', methods=['GET'])
+def api_shot_number():
+    """Get shot number"""
+    return jsonify({'number': device_data.get('shot', {}).get('number', 0)})
+
+@app.route('/api/shot/setcount', methods=['POST'])
+def api_shot_setcount():
+    """Set shot count"""
+    data = request.json
+    count = data.get('count')
+    
+    if count is None or count < 0:
+        return jsonify({'error': 'count required and must be >= 0'}), 400
+    
+    if mqtt_client and mqtt_connected:
+        mqtt_client.publish(TOPIC_SHOT_SET_COUNT, str(count), qos=1)
+        return jsonify({'success': True, 'count': count})
+    else:
+        return jsonify({'error': 'MQTT not connected'}), 503
+
+@app.route('/api/shot/data', methods=['GET'])
+def api_shot_data():
+    """Get shot data"""
+    return jsonify(device_data.get('shot', {}))
+
+@app.route('/api/settings/lever', methods=['POST'])
+def api_settings_lever():
+    """Set lever mode"""
+    data = request.json
+    enabled = data.get('enabled', False)
+    
+    if mqtt_client and mqtt_connected:
+        mqtt_client.publish(TOPIC_SET_LEVER, "1" if enabled else "0", qos=1)
+        return jsonify({'success': True, 'enabled': enabled})
+    else:
+        return jsonify({'error': 'MQTT not connected'}), 503
+
+@app.route('/api/timer/reset', methods=['POST'])
+def api_timer_reset():
+    """Reset brew timer"""
+    if mqtt_client and mqtt_connected:
+        mqtt_client.publish(TOPIC_TIMER_RESET, "", qos=0)
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'MQTT not connected'}), 503
+
+@app.route('/api/telemetry', methods=['GET'])
+def api_telemetry():
+    """Get device telemetry"""
+    return jsonify(device_data.get('telemetry', {}))
 
 # Static files
 @app.route('/static/<path:filename>')

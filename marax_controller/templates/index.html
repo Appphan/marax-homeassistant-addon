@@ -545,6 +545,91 @@
                 <div id="machine-status" class="loading">Loading...</div>
             </div>
             
+            <!-- Scale Control Section -->
+            <div class="status-card">
+                <h2><i class="fas fa-balance-scale"></i> Scale Control</h2>
+                <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 15px;">
+                    <div class="stat-item">
+                        <div class="stat-label">Current Weight</div>
+                        <div class="stat-value" id="scale-weight">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Target Weight</div>
+                        <div class="stat-value" id="scale-target-weight">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Battery</div>
+                        <div class="stat-value" id="scale-battery">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Status</div>
+                        <div class="stat-value" id="scale-status">-</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="button" onclick="tareScale()">
+                        <i class="fas fa-balance-scale"></i> Tare Scale
+                    </button>
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <input type="number" id="target-weight-input" placeholder="Target (g)" 
+                               style="padding: 8px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.3); 
+                                      background: rgba(255,255,255,0.1); color: white; width: 120px;" 
+                               min="10" max="500" step="0.1">
+                        <button class="button" onclick="setTargetWeight()">
+                            <i class="fas fa-bullseye"></i> Set Target
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Shot Management Section -->
+            <div class="status-card">
+                <h2><i class="fas fa-coffee"></i> Shot Management</h2>
+                <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 15px;">
+                    <div class="stat-item">
+                        <div class="stat-label">Shot Number</div>
+                        <div class="stat-value" id="shot-number">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Shot Time</div>
+                        <div class="stat-value" id="shot-time">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Shot Weight</div>
+                        <div class="stat-value" id="shot-weight">-</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <input type="number" id="shot-count-input" placeholder="Shot #" 
+                               style="padding: 8px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.3); 
+                                      background: rgba(255,255,255,0.1); color: white; width: 100px;" 
+                               min="0">
+                        <button class="button" onclick="setShotCount()">
+                            <i class="fas fa-edit"></i> Set Count
+                        </button>
+                    </div>
+                    <button class="button" onclick="resetTimer()">
+                        <i class="fas fa-redo"></i> Reset Timer
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Settings Section -->
+            <div class="status-card">
+                <h2><i class="fas fa-cog"></i> Settings</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                    <div style="padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+                        <h3 style="margin-bottom: 10px;"><i class="fas fa-toggle-on"></i> Lever Mode</h3>
+                        <label class="toggle-switch" style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="lever-mode-toggle" onchange="toggleLeverMode(this.checked)">
+                            <span class="toggle-slider"></span>
+                            <span id="lever-mode-status">Disabled</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
             <!-- PID Control Section -->
             <div class="status-card">
                 <h2><i class="fas fa-sliders-h"></i> PID Control & Learning System</h2>
@@ -1529,6 +1614,10 @@
             } catch (error) {
                 console.error('Error fetching machine state:', error);
             }
+            
+            // Update scale and shot status
+            await updateScaleStatus();
+            await updateShotStatus();
         }
         
         async function updateProfiles(refresh = false) {
@@ -2831,8 +2920,152 @@
             }
         }
         
+        async function tareScale() {
+            try {
+                await postAPI('scale/tare', {});
+                showMessage('Scale tared', 'success');
+            } catch (error) {
+                showMessage('Error taring scale: ' + error.message, 'error');
+            }
+        }
+        
+        async function setTargetWeight() {
+            const input = document.getElementById('target-weight-input');
+            const weight = parseFloat(input.value);
+            
+            if (isNaN(weight) || weight < 10 || weight > 500) {
+                showMessage('Target weight must be between 10 and 500 grams', 'error');
+                return;
+            }
+            
+            try {
+                await postAPI('target/weight', { weight: weight });
+                showMessage(`Target weight set to ${weight}g`, 'success');
+                input.value = '';
+            } catch (error) {
+                showMessage('Error setting target weight: ' + error.message, 'error');
+            }
+        }
+        
+        async function setShotCount() {
+            const input = document.getElementById('shot-count-input');
+            const count = parseInt(input.value);
+            
+            if (isNaN(count) || count < 0) {
+                showMessage('Shot count must be >= 0', 'error');
+                return;
+            }
+            
+            try {
+                await postAPI('shot/setcount', { count: count });
+                showMessage(`Shot count set to ${count}`, 'success');
+                input.value = '';
+                updateStatus(); // Refresh display
+            } catch (error) {
+                showMessage('Error setting shot count: ' + error.message, 'error');
+            }
+        }
+        
+        async function resetTimer() {
+            try {
+                await postAPI('timer/reset', {});
+                showMessage('Timer reset', 'success');
+            } catch (error) {
+                showMessage('Error resetting timer: ' + error.message, 'error');
+            }
+        }
+        
+        async function toggleLeverMode(enabled) {
+            try {
+                await postAPI('settings/lever', { enabled: enabled });
+                document.getElementById('lever-mode-status').textContent = enabled ? 'Enabled' : 'Disabled';
+                showMessage(`Lever mode ${enabled ? 'enabled' : 'disabled'}`, 'success');
+            } catch (error) {
+                showMessage('Error toggling lever mode: ' + error.message, 'error');
+                // Revert toggle
+                document.getElementById('lever-mode-toggle').checked = !enabled;
+            }
+        }
+        
+        async function updateScaleStatus() {
+            try {
+                const scaleData = await fetchAPI('scale/status');
+                if (scaleData) {
+                    document.getElementById('scale-weight').textContent = 
+                        scaleData.weight !== undefined ? scaleData.weight.toFixed(1) + ' g' : '-';
+                    document.getElementById('scale-target-weight').textContent = 
+                        scaleData.target_weight !== undefined ? scaleData.target_weight.toFixed(1) + ' g' : '-';
+                    document.getElementById('scale-battery').textContent = 
+                        scaleData.battery !== undefined ? scaleData.battery + '%' : '-';
+                    document.getElementById('scale-status').textContent = 
+                        scaleData.connected ? 'Connected' : 'Disconnected';
+                }
+            } catch (error) {
+                console.error('Error fetching scale status:', error);
+            }
+        }
+        
+        async function updateShotStatus() {
+            try {
+                const shotData = await fetchAPI('shot/data');
+                if (shotData) {
+                    document.getElementById('shot-number').textContent = 
+                        shotData.number !== undefined ? shotData.number : '-';
+                    document.getElementById('shot-time').textContent = 
+                        shotData.time !== undefined ? shotData.time + 's' : '-';
+                    document.getElementById('shot-weight').textContent = 
+                        shotData.weight !== undefined ? shotData.weight.toFixed(1) + ' g' : '-';
+                }
+            } catch (error) {
+                console.error('Error fetching shot status:', error);
+            }
+        }
+        
         async function updateAnalytics() {
-            // This would fetch shot history and statistics
+            try {
+                const shotData = await fetchAPI('shot/data');
+                if (shotData) {
+                    // Update summary
+                    document.getElementById('analytics-total-shots').textContent = 
+                        shotData.number || '-';
+                    
+                    if (shotData.data) {
+                        const data = shotData.data;
+                        document.getElementById('analytics-last-time').textContent = 
+                            data.total_time ? data.total_time.toFixed(1) + 's' : '-';
+                        document.getElementById('analytics-last-weight').textContent = 
+                            data.total_weight ? data.total_weight.toFixed(1) + 'g' : '-';
+                        document.getElementById('analytics-last-ratio').textContent = 
+                            data.ratio ? data.ratio.toFixed(2) : '-';
+                    }
+                    
+                    // Update events list
+                    if (shotData.events && shotData.events.length > 0) {
+                        const eventsList = document.getElementById('events-list');
+                        eventsList.innerHTML = shotData.events.slice(-10).reverse().map(event => {
+                            const eventType = event.event || 'unknown';
+                            const time = event.time ? event.time.toFixed(1) + 's' : '';
+                            return `
+                                <div style="padding: 10px; margin-bottom: 5px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                                    <strong>${eventType}</strong> ${time ? `at ${time}` : ''}
+                                    ${event.pressure ? ` | Pressure: ${event.pressure.toFixed(1)} bar` : ''}
+                                    ${event.weight ? ` | Weight: ${event.weight.toFixed(1)}g` : ''}
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating analytics:', error);
+            }
+        }
+        
+        async function refreshAnalytics() {
+            await updateAnalytics();
+            showMessage('Analytics refreshed', 'info');
+        }
+        
+        // Analytics update is already defined above
             // For now, show placeholder
             document.getElementById('analytics-content').innerHTML = `
                 <div class="analytics-grid">
