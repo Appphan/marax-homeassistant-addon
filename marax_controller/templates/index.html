@@ -489,9 +489,25 @@
             
             if (tabName === 'live') {
                 initLiveChart();
+                // Start more frequent updates when Live Brew tab is active
+                if (updateInterval) {
+                    clearInterval(updateInterval);
+                }
+                updateInterval = setInterval(updateStatus, 1000); // Update every second when on Live Brew tab
             } else if (tabName === 'profiles') {
                 // Request profiles when profiles tab is clicked
                 updateProfiles(true);  // Request fresh profiles on page load
+                // Reset to normal update interval
+                if (updateInterval) {
+                    clearInterval(updateInterval);
+                }
+                updateInterval = setInterval(updateStatus, 2000);
+            } else {
+                // Reset to normal update interval for other tabs
+                if (updateInterval) {
+                    clearInterval(updateInterval);
+                }
+                updateInterval = setInterval(updateStatus, 2000);
             }
         }
         
@@ -586,32 +602,62 @@
         }
         
         function updateLiveChart(brewState, time) {
-            if (!liveChart || !brewState) return;
+            if (!liveChart) {
+                console.warn('Live chart not initialized');
+                return;
+            }
+            
+            if (!brewState) {
+                console.warn('No brew state provided');
+                return;
+            }
             
             // Track brew start time
             if (brewState.isActive && brewStartTime === null) {
                 brewStartTime = Date.now() / 1000;
                 brewEndTime = null;
                 liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
+                console.log('Brew started, resetting chart data');
             }
             
             // Track brew end time
             if (!brewState.isActive && brewStartTime !== null && brewEndTime === null) {
                 brewEndTime = time;
+                console.log('Brew ended');
             }
             
             if (!brewState.isActive) {
-                // Don't update chart if brew is not active
+                // Don't update chart if brew is not active (but keep last data visible)
                 return;
             }
             
             // Calculate time relative to brew start
             const relativeTime = brewStartTime !== null ? (time - brewStartTime) : time;
             
-            liveChartData.labels.push(relativeTime.toFixed(1));
-            liveChartData.pressure.push(brewState.pressure || 0);
-            liveChartData.flow.push(brewState.flow || 0);
-            liveChartData.weight.push(brewState.weight || 0);
+            // Only add new data point if time has advanced
+            const lastLabel = liveChartData.labels.length > 0 ? parseFloat(liveChartData.labels[liveChartData.labels.length - 1]) : -1;
+            if (relativeTime > lastLabel + 0.1) { // Add point every 0.1 seconds minimum
+                liveChartData.labels.push(relativeTime.toFixed(1));
+                liveChartData.pressure.push(brewState.pressure || 0);
+                liveChartData.flow.push(brewState.flow || 0);
+                liveChartData.weight.push(brewState.weight || 0);
+                
+                // Limit data points to last 300 seconds to prevent memory issues
+                if (liveChartData.labels.length > 3000) {
+                    liveChartData.labels.shift();
+                    liveChartData.pressure.shift();
+                    liveChartData.flow.shift();
+                    liveChartData.weight.shift();
+                }
+            } else {
+                // Update last point if time hasn't advanced much
+                if (liveChartData.labels.length > 0) {
+                    const lastIdx = liveChartData.labels.length - 1;
+                    liveChartData.pressure[lastIdx] = brewState.pressure || 0;
+                    liveChartData.flow[lastIdx] = brewState.flow || 0;
+                    liveChartData.weight[lastIdx] = brewState.weight || 0;
+                }
+            }
             
             // Update chart data
             liveChart.data.labels = liveChartData.labels;
@@ -1494,7 +1540,25 @@
         console.log('MaraX Controller script loaded and starting...');
         console.log('Calling updateStatus()...');
         updateStatus();
-        updateInterval = setInterval(updateStatus, 2000);
+        // Update more frequently when on Live Brew tab
+        updateInterval = setInterval(() => {
+            updateStatus();
+            // If on Live Brew tab and brewing, update even more frequently
+            const liveTab = document.getElementById('live');
+            if (liveTab && liveTab.classList.contains('active')) {
+                const brewState = device_data?.brew_state;
+                if (brewState && brewState.isActive) {
+                    // Already updating via updateStatus, but ensure chart updates
+                    setTimeout(() => {
+                        const currentBrewState = device_data?.brew_state;
+                        if (currentBrewState && currentBrewState.isActive) {
+                            const currentTime = Date.now() / 1000;
+                            updateLiveChart(currentBrewState, currentTime);
+                        }
+                    }, 500);
+                }
+            }
+        }, 1000); // Update every second for better responsiveness
         console.log('Update interval set to 2 seconds');
         
         // Initialize live chart

@@ -178,8 +178,15 @@ def on_message(client, userdata, msg):
             device_data['info'] = json.loads(payload)
             logger.debug(f"Updated device info: {device_data['info']}")
         elif topic == TOPIC_BREW_STATE:
-            device_data['brew_state'] = json.loads(payload)
-            logger.debug(f"Updated brew state: {device_data['brew_state']}")
+            try:
+                brew_state_data = json.loads(payload)
+                device_data['brew_state'] = brew_state_data
+                is_active = brew_state_data.get('isActive', False)
+                pressure = brew_state_data.get('pressure', 0)
+                flow = brew_state_data.get('flow', 0)
+                logger.info(f"✅ Updated brew state: isActive={is_active}, pressure={pressure:.2f}, flow={flow:.2f}")
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse brew state JSON: {e}, payload: {payload[:100]}")
         elif topic == TOPIC_MACHINE_STATE:
             device_data['machine_state'] = json.loads(payload)
             logger.debug(f"Updated machine state: {device_data['machine_state']}")
@@ -370,11 +377,12 @@ def api_status():
 @app.route('/api/brew/state')
 def api_brew_state():
     """Get brew state"""
-    logger.info("API /brew/state endpoint called")
+    logger.debug("API /brew/state endpoint called")
     brew_state = device_data.get('brew_state', {})
-    logger.info(f"API /brew/state returning: {brew_state}")
-    if not brew_state:
-        logger.warning("No brew state data available")
+    if brew_state:
+        logger.debug(f"API /brew/state returning: isActive={brew_state.get('isActive')}, pressure={brew_state.get('pressure')}, flow={brew_state.get('flow')}")
+    else:
+        logger.debug("No brew state data available")
     return jsonify(brew_state)
 
 @app.route('/api/machine/state')
