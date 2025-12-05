@@ -420,10 +420,6 @@
         let currentProfiles = [];
         let activeProfileId = null;
         let profileCharts = {};
-        let liveChart = null;
-        let liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
-        let brewStartTime = null;
-        let brewEndTime = null;
         
         // Detect ingress base path
         const getBasePath = () => {
@@ -1550,18 +1546,53 @@
 
         // Start updating every 2 seconds
         console.log('MaraX Controller script loaded and starting...');
-        console.log('Calling updateStatus()...');
-        updateStatus();
-        // Update every 2 seconds by default
-        updateInterval = setInterval(updateStatus, 2000);
-        console.log('Update interval set to 2 seconds');
         
-        // Initialize live chart
-        initLiveChart();
+        // Wait for DOM to be fully ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
         
-        // Update analytics
-        updateAnalytics();
-        setInterval(updateAnalytics, 5000);
+        function initializeApp() {
+            console.log('Initializing app...');
+            try {
+                // Initialize live chart (only if on live tab, but safe to call)
+                const liveTab = document.getElementById('live');
+                if (liveTab) {
+                    // Don't initialize chart on page load, only when tab is clicked
+                    console.log('Live tab found, chart will initialize when tab is clicked');
+                }
+                
+                // Start status updates
+                console.log('Calling updateStatus()...');
+                updateStatus().catch(err => {
+                    console.error('Error in initial updateStatus:', err);
+                });
+                
+                // Update every 2 seconds by default
+                updateInterval = setInterval(() => {
+                    updateStatus().catch(err => {
+                        console.error('Error in updateStatus:', err);
+                    });
+                }, 2000);
+                console.log('Update interval set to 2 seconds');
+                
+                // Update analytics
+                updateAnalytics().catch(err => {
+                    console.error('Error in updateAnalytics:', err);
+                });
+                setInterval(() => {
+                    updateAnalytics().catch(err => {
+                        console.error('Error in updateAnalytics:', err);
+                    });
+                }, 5000);
+                
+                console.log('App initialized successfully');
+            } catch (error) {
+                console.error('Fatal error initializing app:', error);
+            }
+        }
 
         // Health check
         const healthUrl = basePath ? `${basePath}/health` : '/health';
