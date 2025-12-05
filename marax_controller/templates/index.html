@@ -1962,6 +1962,14 @@
             
             const { timePoints, pressurePoints, flowPoints } = calculatePhasePoints(phase);
             
+            // Calculate pressure range for auto-scaling
+            const minPressure = Math.min(...pressurePoints, 0);
+            const maxPressure = Math.max(...pressurePoints, 10);
+            const pressureRange = maxPressure - minPressure;
+            const pressurePadding = Math.max(pressureRange * 0.1, 0.5); // 10% padding or minimum 0.5 bar
+            const pressureMin = Math.max(0, minPressure - pressurePadding);
+            const pressureMax = Math.min(12, maxPressure + pressurePadding); // Cap at 12 bar for safety
+            
             // Destroy existing chart
             if (phaseCharts[phaseIndex]) {
                 phaseCharts[phaseIndex].destroy();
@@ -2013,10 +2021,8 @@
                             title: { display: true, text: 'Pressure (bar)', color: 'white' },
                             ticks: { color: 'white' },
                             grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                            min: 0,
-                            max: 10,
-                            suggestedMin: 0,
-                            suggestedMax: 10
+                            min: pressureMin,
+                            max: pressureMax
                         },
                         y1: {
                             type: 'linear',
@@ -2057,6 +2063,14 @@
             
             const { timePoints, pressurePoints } = calculatePhasePoints(phase);
             
+            // Calculate pressure range for auto-scaling
+            const minPressure = Math.min(...pressurePoints, 0);
+            const maxPressure = Math.max(...pressurePoints, 10);
+            const pressureRange = maxPressure - minPressure;
+            const pressurePadding = Math.max(pressureRange * 0.1, 0.5);
+            const pressureMin = Math.max(0, minPressure - pressurePadding);
+            const pressureMax = Math.min(12, maxPressure + pressurePadding);
+            
             // Destroy existing mini chart
             if (phaseMiniCharts[phaseIndex]) {
                 phaseMiniCharts[phaseIndex].destroy();
@@ -2088,8 +2102,8 @@
                         x: { display: false },
                         y: {
                             display: false,
-                            min: 0,
-                            max: 10
+                            min: pressureMin,
+                            max: pressureMax
                         }
                     }
                 }
@@ -2182,6 +2196,14 @@
                 currentTime = phaseEnd;
             });
             
+            // Calculate pressure range for auto-scaling
+            const minPressure = Math.min(...pressurePoints, 0);
+            const maxPressure = Math.max(...pressurePoints, 10);
+            const pressureRange = maxPressure - minPressure;
+            const pressurePadding = Math.max(pressureRange * 0.1, 0.5);
+            const pressureMin = Math.max(0, minPressure - pressurePadding);
+            const pressureMax = Math.min(12, maxPressure + pressurePadding);
+            
             // Update or create chart
             const canvas = document.getElementById('profile-editor-chart');
             if (!canvas) return;
@@ -2229,10 +2251,8 @@
                             display: true,
                             position: 'left',
                             title: { display: true, text: 'Pressure (bar)' },
-                            min: 0,
-                            max: 10,
-                            suggestedMin: 0,
-                            suggestedMax: 10
+                            min: pressureMin,
+                            max: pressureMax
                         },
                         y1: {
                             type: 'linear',
