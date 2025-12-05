@@ -42,7 +42,6 @@
     "update_interval": "int",
     "log_level": "list(debug|info|warning|error)"
   },
-  "image": "ghcr.io/home-assistant/{arch}-addon-base:latest",
   "map": [
     "config:rw"
   ]
