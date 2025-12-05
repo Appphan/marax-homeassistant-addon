@@ -9,7 +9,8 @@ RUN apk add --no-cache \
     python3 \
     py3-pip \
     wget \
-    curl
+    curl \
+    jq
 
 # Copy application files
 COPY . /app/
@@ -28,6 +29,9 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# Run application
-CMD ["python3", "/app/app.py"]
+# Make run.sh executable
+RUN chmod +x /app/run.sh
+
+# Run application via run.sh (loads configuration)
+CMD ["/app/run.sh"]
 
