@@ -258,8 +258,13 @@
             background: rgba(255, 255, 255, 0.12);
             border-color: rgba(255, 255, 255, 0.4);
         }
+        .phase-editor-item.collapsed {
+            margin-bottom: 20px;
+        }
         .phase-editor-item.collapsed .phase-content {
-            display: none;
+            display: none !important;
+            padding: 0;
+            margin: 0;
         }
         .phase-editor-item:not(.collapsed) .phase-content {
             display: block;
@@ -285,11 +290,15 @@
             transition: background 0.3s;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
+        .phase-editor-item.collapsed .phase-header-collapsible {
+            border-bottom: none;
+        }
         .phase-header-collapsible:hover {
             background: rgba(255, 255, 255, 0.1);
         }
         .phase-content {
             padding: 20px;
+            margin: 0;
         }
         .phase-editor-grid {
             display: grid;
