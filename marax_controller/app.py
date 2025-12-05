@@ -29,6 +29,10 @@ CORS(app)
 INGRESS_PATH = os.getenv('SUPERVISOR_TOKEN', '')
 
 # Configuration from Home Assistant options
+# Note: In Home Assistant, the MQTT broker is typically accessible via:
+# - 'core-mosquitto' (if Mosquitto add-on is installed)
+# - 'supervisor' (alternative hostname)
+# - 'localhost' (if on same container)
 MQTT_BROKER = os.getenv('MQTT_BROKER', 'core-mosquitto')
 
 # For Home Assistant add-ons, MQTT broker is accessible via supervisor network
