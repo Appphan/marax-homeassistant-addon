@@ -128,8 +128,13 @@
         async function fetchAPI(endpoint) {
             try {
                 const response = await fetch(`/api/${endpoint}`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return await response.json();
+                if (!response.ok) {
+                    console.error(`HTTP ${response.status} for ${endpoint}`);
+                    return null;
+                }
+                const data = await response.json();
+                console.log(`Fetched ${endpoint}:`, data);
+                return data;
             } catch (error) {
                 console.error(`Error fetching ${endpoint}:`, error);
                 return null;

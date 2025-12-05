@@ -329,12 +329,20 @@ def api_status():
 @app.route('/api/brew/state')
 def api_brew_state():
     """Get brew state"""
-    return jsonify(device_data.get('brew_state', {}))
+    brew_state = device_data.get('brew_state', {})
+    logger.debug(f"API /brew/state called, returning: {brew_state}")
+    if not brew_state:
+        logger.warning("No brew state data available")
+    return jsonify(brew_state)
 
 @app.route('/api/machine/state')
 def api_machine_state():
     """Get machine state"""
-    return jsonify(device_data.get('machine_state', {}))
+    machine_state = device_data.get('machine_state', {})
+    logger.debug(f"API /machine/state called, returning: {machine_state}")
+    if not machine_state:
+        logger.warning("No machine state data available")
+    return jsonify(machine_state)
 
 @app.route('/api/profiles')
 def api_profiles():
