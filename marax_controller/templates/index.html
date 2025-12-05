@@ -1106,11 +1106,11 @@
             criteriaList.innerHTML = '';
             
             if (phaseData.breakout_criteria && phaseData.breakout_criteria.length > 0) {
-                const activeCriteria = phaseData.breakout_criteria.filter(c => c && c.enabled);const criteriaLogic = phaseData.criteria_logic === 8 ? 'OR' : 'AND';
-                criteriaList.innerHTML += `<p style="margin-bottom: 10px; opacity: 0.8;"><strong>Logic:</strong> ${criteriaLogic} (${criteriaLogic === 'OR' ? 'any' : 'all'} criteria must be met)</p>`;
+                const activeCriteria = phaseData.breakout_criteria.filter(c => c && c.enabled && c.type > 0);
+                const criteriaLogic = phaseData.criteria_logic === 8 ? 'OR' : 'AND';
+                criteriaList.innerHTML += `<p style="margin-bottom: 10px; opacity: 0.8;"><strong><i class="fas fa-sitemap"></i> Logic:</strong> ${criteriaLogic} (${criteriaLogic === 'OR' ? 'any' : 'all'} criteria must be met)</p>`;
                 
-                phaseData.breakout_criteria.forEach((crit, idx) => {
-                    if (!crit.enabled) return;
+                activeCriteria.forEach((crit, idx) => {
                     
                     const critTypeNames = {
                         1: 'Time',
