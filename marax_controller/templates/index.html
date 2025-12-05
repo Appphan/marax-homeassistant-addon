@@ -900,7 +900,7 @@
                 await postAPI('profiles/select', { profile_id: id });
                 activeProfileId = id;
                 showMessage('Profile selected successfully', 'success');
-                await updateProfiles();
+                await updateProfiles(false);
             } catch (error) {
                 showMessage('Failed to select profile: ' + error.message, 'error');
             }
@@ -1281,7 +1281,7 @@
                 await postAPI('profiles/send', esp32Profile);
                 showMessage('Profile saved successfully', 'success');
                 closeProfileEditor();
-                await updateProfiles();
+                await updateProfiles(true);
             } catch (error) {
                 showMessage('Failed to save profile: ' + error.message, 'error');
             }
