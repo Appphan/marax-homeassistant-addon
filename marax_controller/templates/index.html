@@ -284,13 +284,20 @@
             }
         }
 
+        // Log that script is running
+        console.log('MaraX Controller script loaded and starting...');
+        
         // Start updating every 2 seconds
+        console.log('Calling updateStatus()...');
         updateStatus();
         updateInterval = setInterval(updateStatus, 2000);
+        console.log('Update interval set to 2 seconds');
 
         // Health check
         fetch('/health').then(r => r.json()).then(data => {
             console.log('Health check:', data);
+        }).catch(err => {
+            console.error('Health check failed:', err);
         });
     </script>
 </body>

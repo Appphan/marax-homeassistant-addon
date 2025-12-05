@@ -287,7 +287,8 @@ def request_profile_list():
 @app.before_request
 def log_request():
     """Log all incoming requests"""
-    logger.debug(f"Request: {request.method} {request.path}")
+    # Log all requests at INFO level so we can see them
+    logger.info(f"Request: {request.method} {request.path} from {request.remote_addr}")
 
 @app.route('/')
 def index():
