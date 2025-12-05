@@ -304,16 +304,26 @@
             padding: 20px;
             margin: 0;
             box-sizing: border-box;
-            overflow: hidden;
+            width: 100%;
             max-width: 100%;
+            position: relative;
+            contain: layout style;
         }
         .phase-editor-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
-            margin-top: 0;
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
             width: 100%;
+            max-width: 100%;
+            contain: layout;
+        }
+        .phase-editor-grid > div {
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
         }
         @media (max-width: 1200px) {
             .phase-editor-grid {
@@ -1719,7 +1729,7 @@
                     <div class="phase-content">
                         <div class="phase-editor-grid">
                             <div>
-                            <div class="form-section">
+                                <div class="form-section">
                                 <div class="form-section-title"><i class="fas fa-info-circle"></i> Phase Information</div>
                                 <div class="form-group">
                                     <label><i class="fas fa-tag"></i> Phase Name</label>
@@ -1815,9 +1825,9 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div>
+                            </div>
+                            
+                            <div>
                             <div class="form-section">
                                 <div class="form-section-title"><i class="fas fa-chart-line"></i> Phase Preview</div>
                                 <div class="phase-graph-container">
@@ -1839,7 +1849,6 @@
                                 </div>
                                 ${expandableCriteriaHtml}
                             </div>
-                        </div>
                         </div>
                     </div>
                 </div>
@@ -1873,8 +1882,7 @@
                 });
             }
             
-            // Update preview graph after adding phase
-            updateProfilePreview();
+            // Don't call updateProfilePreview here - it's called separately when needed
         }
         
         function buildCriteriaHTML(phaseIndex, critIndex, crit, isMain) {
@@ -2106,9 +2114,9 @@
                 }
             });
             
-            // Also update mini graph and main preview
+            // Also update mini graph (but NOT main preview to avoid recursion)
             updatePhaseMiniGraph(phaseIndex);
-            updateProfilePreview();
+            // Don't call updateProfilePreview() here - it causes infinite loops
         }
         
         function updatePhaseMiniGraph(phaseIndex) {
@@ -2191,9 +2199,15 @@
             
             document.getElementById('profile-preview-graph').style.display = 'block';
             
-            // Collect phase data from form
+            // Collect phase data from form - use data-phase-index to get correct index
             const phases = [];
-            phaseItems.forEach((item, idx) => {
+            phaseItems.forEach((item) => {
+                const phaseIndexAttr = item.getAttribute('data-phase-index');
+                if (phaseIndexAttr === null) return;
+                
+                const idx = parseInt(phaseIndexAttr);
+                if (isNaN(idx)) return;
+                
                 const form = item.closest('form') || document.getElementById('profile-form');
                 if (!form) return;
                 
@@ -2210,6 +2224,13 @@
                     rampDuration: parseFloat(formData.get(`rampDuration_${idx}`)) || 0
                 };
                 phases.push(phase);
+            });
+            
+            // Sort phases by index
+            phases.sort((a, b) => {
+                const aIdx = parseInt(phaseItems[phases.indexOf(a)]?.getAttribute('data-phase-index') || '0');
+                const bIdx = parseInt(phaseItems[phases.indexOf(b)]?.getAttribute('data-phase-index') || '0');
+                return aIdx - bIdx;
             });
             
             // Calculate time points
