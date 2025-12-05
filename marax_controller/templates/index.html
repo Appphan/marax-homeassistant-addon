@@ -769,40 +769,52 @@
             return modes[mode] || 'Unknown';
         }
         
-        function openProfileEditor(profileId = null) {
-            const profile = profileId ? currentProfiles.find(p => p.id === profileId) : null;
-            document.getElementById('modalTitle').textContent = profile ? `Edit: ${profile.name}` : 'New Profile';
+        async function openProfileEditor(profileId = null) {
+            let profile = profileId ? currentProfiles.find(p => p.id === profileId) : null;
+            
+            // If editing and profile doesn't have full phase data, try to load it
+            if (profileId && profile && (!profile.phases || profile.phases.length === 0)) {
+                // Request full profile details - for now we'll work with what we have
+                console.log('Profile found but may not have full phase details');
+            }
+            
+            document.getElementById('modalTitle').textContent = profile ? `Edit: ${profile.name || 'Profile ' + profileId}` : 'New Profile';
             document.getElementById('profile-editor-content').innerHTML = `
-                <form id="profile-form" onsubmit="saveProfile(event, ${profileId || 'null'})">
+                <form id="profile-form" onsubmit="saveProfile(event, ${profileId !== null ? profileId : 'null'})">
                     <div class="form-group">
                         <label>Profile Name</label>
-                        <input type="text" name="profileName" value="${profile ? profile.name : ''}" required>
+                        <input type="text" name="profileName" value="${profile ? (profile.name || profile.profileName || '') : ''}" required>
                     </div>
                     <div class="form-group">
                         <label>Technique</label>
                         <select name="technique">
-                            <option value="traditional" ${profile && profile.technique === 'traditional' ? 'selected' : ''}>Traditional</option>
+                            <option value="traditional" ${profile && (profile.technique === 'traditional' || !profile.technique) ? 'selected' : ''}>Traditional</option>
                             <option value="blooming" ${profile && profile.technique === 'blooming' ? 'selected' : ''}>Blooming</option>
                             <option value="lever" ${profile && profile.technique === 'lever' ? 'selected' : ''}>Lever</option>
                             <option value="turbo" ${profile && profile.technique === 'turbo' ? 'selected' : ''}>Turbo</option>
+                            <option value="custom" ${profile && profile.technique === 'custom' ? 'selected' : ''}>Custom</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Default Dose (g)</label>
-                        <input type="number" step="0.1" name="defaultDose" value="${profile ? profile.defaultDose : 18.0}">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                        <div class="form-group">
+                            <label>Default Dose (g)</label>
+                            <input type="number" step="0.1" name="defaultDose" value="${profile ? (profile.defaultDose || profile.default_dose || 18.0) : 18.0}">
+                        </div>
+                        <div class="form-group">
+                            <label>Default Yield (g)</label>
+                            <input type="number" step="0.1" name="defaultYield" value="${profile ? (profile.defaultYield || profile.default_yield || 36.0) : 36.0}">
+                        </div>
+                        <div class="form-group">
+                            <label>Default Ratio</label>
+                            <input type="number" step="0.1" name="defaultRatio" value="${profile ? (profile.defaultRatio || profile.default_ratio || 2.0) : 2.0}">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Default Yield (g)</label>
-                        <input type="number" step="0.1" name="defaultYield" value="${profile ? profile.defaultYield : 36.0}">
-                    </div>
-                    <div class="form-group">
-                        <label>Default Ratio</label>
-                        <input type="number" step="0.1" name="defaultRatio" value="${profile ? profile.defaultRatio : 2.0}">
-                    </div>
-                    <div id="phases-container">
-                        <h3>Phases</h3>
+                    <div id="phases-container" style="margin-top: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3>Phases</h3>
+                            <button type="button" class="button" onclick="addPhase()">+ Add Phase</button>
+                        </div>
                         <div id="phases-list"></div>
-                        <button type="button" class="button" onclick="addPhase()">+ Add Phase</button>
                     </div>
                     <div style="margin-top: 20px; display: flex; gap: 10px;">
                         <button type="submit" class="button primary">Save Profile</button>
@@ -811,10 +823,17 @@
                 </form>
             `;
             
-            if (profile && profile.phases) {
+            // Clear phases list
+            document.getElementById('phases-list').innerHTML = '';
+            
+            // Add existing phases if editing
+            if (profile && profile.phases && profile.phases.length > 0) {
                 profile.phases.forEach((phase, idx) => {
                     addPhaseToEditor(phase, idx);
                 });
+            } else if (profileId === null) {
+                // For new profiles, add one empty phase to start
+                addPhase();
             }
             
             document.getElementById('profileModal').classList.add('active');
@@ -828,6 +847,48 @@
             const phasesList = document.getElementById('phases-list');
             const phaseDiv = document.createElement('div');
             phaseDiv.className = 'phase-editor-item';
+            
+            // Build breakout criteria HTML
+            let criteriaHtml = '';
+            const criteria = phase && phase.breakoutCriteria ? phase.breakoutCriteria : [];
+            for (let c = 0; c < 4; c++) {
+                const crit = criteria[c] || { type: 0, threshold: 0, enabled: false, minDuration: 0 };
+                criteriaHtml += `
+                    <div class="criteria-item" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <strong>Criteria ${c + 1}</strong>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="criteriaEnabled_${index}_${c}" ${crit.enabled ? 'checked' : ''}>
+                                Enabled
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select name="criteriaType_${index}_${c}">
+                                <option value="0" ${crit.type === 0 ? 'selected' : ''}>None</option>
+                                <option value="1" ${crit.type === 1 ? 'selected' : ''}>Time (seconds)</option>
+                                <option value="2" ${crit.type === 2 ? 'selected' : ''}>Weight (grams)</option>
+                                <option value="3" ${crit.type === 3 ? 'selected' : ''}>Flow (ml/s)</option>
+                                <option value="4" ${crit.type === 4 ? 'selected' : ''}>Pressure (bar)</option>
+                                <option value="5" ${crit.type === 5 ? 'selected' : ''}>Flow Detected</option>
+                                <option value="6" ${crit.type === 6 ? 'selected' : ''}>Flow Decline (ml/s)</option>
+                                <option value="7" ${crit.type === 7 ? 'selected' : ''}>Weight Rate (g/s)</option>
+                            </select>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div class="form-group">
+                                <label>Threshold</label>
+                                <input type="number" step="0.1" name="criteriaThreshold_${index}_${c}" value="${crit.threshold || 0}">
+                            </div>
+                            <div class="form-group">
+                                <label>Min Duration (s)</label>
+                                <input type="number" step="0.1" name="criteriaMinDuration_${index}_${c}" value="${crit.minDuration || 0}">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
             phaseDiv.innerHTML = `
                 <div class="phase-item">
                     <div class="phase-header">
@@ -840,7 +901,7 @@
                     </div>
                     <div class="form-group">
                         <label>Control Mode</label>
-                        <select name="controlMode_${index}">
+                        <select name="controlMode_${index}" onchange="updatePhaseFields(${index})">
                             <option value="0" ${phase && phase.controlMode === 0 ? 'selected' : ''}>Pressure</option>
                             <option value="1" ${phase && phase.controlMode === 1 ? 'selected' : ''}>Flow</option>
                             <option value="2" ${phase && phase.controlMode === 2 ? 'selected' : ''}>Pressure + Flow</option>
@@ -876,13 +937,49 @@
                             <input type="number" step="0.1" name="minDuration_${index}" value="${phase ? phase.minDuration : 0}">
                         </div>
                         <div class="form-group">
-                            <label>Max Duration (s)</label>
+                            <label>Max Duration (s) (0 = unlimited)</label>
                             <input type="number" step="0.1" name="maxDuration_${index}" value="${phase ? phase.maxDuration : 0}">
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Use Ramp</label>
+                        <input type="checkbox" name="useRamp_${index}" ${phase && phase.useRamp ? 'checked' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label>Ramp Duration (s)</label>
+                        <input type="number" step="0.1" name="rampDuration_${index}" value="${phase ? phase.rampDuration : 0}">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group">
+                            <label>Allow Manual Stop</label>
+                            <input type="checkbox" name="allowManualStop_${index}" ${phase && phase.allowManualStop !== false ? 'checked' : ''}>
+                        </div>
+                        <div class="form-group">
+                            <label>Publish Events</label>
+                            <input type="checkbox" name="publishEvents_${index}" ${phase && phase.publishEvents !== false ? 'checked' : ''}>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Criteria Logic</label>
+                        <select name="criteriaLogic_${index}">
+                            <option value="8" ${phase && phase.criteriaLogic === 8 ? 'selected' : ''}>OR (Any criteria)</option>
+                            <option value="9" ${phase && phase.criteriaLogic === 9 ? 'selected' : ''}>AND (All criteria)</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <h5>Breakout Criteria (up to 4)</h5>
+                        ${criteriaHtml}
                     </div>
                 </div>
             `;
             phasesList.appendChild(phaseDiv);
+        }
+        
+        function updatePhaseFields(index) {
+            // Show/hide fields based on control mode
+            const controlMode = document.querySelector(`select[name="controlMode_${index}"]`).value;
+            const phaseItem = document.querySelectorAll('.phase-editor-item')[index];
+            // This is a placeholder - could add dynamic field visibility
         }
         
         function removePhase(button) {
@@ -910,30 +1007,81 @@
             // Collect phases
             const phaseItems = document.querySelectorAll('.phase-editor-item');
             phaseItems.forEach((item, idx) => {
+                // Collect breakout criteria
+                const breakoutCriteria = [];
+                for (let c = 0; c < 4; c++) {
+                    const enabled = formData.get(`criteriaEnabled_${idx}_${c}`) === 'on';
+                    if (enabled) {
+                        breakoutCriteria.push({
+                            type: parseInt(formData.get(`criteriaType_${idx}_${c}`)) || 0,
+                            threshold: parseFloat(formData.get(`criteriaThreshold_${idx}_${c}`)) || 0,
+                            enabled: true,
+                            minDuration: parseFloat(formData.get(`criteriaMinDuration_${idx}_${c}`)) || 0
+                        });
+                    }
+                }
+                
                 const phase = {
                     name: formData.get(`phaseName_${idx}`),
                     phaseIndex: idx,
-                    controlMode: parseInt(formData.get(`controlMode_${idx}`)),
+                    controlMode: parseInt(formData.get(`controlMode_${idx}`)) || 0,
                     targetPressureStart: parseFloat(formData.get(`targetPressureStart_${idx}`)) || 0,
                     targetPressureEnd: parseFloat(formData.get(`targetPressureEnd_${idx}`)) || 0,
                     targetFlowStart: parseFloat(formData.get(`targetFlowStart_${idx}`)) || 0,
                     targetFlowEnd: parseFloat(formData.get(`targetFlowEnd_${idx}`)) || 0,
                     minDuration: parseFloat(formData.get(`minDuration_${idx}`)) || 0,
                     maxDuration: parseFloat(formData.get(`maxDuration_${idx}`)) || 0,
-                    criteriaCount: 0,
-                    criteriaLogic: 0,
-                    useRamp: false,
-                    allowManualStop: true,
-                    publishEvents: true
+                    useRamp: formData.get(`useRamp_${idx}`) === 'on',
+                    rampDuration: parseFloat(formData.get(`rampDuration_${idx}`)) || 0,
+                    allowManualStop: formData.get(`allowManualStop_${idx}`) !== 'off',
+                    publishEvents: formData.get(`publishEvents_${idx}`) !== 'off',
+                    criteriaCount: breakoutCriteria.length,
+                    criteriaLogic: parseInt(formData.get(`criteriaLogic_${idx}`)) || 8,
+                    breakoutCriteria: breakoutCriteria
                 };
                 profile.phases.push(phase);
             });
             
             profile.phaseCount = profile.phases.length;
-            if (profileId) profile.profileId = profileId;
+            if (profileId !== null && profileId !== undefined) {
+                profile.profileId = parseInt(profileId);
+            }
+            
+            // Convert to format expected by ESP32 (using snake_case for some fields)
+            const esp32Profile = {
+                profile_id: profile.profileId !== undefined ? profile.profileId : (profileId !== null ? parseInt(profileId) : undefined),
+                profileName: profile.profileName,
+                name: profile.profileName,
+                technique: profile.technique,
+                defaultDose: profile.defaultDose,
+                defaultYield: profile.defaultYield,
+                defaultRatio: profile.defaultRatio,
+                phaseCount: profile.phaseCount,
+                enabled: true,
+                phases: profile.phases.map(p => ({
+                    name: p.name,
+                    phaseIndex: p.phaseIndex,
+                    controlMode: p.controlMode,
+                    targetPressureStart: p.targetPressureStart,
+                    targetPressureEnd: p.targetPressureEnd,
+                    targetFlowStart: p.targetFlowStart,
+                    targetFlowEnd: p.targetFlowEnd,
+                    minDuration: p.minDuration,
+                    maxDuration: p.maxDuration,
+                    useRamp: p.useRamp,
+                    rampDuration: p.rampDuration,
+                    allowManualStop: p.allowManualStop,
+                    publishEvents: p.publishEvents,
+                    criteriaCount: p.criteriaCount,
+                    criteriaLogic: p.criteriaLogic,
+                    breakoutCriteria: p.breakoutCriteria
+                }))
+            };
+            
+            console.log('Saving profile:', esp32Profile);
             
             try {
-                await postAPI('profiles/send', profile);
+                await postAPI('profiles/send', esp32Profile);
                 showMessage('Profile saved successfully', 'success');
                 closeProfileEditor();
                 await updateProfiles();
