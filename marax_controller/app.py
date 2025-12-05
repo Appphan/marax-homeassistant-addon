@@ -165,7 +165,10 @@ def on_message(client, userdata, msg):
 
 def init_mqtt():
     """Initialize MQTT client with retry logic"""
-    global mqtt_client
+    global mqtt_client, MQTT_BROKER
+    
+    # Use a local variable for broker attempts to avoid modifying global during retries
+    current_broker = MQTT_BROKER
     
     mqtt_client = mqtt.Client()
     mqtt_client.on_connect = on_connect
@@ -182,48 +185,45 @@ def init_mqtt():
     max_retries = 3
     retry_delay = 2
     
+    # Alternative broker options if default fails
+    broker_options = [current_broker]
+    if current_broker == 'core-mosquitto':
+        broker_options.extend(['supervisor', 'localhost'])
+    
     for attempt in range(max_retries):
+        # Select broker for this attempt
+        if attempt < len(broker_options):
+            current_broker = broker_options[attempt]
+        else:
+            current_broker = broker_options[-1]  # Use last option
+        
         try:
-            logger.info(f"Attempt {attempt + 1}/{max_retries}: Connecting to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}")
-            mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+            logger.info(f"Attempt {attempt + 1}/{max_retries}: Connecting to MQTT broker at {current_broker}:{MQTT_PORT}")
+            mqtt_client.connect(current_broker, MQTT_PORT, 60)
             mqtt_client.loop_start()
-            logger.info(f"MQTT connection initiated to {MQTT_BROKER}:{MQTT_PORT}")
+            logger.info(f"MQTT connection initiated to {current_broker}:{MQTT_PORT}")
             
             # Wait for connection to establish
             time.sleep(3)
             if mqtt_connected:
                 logger.info("✅ MQTT connection established successfully")
+                # Update global if we used an alternative
+                if current_broker != MQTT_BROKER:
+                    MQTT_BROKER = current_broker
+                    logger.info(f"Updated MQTT_BROKER to {current_broker}")
                 return
             else:
                 logger.warning(f"Connection attempt {attempt + 1} failed - not connected after 3 seconds")
                 mqtt_client.loop_stop()
                 mqtt_client.disconnect()
                 
-                # Try alternative broker hostname if this was core-mosquitto
-                if attempt < max_retries - 1 and MQTT_BROKER == 'core-mosquitto':
-                    global MQTT_BROKER
-                    if attempt == 0:
-                        MQTT_BROKER = 'supervisor'
-                        logger.info(f"Trying alternative broker: {MQTT_BROKER}")
-                    elif attempt == 1:
-                        MQTT_BROKER = 'localhost'
-                        logger.info(f"Trying alternative broker: {MQTT_BROKER}")
-                
-                time.sleep(retry_delay)
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
         except Exception as e:
             logger.error(f"Connection attempt {attempt + 1} failed: {e}")
             logger.error(f"Error type: {type(e).__name__}")
             
             if attempt < max_retries - 1:
-                # Try alternative broker hostname
-                if MQTT_BROKER == 'core-mosquitto':
-                    global MQTT_BROKER
-                    if attempt == 0:
-                        MQTT_BROKER = 'supervisor'
-                        logger.info(f"Trying alternative broker: {MQTT_BROKER}")
-                    elif attempt == 1:
-                        MQTT_BROKER = 'localhost'
-                        logger.info(f"Trying alternative broker: {MQTT_BROKER}")
                 time.sleep(retry_delay)
             else:
                 import traceback
@@ -232,8 +232,9 @@ def init_mqtt():
                 logger.error("⚠️ MQTT connection failed. The add-on will continue but won't receive data.")
                 logger.error("Please check:")
                 logger.error("  1. MQTT broker is running (Mosquitto add-on)")
-                logger.error("  2. MQTT broker hostname in configuration")
+                logger.error("  2. MQTT broker hostname/IP in configuration")
                 logger.error("  3. Network connectivity between add-on and broker")
+                logger.error(f"  4. Tried brokers: {', '.join(broker_options)}")
 
 def request_profile_list():
     """Request profile list from device"""
