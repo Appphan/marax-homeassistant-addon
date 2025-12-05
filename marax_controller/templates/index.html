@@ -184,11 +184,12 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 15px;
             padding: 30px;
-            max-width: 800px;
-            width: 90%;
-            max-height: 90vh;
+            max-width: 1200px;
+            width: 95%;
+            max-height: 95vh;
             overflow-y: auto;
             margin: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
         .modal-header {
             display: flex;
@@ -243,6 +244,153 @@
             border-radius: 10px;
             padding: 15px;
             margin-bottom: 15px;
+        }
+        .phase-editor-item {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+        .phase-editor-item:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .phase-editor-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        .phase-graph-container {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            height: 250px;
+        }
+        .criteria-container {
+            margin-top: 15px;
+        }
+        .criteria-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .criteria-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .criteria-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 3px solid;
+            transition: all 0.3s;
+        }
+        .criteria-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .criteria-item.main-criteria {
+            border-left-width: 5px;
+            background: rgba(76, 175, 80, 0.15);
+            border-left-color: #4caf50 !important;
+        }
+        .add-criteria-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        .add-criteria-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .collapsible {
+            cursor: pointer;
+            user-select: none;
+        }
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .collapsible-content.expanded {
+            max-height: 2000px;
+        }
+        .main-criteria-badge {
+            background: #4caf50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .form-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .form-section-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.3);
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: #4caf50;
+        }
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(26px);
         }
         .phase-header {
             display: flex;
@@ -1462,51 +1610,38 @@
             addPhaseToEditor(null, document.querySelectorAll('.phase-editor-item').length);
         }
         
+        let phaseCharts = {};  // Store charts for each phase
+        
         function addPhaseToEditor(phase, index) {
             const phasesList = document.getElementById('phases-list');
             const phaseDiv = document.createElement('div');
             phaseDiv.className = 'phase-editor-item';
+            phaseDiv.setAttribute('data-phase-index', index);
             
-            // Build breakout criteria HTML
+            // Build breakout criteria HTML - start with 1, expandable
+            const criteria = phase && phase.breakoutCriteria ? phase.breakoutCriteria.filter(c => c && c.enabled) : [];
+            const initialCriteriaCount = Math.max(1, criteria.length);
+            
             let criteriaHtml = '';
-            const criteria = phase && phase.breakoutCriteria ? phase.breakoutCriteria : [];
-            for (let c = 0; c < 4; c++) {
-                const crit = criteria[c] || { type: 0, threshold: 0, enabled: false, minDuration: 0 };
-                criteriaHtml += `
-                    <div class="criteria-item" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; margin-bottom: 10px; border-left: 3px solid ${getPhaseColor(c)};">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <strong>${getCriteriaIcon(crit.type || 0)} Criteria ${c + 1}</strong>
-                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                                <input type="checkbox" name="criteriaEnabled_${index}_${c}" ${crit.enabled ? 'checked' : ''} style="cursor: pointer;">
-                                <span>Enabled</span>
-                            </label>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-list"></i> Type</label>
-                            <select name="criteriaType_${index}_${c}" onchange="updateCriteriaIcon(this, ${index}, ${c})">
-                                <option value="0" ${crit.type === 0 ? 'selected' : ''}>None</option>
-                                <option value="1" ${crit.type === 1 ? 'selected' : ''}><i class="fas fa-clock"></i> Time (seconds)</option>
-                                <option value="2" ${crit.type === 2 ? 'selected' : ''}><i class="fas fa-weight"></i> Weight (grams)</option>
-                                <option value="3" ${crit.type === 3 ? 'selected' : ''}><i class="fas fa-tint"></i> Flow (ml/s)</option>
-                                <option value="4" ${crit.type === 4 ? 'selected' : ''}><i class="fas fa-tachometer-alt"></i> Pressure (bar)</option>
-                                <option value="5" ${crit.type === 5 ? 'selected' : ''}><i class="fas fa-eye"></i> Flow Detected</option>
-                                <option value="6" ${crit.type === 6 ? 'selected' : ''}><i class="fas fa-arrow-down"></i> Flow Decline (ml/s)</option>
-                                <option value="7" ${crit.type === 7 ? 'selected' : ''}><i class="fas fa-chart-line"></i> Weight Rate (g/s)</option>
-                            </select>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                            <div class="form-group">
-                                <label><i class="fas fa-bullseye"></i> Threshold</label>
-                                <input type="number" step="0.1" name="criteriaThreshold_${index}_${c}" value="${crit.threshold || 0}">
-                            </div>
-                            <div class="form-group">
-                                <label><i class="fas fa-hourglass-half"></i> Min Duration (s)</label>
-                                <input type="number" step="0.1" name="criteriaMinDuration_${index}_${c}" value="${crit.minDuration || 0}">
-                            </div>
-                        </div>
-                    </div>
-                `;
+            for (let c = 0; c < initialCriteriaCount; c++) {
+                const crit = criteria[c] || { type: 0, threshold: 0, enabled: c === 0, minDuration: 0 };
+                const isMain = c === 0 && index === (document.querySelectorAll('.phase-editor-item').length); // First criteria of last phase
+                criteriaHtml += buildCriteriaHTML(index, c, crit, isMain);
             }
+            
+            // Add expandable criteria section
+            const expandableCriteriaHtml = `
+                <div id="expandable-criteria-${index}" class="collapsible-content">
+                    ${Array.from({length: 3}, (_, i) => {
+                        const c = i + initialCriteriaCount;
+                        const crit = criteria[c] || { type: 0, threshold: 0, enabled: false, minDuration: 0 };
+                        return buildCriteriaHTML(index, c, crit, false);
+                    }).join('')}
+                </div>
+                <div class="add-criteria-btn" onclick="toggleExpandableCriteria(${index})">
+                    <i class="fas fa-plus"></i> Add More Criteria
+                </div>
+            `;
             
             phaseDiv.innerHTML = `
                 <div class="phase-item" style="border-left: 4px solid ${getPhaseColor(index)};">
@@ -1514,95 +1649,353 @@
                         <h4><i class="fas fa-layer-group"></i> Phase ${index + 1}</h4>
                         <button type="button" class="button danger" onclick="removePhase(this)"><i class="fas fa-trash"></i> Remove</button>
                     </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-tag"></i> Phase Name</label>
-                        <input type="text" name="phaseName_${index}" value="${phase ? phase.name : ''}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>${getControlModeIcon(phase ? phase.controlMode : 0)} Control Mode</label>
-                        <select name="controlMode_${index}" onchange="updatePhaseFields(${index})">
-                            <option value="0" ${phase && phase.controlMode === 0 ? 'selected' : ''}><i class="fas fa-tachometer-alt"></i> Pressure</option>
-                            <option value="1" ${phase && phase.controlMode === 1 ? 'selected' : ''}><i class="fas fa-tint"></i> Flow</option>
-                            <option value="2" ${phase && phase.controlMode === 2 ? 'selected' : ''}><i class="fas fa-sliders-h"></i> Pressure + Flow</option>
-                            <option value="3" ${phase && phase.controlMode === 3 ? 'selected' : ''}><i class="fas fa-pause-circle"></i> Pause</option>
-                            <option value="4" ${phase && phase.controlMode === 4 ? 'selected' : ''}><i class="fas fa-arrow-up"></i> Ramp Pressure</option>
-                            <option value="5" ${phase && phase.controlMode === 5 ? 'selected' : ''}><i class="fas fa-arrow-up"></i> Ramp Flow</option>
-                            <option value="6" ${phase && phase.controlMode === 6 ? 'selected' : ''}><i class="fas fa-arrows-alt-v"></i> Ramp Both</option>
-                        </select>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <div class="form-group">
-                            <label><i class="fas fa-tachometer-alt"></i> Start Pressure (bar)</label>
-                            <input type="number" step="0.1" name="targetPressureStart_${index}" value="${phase ? phase.targetPressureStart : 0}">
+                    
+                    <div class="phase-editor-grid">
+                        <div>
+                            <div class="form-section">
+                                <div class="form-section-title"><i class="fas fa-info-circle"></i> Phase Information</div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-tag"></i> Phase Name</label>
+                                    <input type="text" name="phaseName_${index}" value="${phase ? phase.name : ''}" required oninput="updatePhaseGraph(${index})">
+                                </div>
+                                <div class="form-group">
+                                    <label>${getControlModeIcon(phase ? phase.controlMode : 0)} Control Mode</label>
+                                    <select name="controlMode_${index}" onchange="updatePhaseFields(${index}); updatePhaseGraph(${index});">
+                                        <option value="0" ${phase && phase.controlMode === 0 ? 'selected' : ''}><i class="fas fa-tachometer-alt"></i> Pressure</option>
+                                        <option value="1" ${phase && phase.controlMode === 1 ? 'selected' : ''}><i class="fas fa-tint"></i> Flow</option>
+                                        <option value="2" ${phase && phase.controlMode === 2 ? 'selected' : ''}><i class="fas fa-sliders-h"></i> Pressure + Flow</option>
+                                        <option value="3" ${phase && phase.controlMode === 3 ? 'selected' : ''}><i class="fas fa-pause-circle"></i> Pause</option>
+                                        <option value="4" ${phase && phase.controlMode === 4 ? 'selected' : ''}><i class="fas fa-arrow-up"></i> Ramp Pressure</option>
+                                        <option value="5" ${phase && phase.controlMode === 5 ? 'selected' : ''}><i class="fas fa-arrow-up"></i> Ramp Flow</option>
+                                        <option value="6" ${phase && phase.controlMode === 6 ? 'selected' : ''}><i class="fas fa-arrows-alt-v"></i> Ramp Both</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-section">
+                                <div class="form-section-title"><i class="fas fa-tachometer-alt"></i> Pressure Settings</div>
+                                <div class="input-group">
+                                    <div class="form-group">
+                                        <label>Start (bar)</label>
+                                        <input type="number" step="0.1" name="targetPressureStart_${index}" value="${phase ? phase.targetPressureStart : 0}" oninput="updatePhaseGraph(${index})">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>End (bar)</label>
+                                        <input type="number" step="0.1" name="targetPressureEnd_${index}" value="${phase ? phase.targetPressureEnd : 0}" oninput="updatePhaseGraph(${index})">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-section">
+                                <div class="form-section-title"><i class="fas fa-tint"></i> Flow Settings</div>
+                                <div class="input-group">
+                                    <div class="form-group">
+                                        <label>Start (ml/s)</label>
+                                        <input type="number" step="0.1" name="targetFlowStart_${index}" value="${phase ? phase.targetFlowStart : 0}" oninput="updatePhaseGraph(${index})">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>End (ml/s)</label>
+                                        <input type="number" step="0.1" name="targetFlowEnd_${index}" value="${phase ? phase.targetFlowEnd : 0}" oninput="updatePhaseGraph(${index})">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-section">
+                                <div class="form-section-title"><i class="fas fa-clock"></i> Duration Settings</div>
+                                <div class="input-group">
+                                    <div class="form-group">
+                                        <label>Min (s)</label>
+                                        <input type="number" step="0.1" name="minDuration_${index}" value="${phase ? phase.minDuration : 0}" oninput="updatePhaseGraph(${index})">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Max (s)</label>
+                                        <input type="number" step="0.1" name="maxDuration_${index}" value="${phase ? phase.maxDuration : 0}" oninput="updatePhaseGraph(${index})" placeholder="0 = unlimited">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-section">
+                                <div class="form-section-title"><i class="fas fa-sliders-h"></i> Ramp Settings</div>
+                                <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                                    <label>Use Ramp</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" name="useRamp_${index}" ${phase && phase.useRamp ? 'checked' : ''} onchange="updatePhaseGraph(${index})">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>Ramp Duration (s)</label>
+                                    <input type="number" step="0.1" name="rampDuration_${index}" value="${phase ? phase.rampDuration : 0}" oninput="updatePhaseGraph(${index})">
+                                </div>
+                            </div>
+                            
+                            <div class="form-section">
+                                <div class="form-section-title"><i class="fas fa-cog"></i> Phase Options</div>
+                                <div class="input-group">
+                                    <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                                        <label>Allow Manual Stop</label>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" name="allowManualStop_${index}" ${phase && phase.allowManualStop !== false ? 'checked' : ''}>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                                        <label>Publish Events</label>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" name="publishEvents_${index}" ${phase && phase.publishEvents !== false ? 'checked' : ''}>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-tachometer-alt"></i> End Pressure (bar)</label>
-                            <input type="number" step="0.1" name="targetPressureEnd_${index}" value="${phase ? phase.targetPressureEnd : 0}">
+                        
+                        <div>
+                            <div class="form-section">
+                                <div class="form-section-title"><i class="fas fa-chart-line"></i> Phase Preview</div>
+                                <div class="phase-graph-container">
+                                    <canvas id="phase-graph-${index}"></canvas>
+                                </div>
+                            </div>
+                            
+                            <div class="form-section">
+                                <div class="form-section-title">
+                                    <i class="fas fa-flag-checkered"></i> Breakout Criteria
+                                    <select name="criteriaLogic_${index}" style="margin-left: 15px; width: auto; display: inline-block;">
+                                        <option value="8" ${phase && phase.criteriaLogic === 8 ? 'selected' : ''}>OR</option>
+                                        <option value="9" ${phase && phase.criteriaLogic === 9 ? 'selected' : ''}>AND</option>
+                                    </select>
+                                </div>
+                                <p style="opacity: 0.7; font-size: 0.9em; margin-bottom: 15px;">Define conditions that trigger transition to the next phase</p>
+                                <div class="criteria-list" id="criteria-list-${index}">
+                                    ${criteriaHtml}
+                                </div>
+                                ${expandableCriteriaHtml}
+                            </div>
                         </div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <div class="form-group">
-                            <label><i class="fas fa-tint"></i> Start Flow (ml/s)</label>
-                            <input type="number" step="0.1" name="targetFlowStart_${index}" value="${phase ? phase.targetFlowStart : 0}">
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-tint"></i> End Flow (ml/s)</label>
-                            <input type="number" step="0.1" name="targetFlowEnd_${index}" value="${phase ? phase.targetFlowEnd : 0}">
-                        </div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <div class="form-group">
-                            <label><i class="fas fa-hourglass-start"></i> Min Duration (s)</label>
-                            <input type="number" step="0.1" name="minDuration_${index}" value="${phase ? phase.minDuration : 0}">
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-hourglass-end"></i> Max Duration (s) (0 = unlimited)</label>
-                            <input type="number" step="0.1" name="maxDuration_${index}" value="${phase ? phase.maxDuration : 0}">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Use Ramp</label>
-                        <input type="checkbox" name="useRamp_${index}" ${phase && phase.useRamp ? 'checked' : ''}>
-                    </div>
-                    <div class="form-group">
-                        <label>Ramp Duration (s)</label>
-                        <input type="number" step="0.1" name="rampDuration_${index}" value="${phase ? phase.rampDuration : 0}">
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <div class="form-group">
-                            <label>Allow Manual Stop</label>
-                            <input type="checkbox" name="allowManualStop_${index}" ${phase && phase.allowManualStop !== false ? 'checked' : ''}>
-                        </div>
-                        <div class="form-group">
-                            <label>Publish Events</label>
-                            <input type="checkbox" name="publishEvents_${index}" ${phase && phase.publishEvents !== false ? 'checked' : ''}>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Criteria Logic</label>
-                        <select name="criteriaLogic_${index}">
-                            <option value="8" ${phase && phase.criteriaLogic === 8 ? 'selected' : ''}>OR (Any criteria)</option>
-                            <option value="9" ${phase && phase.criteriaLogic === 9 ? 'selected' : ''}>AND (All criteria)</option>
-                        </select>
-                    </div>
-                    <div style="margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 5px;">
-                        <h5><i class="fas fa-flag-checkered"></i> Breakout Criteria (up to 4)</h5>
-                        <p style="opacity: 0.7; font-size: 0.9em; margin-bottom: 10px;">Define conditions that trigger transition to the next phase</p>
-                        ${criteriaHtml}
                     </div>
                 </div>
             `;
             phasesList.appendChild(phaseDiv);
             
+            // Initialize phase graph
+            setTimeout(() => {
+                updatePhaseGraph(index);
+            }, 100);
+            
             // Update preview graph after adding phase
             updateProfilePreview();
+        }
+        
+        function buildCriteriaHTML(phaseIndex, critIndex, crit, isMain) {
+            return `
+                <div class="criteria-item ${isMain ? 'main-criteria' : ''}" style="border-left-color: ${getPhaseColor(critIndex)};" data-crit-index="${critIndex}">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <strong>${getCriteriaIcon(crit.type || 0)} Criteria ${critIndex + 1}</strong>
+                            ${isMain ? '<span class="main-criteria-badge"><i class="fas fa-star"></i> Main</span>' : ''}
+                            <button type="button" class="button" style="padding: 5px 10px; font-size: 0.85em;" onclick="setMainCriteria(${phaseIndex}, ${critIndex})">
+                                <i class="fas fa-star"></i> Set as Main
+                            </button>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="criteriaEnabled_${phaseIndex}_${critIndex}" ${crit.enabled ? 'checked' : ''}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-list"></i> Type</label>
+                        <select name="criteriaType_${phaseIndex}_${critIndex}" onchange="updateCriteriaIcon(this, ${phaseIndex}, ${critIndex})">
+                            <option value="0" ${crit.type === 0 ? 'selected' : ''}>None</option>
+                            <option value="1" ${crit.type === 1 ? 'selected' : ''}><i class="fas fa-clock"></i> Time (seconds)</option>
+                            <option value="2" ${crit.type === 2 ? 'selected' : ''}><i class="fas fa-weight"></i> Weight (grams)</option>
+                            <option value="3" ${crit.type === 3 ? 'selected' : ''}><i class="fas fa-tint"></i> Flow (ml/s)</option>
+                            <option value="4" ${crit.type === 4 ? 'selected' : ''}><i class="fas fa-tachometer-alt"></i> Pressure (bar)</option>
+                            <option value="5" ${crit.type === 5 ? 'selected' : ''}><i class="fas fa-eye"></i> Flow Detected</option>
+                            <option value="6" ${crit.type === 6 ? 'selected' : ''}><i class="fas fa-arrow-down"></i> Flow Decline (ml/s)</option>
+                            <option value="7" ${crit.type === 7 ? 'selected' : ''}><i class="fas fa-chart-line"></i> Weight Rate (g/s)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <div class="form-group">
+                            <label><i class="fas fa-bullseye"></i> Threshold</label>
+                            <input type="number" step="0.1" name="criteriaThreshold_${phaseIndex}_${critIndex}" value="${crit.threshold || 0}">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-hourglass-half"></i> Min Duration (s)</label>
+                            <input type="number" step="0.1" name="criteriaMinDuration_${phaseIndex}_${critIndex}" value="${crit.minDuration || 0}">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function toggleExpandableCriteria(phaseIndex) {
+            const expandable = document.getElementById(`expandable-criteria-${phaseIndex}`);
+            const btn = event.target.closest('.add-criteria-btn');
             
-            // Add change listeners to update preview when values change
-            const inputs = phaseDiv.querySelectorAll('input, select');
-            inputs.forEach(input => {
-                input.addEventListener('change', updateProfilePreview);
-                input.addEventListener('input', updateProfilePreview);
+            if (expandable.classList.contains('expanded')) {
+                expandable.classList.remove('expanded');
+                btn.innerHTML = '<i class="fas fa-plus"></i> Add More Criteria';
+            } else {
+                expandable.classList.add('expanded');
+                btn.innerHTML = '<i class="fas fa-minus"></i> Hide Additional Criteria';
+            }
+        }
+        
+        function setMainCriteria(phaseIndex, critIndex) {
+            // Remove main class from all criteria in this phase
+            const criteriaList = document.getElementById(`criteria-list-${phaseIndex}`);
+            if (criteriaList) {
+                criteriaList.querySelectorAll('.criteria-item').forEach(item => {
+                    item.classList.remove('main-criteria');
+                    const badge = item.querySelector('.main-criteria-badge');
+                    if (badge) badge.remove();
+                });
+                
+                // Add main class to selected criteria
+                const selectedCrit = criteriaList.querySelector(`[data-crit-index="${critIndex}"]`);
+                if (selectedCrit) {
+                    selectedCrit.classList.add('main-criteria');
+                    const header = selectedCrit.querySelector('div:first-child > div');
+                    if (header && !header.querySelector('.main-criteria-badge')) {
+                        const badge = document.createElement('span');
+                        badge.className = 'main-criteria-badge';
+                        badge.innerHTML = '<i class="fas fa-star"></i> Main';
+                        header.appendChild(badge);
+                    }
+                }
+            }
+        }
+        
+        function updatePhaseGraph(phaseIndex) {
+            const canvas = document.getElementById(`phase-graph-${phaseIndex}`);
+            if (!canvas) return;
+            
+            const form = document.getElementById('profile-form');
+            if (!form) return;
+            
+            const formData = new FormData(form);
+            const phase = {
+                name: formData.get(`phaseName_${phaseIndex}`) || `Phase ${phaseIndex + 1}`,
+                targetPressureStart: parseFloat(formData.get(`targetPressureStart_${phaseIndex}`)) || 0,
+                targetPressureEnd: parseFloat(formData.get(`targetPressureEnd_${phaseIndex}`)) || 0,
+                targetFlowStart: parseFloat(formData.get(`targetFlowStart_${phaseIndex}`)) || 0,
+                targetFlowEnd: parseFloat(formData.get(`targetFlowEnd_${phaseIndex}`)) || 0,
+                minDuration: parseFloat(formData.get(`minDuration_${phaseIndex}`)) || 0,
+                maxDuration: parseFloat(formData.get(`maxDuration_${phaseIndex}`)) || 0,
+                useRamp: formData.get(`useRamp_${phaseIndex}`) === 'on',
+                rampDuration: parseFloat(formData.get(`rampDuration_${phaseIndex}`)) || 0
+            };
+            
+            // Calculate time points
+            let timePoints = [];
+            let pressurePoints = [];
+            let flowPoints = [];
+            
+            const phaseDuration = phase.maxDuration > 0 ? phase.maxDuration : (phase.minDuration > 0 ? phase.minDuration : 10);
+            
+            if (phase.useRamp && phase.rampDuration > 0) {
+                // Ramp mode
+                const rampSteps = 10;
+                for (let i = 0; i <= rampSteps; i++) {
+                    const t = (i / rampSteps) * phase.rampDuration;
+                    timePoints.push(t);
+                    pressurePoints.push(phase.targetPressureStart + (i / rampSteps) * (phase.targetPressureEnd - phase.targetPressureStart));
+                    flowPoints.push(phase.targetFlowStart + (i / rampSteps) * (phase.targetFlowEnd - phase.targetFlowStart));
+                }
+                // Constant after ramp
+                if (phaseDuration > phase.rampDuration) {
+                    timePoints.push(phaseDuration);
+                    pressurePoints.push(phase.targetPressureEnd);
+                    flowPoints.push(phase.targetFlowEnd);
+                }
+            } else {
+                // Constant mode
+                timePoints = [0, phaseDuration];
+                pressurePoints = [phase.targetPressureStart, phase.targetPressureEnd];
+                flowPoints = [phase.targetFlowStart, phase.targetFlowEnd];
+            }
+            
+            // Destroy existing chart
+            if (phaseCharts[phaseIndex]) {
+                phaseCharts[phaseIndex].destroy();
+            }
+            
+            // Create new chart
+            phaseCharts[phaseIndex] = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: timePoints.map(t => t.toFixed(1) + 's'),
+                    datasets: [
+                        {
+                            label: 'Pressure (bar)',
+                            data: pressurePoints,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            yAxisID: 'y',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Flow (ml/s)',
+                            data: flowPoints,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            yAxisID: 'y1',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Time (s)', color: 'white' },
+                            ticks: { color: 'white' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: 'Pressure (bar)', color: 'white' },
+                            ticks: { color: 'white' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: 'Flow (ml/s)', color: 'white' },
+                            ticks: { color: 'white' },
+                            grid: { drawOnChartArea: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { 
+                            display: true, 
+                            position: 'top',
+                            labels: { color: 'white' }
+                        },
+                        title: {
+                            display: true,
+                            text: phase.name || `Phase ${phaseIndex + 1}`,
+                            color: 'white',
+                            font: { size: 14 }
+                        }
+                    }
+                }
             });
+            
+            // Also update main preview
+            updateProfilePreview();
         }
         
         let profileEditorChart = null;
@@ -1856,24 +2249,52 @@
             
             try {
                 // Show loading message
-                showMessage('Saving profile...', 'info');
+                showMessage('Saving profile to ESP32...', 'info');
                 
                 const response = await postAPI('profiles/send', esp32Profile);
                 console.log('Profile save response:', response);
                 
-                showMessage('Profile saved successfully!', 'success');
-                
-                // Close modal
-                closeProfileEditor();
-                
-                // Refresh profiles list
-                await updateProfiles(true);
-                
-                // Switch to profiles tab to see the new profile
-                showTab('profiles');
+                // Check if response indicates success
+                if (response && (response.success !== false)) {
+                    showMessage('✅ Profile saved successfully and persisted to EEPROM!', 'success');
+                    
+                    // Close modal after short delay
+                    setTimeout(() => {
+                        closeProfileEditor();
+                    }, 1500);
+                    
+                    // Refresh profiles list
+                    await updateProfiles(true);
+                    
+                    // Switch to profiles tab to see the new profile
+                    setTimeout(() => {
+                        showTab('profiles');
+                    }, 2000);
+                } else {
+                    const errorMsg = response?.error || response?.message || 'Unknown error from ESP32';
+                    showMessage(`❌ Failed to save profile: ${errorMsg}`, 'error');
+                    console.error('Profile save failed:', response);
+                }
             } catch (error) {
                 console.error('Error saving profile:', error);
-                showMessage('Failed to save profile: ' + (error.message || 'Unknown error'), 'error');
+                let errorMessage = 'Failed to save profile';
+                
+                if (error.message) {
+                    errorMessage += ': ' + error.message;
+                } else if (typeof error === 'string') {
+                    errorMessage += ': ' + error;
+                }
+                
+                // Check for specific error types
+                if (error.message && error.message.includes('NetworkError') || error.message && error.message.includes('Failed to fetch')) {
+                    errorMessage += ' (Network error - check MQTT connection)';
+                } else if (error.message && error.message.includes('500')) {
+                    errorMessage += ' (Server error - check add-on logs)';
+                } else if (error.message && error.message.includes('503')) {
+                    errorMessage += ' (MQTT not connected - check add-on configuration)';
+                }
+                
+                showMessage(`❌ ${errorMessage}`, 'error');
             }
         }
         
@@ -1888,6 +2309,11 @@
                 profileEditorChart.destroy();
                 profileEditorChart = null;
             }
+            // Clean up phase charts
+            Object.values(phaseCharts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            phaseCharts = {};
         }
         
         async function stopBrew() {

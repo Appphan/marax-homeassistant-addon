@@ -516,17 +516,42 @@ def api_profile_send():
     profile = request.json
     
     if not profile:
-        return jsonify({'error': 'Profile data required'}), 400
+        return jsonify({'success': False, 'error': 'Profile data required'}), 400
     
-    logger.info(f"Received profile: {profile.get('profileName', 'Unknown')} with {profile.get('phaseCount', 0)} phases")
+    profile_name = profile.get('profileName', 'Unknown')
+    phase_count = profile.get('phaseCount', 0)
+    logger.info(f"Received profile: {profile_name} with {phase_count} phases")
     
-    if mqtt_client and mqtt_connected:
+    if not mqtt_client or not mqtt_connected:
+        logger.error("MQTT not connected - cannot send profile")
+        return jsonify({'success': False, 'error': 'MQTT not connected. Check add-on configuration and ensure MQTT broker is running.'}), 503
+    
+    try:
         payload = json.dumps(profile)
-        mqtt_client.publish(TOPIC_PROFILE_SET, payload, qos=1)
-        logger.info(f"Sent profile to device: {profile.get('profileName', 'Unknown')}")
-        return jsonify({'success': True, 'message': 'Profile sent to device'})
-    else:
-        return jsonify({'error': 'MQTT not connected'}), 503
+        result = mqtt_client.publish(TOPIC_PROFILE_SET, payload, qos=1)
+        
+        if result.rc == 0:
+            logger.info(f"✅ Successfully sent profile to device: {profile_name}")
+            # Wait a moment for ESP32 to process and save
+            import time
+            time.sleep(0.5)
+            return jsonify({
+                'success': True, 
+                'message': f'Profile "{profile_name}" sent to ESP32 and saved to EEPROM',
+                'profile_name': profile_name,
+                'phase_count': phase_count
+            })
+        else:
+            error_msg = f"MQTT publish failed with code {result.rc}"
+            logger.error(f"❌ {error_msg}")
+            return jsonify({'success': False, 'error': error_msg}), 500
+            
+    except Exception as e:
+        error_msg = f"Error sending profile: {str(e)}"
+        logger.error(f"❌ {error_msg}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'success': False, 'error': error_msg}), 500
 
 @app.route('/api/brew/stop', methods=['POST'])
 def api_brew_stop():
