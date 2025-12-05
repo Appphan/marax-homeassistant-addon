@@ -292,13 +292,31 @@
             background: rgba(255, 255, 255, 0.05);
             transition: background 0.3s;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 15px;
         }
         .phase-editor-item.collapsed .phase-header-collapsible {
             border-bottom: none;
-            padding-bottom: 12px;
         }
         .phase-header-collapsible:hover {
             background: rgba(255, 255, 255, 0.1);
+        }
+        .phase-header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+            min-width: 0;
+        }
+        .phase-header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .phase-header-actions .button {
+            margin: 0;
+            padding: 8px 16px;
+            white-space: nowrap;
         }
         .phase-content {
             padding: 20px;
@@ -1714,15 +1732,15 @@
                 <div class="phase-item" style="border-left: 4px solid ${getPhaseColor(index)};">
                     <div class="phase-header-collapsible" onclick="togglePhaseCollapse(${index})">
                         <div class="phase-header-left">
-                            <i class="fas fa-chevron-down collapse-icon"></i>
-                            <div class="phase-header-title">
-                                <h4 style="margin: 0;"><i class="fas fa-layer-group"></i> Phase ${index + 1}</h4>
-                                <span id="phase-name-display-${index}" style="margin-left: 10px; opacity: 0.8; font-size: 0.9em;">${phase ? phase.name : ''}</span>
+                            <i class="fas fa-chevron-down collapse-icon" style="flex-shrink: 0;"></i>
+                            <div class="phase-header-title" style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                                <h4 style="margin: 0; white-space: nowrap;"><i class="fas fa-layer-group"></i> Phase ${index + 1}</h4>
+                                <span id="phase-name-display-${index}" style="opacity: 0.8; font-size: 0.9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${phase ? phase.name : ''}</span>
                             </div>
-                            <canvas id="phase-mini-graph-${index}" class="phase-mini-graph"></canvas>
+                            <canvas id="phase-mini-graph-${index}" class="phase-mini-graph" style="flex-shrink: 0;"></canvas>
                         </div>
-                        <div class="phase-header-actions">
-                            <button type="button" class="button danger" onclick="event.stopPropagation(); removePhase(this)"><i class="fas fa-trash"></i> Remove</button>
+                        <div class="phase-header-actions" onclick="event.stopPropagation();">
+                            <button type="button" class="button danger" onclick="removePhase(this)"><i class="fas fa-trash"></i> Remove</button>
                         </div>
                     </div>
                     
