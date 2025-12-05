@@ -431,9 +431,17 @@ def api_profile_select():
     
     if mqtt_client and mqtt_connected:
         mqtt_client.publish(TOPIC_PROFILE_SELECT, str(profile_id), qos=1)
+        # Update active profile in device_data
+        device_data['active_profile'] = profile_id
         return jsonify({'success': True, 'profile_id': profile_id})
     else:
         return jsonify({'error': 'MQTT not connected'}), 503
+
+@app.route('/api/phase')
+def api_phase():
+    """Get current phase information"""
+    phase_data = device_data.get('current_phase', {})
+    return jsonify(phase_data)
 
 @app.route('/api/profiles/send', methods=['POST'])
 def api_profile_send():

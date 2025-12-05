@@ -316,7 +316,12 @@
         <div id="profiles" class="tab-content">
             <div class="status-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2>Brewing Profiles</h2>
+                    <div>
+                        <h2>Brewing Profiles</h2>
+                        <div id="selected-profile-indicator" style="margin-top: 10px; padding: 10px; background: rgba(0, 255, 0, 0.2); border: 2px solid #44ff44; border-radius: 8px; display: none;">
+                            <strong>✓ Active Profile:</strong> <span id="selected-profile-name">-</span>
+                        </div>
+                    </div>
                     <button class="button primary" onclick="openProfileEditor()">+ New Profile</button>
                 </div>
                 <div id="profiles-list" class="loading">Loading...</div>
@@ -330,6 +335,35 @@
                 <div id="live-brew-status" style="margin-bottom: 20px;">
                     <p>No active brew</p>
                 </div>
+                
+                <!-- Phase Information Card -->
+                <div id="phase-info-card" style="display: none; background: rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="margin-top: 0;">Current Phase: <span id="current-phase-name">-</span></h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0;">
+                        <div>
+                            <strong>Phase Time:</strong> <span id="phase-time">0.0</span>s
+                        </div>
+                        <div>
+                            <strong>Phase Weight:</strong> <span id="phase-weight">0.0</span>g
+                        </div>
+                        <div>
+                            <strong>Target Pressure:</strong> <span id="target-pressure">0.0</span> bar
+                        </div>
+                        <div>
+                            <strong>Current Pressure:</strong> <span id="current-pressure">0.0</span> bar
+                        </div>
+                    </div>
+                    
+                    <!-- Breakout Criteria -->
+                    <div id="breakout-criteria-section" style="margin-top: 20px;">
+                        <h4>Breakout Criteria (to transition to next phase)</h4>
+                        <div id="breakout-criteria-list"></div>
+                        <div id="next-phase-info" style="margin-top: 15px; padding: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 5px;">
+                            <strong>Next Phase:</strong> <span id="next-phase-name">-</span>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="chart-container">
                     <canvas id="liveChart"></canvas>
                 </div>
@@ -795,6 +829,19 @@
                             </div>
                         </div>
                     `;
+                    
+                    // Update phase information
+                    try {
+                        const phaseData = await fetchAPI('phase');
+                        if (phaseData && phaseData.phase) {
+                            updatePhaseInfo(phaseData);
+                        } else {
+                            document.getElementById('phase-info-card').style.display = 'none';
+                        }
+                    } catch (e) {
+                        console.error('Error fetching phase data:', e);
+                        document.getElementById('phase-info-card').style.display = 'none';
+                    }
                 } else {
                     // If brew just ended, update chart one more time to show final state
                     if (brewStartTime !== null && brewEndTime === null) {
@@ -806,6 +853,8 @@
                         ${brewEndTime !== null && brewStartTime !== null ? 
                             `<p style="opacity: 0.7; margin-top: 10px;">Last brew duration: ${(brewEndTime - brewStartTime).toFixed(1)}s</p>` : ''}
                     `;
+                    // Hide phase info when not brewing
+                    document.getElementById('phase-info-card').style.display = 'none';
                 }
             } else {
                 document.getElementById('brew-status').innerHTML = '<p style="opacity: 0.7;">No brew data available. Ensure your MaraX device is connected and publishing to MQTT.</p>';
@@ -861,6 +910,9 @@
             currentProfiles = profiles;
             console.log(`Found ${profiles.length} profiles:`, profiles);
             
+            // Update selected profile indicator
+            updateSelectedProfileIndicator(activeProfileId, profiles);
+            
             if (profiles && Array.isArray(profiles) && profiles.length > 0) {
                 document.getElementById('profiles-list').innerHTML = `
                     <div class="profile-list">
@@ -908,8 +960,104 @@
                 activeProfileId = id;
                 showMessage('Profile selected successfully', 'success');
                 await updateProfiles(false);
+                updateSelectedProfileIndicator(id, currentProfiles);
             } catch (error) {
                 showMessage('Failed to select profile: ' + error.message, 'error');
+            }
+        }
+        
+        function updateSelectedProfileIndicator(profileId, profiles) {
+            const indicator = document.getElementById('selected-profile-indicator');
+            const nameSpan = document.getElementById('selected-profile-name');
+            
+            if (profileId !== null && profileId !== undefined && profiles) {
+                const profile = profiles.find(p => p.id === profileId);
+                if (profile) {
+                    indicator.style.display = 'block';
+                    nameSpan.textContent = profile.name || `Profile ${profileId}`;
+                } else {
+                    indicator.style.display = 'none';
+                }
+            } else {
+                indicator.style.display = 'none';
+            }
+        }
+        
+        function updatePhaseInfo(phaseData) {
+            if (!phaseData || !phaseData.phase) {
+                document.getElementById('phase-info-card').style.display = 'none';
+                return;
+            }
+            
+            const card = document.getElementById('phase-info-card');
+            card.style.display = 'block';
+            
+            document.getElementById('current-phase-name').textContent = phaseData.phase;
+            document.getElementById('phase-time').textContent = (phaseData.phase_time || 0).toFixed(1);
+            document.getElementById('phase-weight').textContent = (phaseData.phase_weight || 0).toFixed(1);
+            document.getElementById('target-pressure').textContent = (phaseData.target_pressure || 0).toFixed(1);
+            document.getElementById('current-pressure').textContent = (phaseData.current_pressure || 0).toFixed(1);
+            document.getElementById('next-phase-name').textContent = phaseData.next_phase || 'End of profile';
+            
+            // Update breakout criteria
+            const criteriaList = document.getElementById('breakout-criteria-list');
+            criteriaList.innerHTML = '';
+            
+            if (phaseData.breakout_criteria && phaseData.breakout_criteria.length > 0) {
+                const criteriaLogic = phaseData.criteria_logic === 8 ? 'OR' : 'AND';
+                criteriaList.innerHTML += `<p style="margin-bottom: 10px; opacity: 0.8;"><strong>Logic:</strong> ${criteriaLogic} (${criteriaLogic === 'OR' ? 'any' : 'all'} criteria must be met)</p>`;
+                
+                phaseData.breakout_criteria.forEach((crit, idx) => {
+                    if (!crit.enabled) return;
+                    
+                    const critTypeNames = {
+                        1: 'Time',
+                        2: 'Weight',
+                        3: 'Flow',
+                        4: 'Pressure',
+                        5: 'Flow Detected',
+                        6: 'Flow Decline',
+                        7: 'Weight Rate'
+                    };
+                    
+                    const typeName = critTypeNames[crit.type] || `Type ${crit.type}`;
+                    const currentValue = crit.current_value || 0;
+                    const threshold = crit.threshold || 0;
+                    const met = crit.met || false;
+                    const canTrigger = crit.can_trigger !== false;
+                    
+                    // Calculate progress percentage
+                    let progress = 0;
+                    if (threshold > 0) {
+                        progress = Math.min(100, (currentValue / threshold) * 100);
+                    } else if (currentValue > 0) {
+                        progress = 100;
+                    }
+                    
+                    const critDiv = document.createElement('div');
+                    critDiv.style.cssText = 'margin: 10px 0; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 8px; border: 2px solid ' + (met ? '#44ff44' : 'rgba(255, 255, 255, 0.3)') + ';';
+                    critDiv.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong>${typeName}</strong>
+                            <span style="color: ${met ? '#44ff44' : '#ffaa44'};">
+                                ${met ? '✓ Met' : (canTrigger ? 'Waiting...' : 'Min duration not reached')}
+                            </span>
+                        </div>
+                        <div style="margin: 8px 0;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.9em; opacity: 0.8; margin-bottom: 5px;">
+                                <span>Current: ${currentValue.toFixed(2)}</span>
+                                <span>Target: ${threshold.toFixed(2)}</span>
+                            </div>
+                            <div style="background: rgba(0, 0, 0, 0.3); border-radius: 5px; height: 20px; overflow: hidden;">
+                                <div style="background: ${met ? '#44ff44' : '#667eea'}; height: 100%; width: ${progress}%; transition: width 0.3s;"></div>
+                            </div>
+                        </div>
+                        ${crit.min_duration > 0 ? `<div style="font-size: 0.85em; opacity: 0.7; margin-top: 5px;">Min duration: ${crit.min_duration.toFixed(1)}s</div>` : ''}
+                    `;
+                    criteriaList.appendChild(critDiv);
+                });
+            } else {
+                criteriaList.innerHTML = '<p style="opacity: 0.7;">No breakout criteria defined. Phase will continue until manually stopped or max duration reached.</p>';
             }
         }
         
