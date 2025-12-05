@@ -164,13 +164,15 @@ def on_disconnect(client, userdata, rc):
 
 def on_message(client, userdata, msg):
     """MQTT message callback"""
-    topic = msg.topic
-    payload = msg.payload.decode()
-    
-    # Log received messages for debugging
-    logger.debug(f"Received MQTT message: {topic} = {payload[:100]}...")
-    
     try:
+        topic = msg.topic
+        payload = msg.payload.decode()
+        
+        # Log received messages for debugging (truncate long payloads)
+        payload_preview = payload[:100] + "..." if len(payload) > 100 else payload
+        logger.debug(f"📨 MQTT message received: {topic} = {payload_preview}")
+        
+        try:
         if topic == TOPIC_DEVICE_STATUS:
             device_data['status'] = payload
             logger.debug(f"Updated device status: {payload}")
@@ -200,9 +202,9 @@ def on_message(client, userdata, msg):
             # Log debug messages for troubleshooting
             try:
                 debug_data = json.loads(payload)
-                logger.info(f"ESP32 Debug [{topic}]: {debug_data.get('message', payload)}")
+                logger.info(f"🔍 ESP32 Debug [{topic}]: {debug_data.get('message', payload)}")
             except:
-                logger.info(f"ESP32 Debug [{topic}]: {payload}")
+                logger.info(f"🔍 ESP32 Debug [{topic}]: {payload}")
         elif topic == TOPIC_PROFILE_LIST:
             try:
                 # Ignore our own "get" request message
@@ -227,24 +229,34 @@ def on_message(client, userdata, msg):
                 logger.error(f"Error parsing profile list: {e}")
                 logger.error(f"Payload (first 500 chars): {payload[:500]}")
         else:
-            logger.debug(f"Unhandled topic: {topic}")
+            logger.debug(f"⚠️ Unhandled topic: {topic}")
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse JSON from {topic}: {e}")
-        logger.error(f"Payload was: {payload}")
+        logger.warning(f"⚠️ Failed to parse JSON from {topic}: {e}")
+        logger.debug(f"Payload (first 200 chars): {payload[:200]}")
     except Exception as e:
-        logger.error(f"Error processing message from {topic}: {e}")
+        logger.error("=" * 60)
+        logger.error(f"❌ ERROR processing MQTT message from {topic}")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error message: {str(e)}")
         import traceback
+        logger.error("Full traceback:")
         logger.error(traceback.format_exc())
+        logger.error("=" * 60)
 
 def init_mqtt():
     """Initialize MQTT client with retry logic"""
     global mqtt_client, MQTT_BROKER
     
+    logger.info("=" * 60)
+    logger.info("Initializing MQTT Connection")
+    logger.info("=" * 60)
+    
     # Request profile list on startup
     def request_profiles_after_connect():
+        logger.debug("Requesting profile list after MQTT connection...")
         time.sleep(2)  # Wait for subscriptions to be established
         request_profile_list()
-        logger.info("Requested profile list on startup")
+        logger.info("✓ Requested profile list on startup")
     
     # Use a local variable for broker attempts to avoid modifying global during retries
     current_broker = MQTT_BROKER
@@ -332,12 +344,22 @@ def log_request():
 def index():
     """Main page"""
     try:
-        logger.info("Serving index page")
-        return render_template('index.html')
+        logger.info("GET / - Serving index page")
+        template_path = os.path.join(app.template_folder, 'index.html')
+        logger.debug(f"Template path: {template_path}")
+        logger.debug(f"Template exists: {os.path.exists(template_path)}")
+        html = render_template('index.html')
+        logger.debug(f"Template rendered successfully, size: {len(html)} bytes")
+        return html
     except Exception as e:
-        logger.error(f"Error rendering template: {e}")
+        logger.error("=" * 60)
+        logger.error("ERROR: Failed to render index page")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error message: {str(e)}")
         import traceback
+        logger.error("Full traceback:")
         logger.error(traceback.format_exc())
+        logger.error("=" * 60)
         # Fallback HTML if template doesn't exist
         return """
         <!DOCTYPE html>
@@ -364,26 +386,40 @@ def health():
 @app.route('/api/status')
 def api_status():
     """Get device status"""
-    logger.info("API /status endpoint called")
-    status = device_data.copy()
-    status['mqtt_connected'] = mqtt_connected
-    status['mqtt_broker'] = MQTT_BROKER
-    status['mqtt_port'] = MQTT_PORT
-    status['last_update'] = datetime.now().isoformat()
-    # Log what we're returning for debugging
-    logger.info(f"API /status returning data: status={status.get('status')}, has_info={bool(status.get('info'))}, has_brew_state={bool(status.get('brew_state'))}, has_machine_state={bool(status.get('machine_state'))}")
-    return jsonify(status)
+    try:
+        logger.debug("GET /api/status - Request received")
+        status = device_data.copy()
+        status['mqtt_connected'] = mqtt_connected
+        status['mqtt_broker'] = MQTT_BROKER
+        status['mqtt_port'] = MQTT_PORT
+        status['last_update'] = datetime.now().isoformat()
+        # Log what we're returning for debugging
+        logger.debug(f"API /status returning: status={status.get('status')}, has_info={bool(status.get('info'))}, has_brew_state={bool(status.get('brew_state'))}, has_machine_state={bool(status.get('machine_state'))}")
+        response = jsonify(status)
+        logger.debug(f"API /status - Response sent successfully")
+        return response
+    except Exception as e:
+        logger.error(f"ERROR in /api/status: {type(e).__name__}: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/brew/state')
 def api_brew_state():
     """Get brew state"""
-    logger.debug("API /brew/state endpoint called")
-    brew_state = device_data.get('brew_state', {})
-    if brew_state:
-        logger.debug(f"API /brew/state returning: isActive={brew_state.get('isActive')}, pressure={brew_state.get('pressure')}, flow={brew_state.get('flow')}")
-    else:
-        logger.debug("No brew state data available")
-    return jsonify(brew_state)
+    try:
+        logger.debug("GET /api/brew/state - Request received")
+        brew_state = device_data.get('brew_state', {})
+        if brew_state:
+            logger.debug(f"API /brew/state returning: isActive={brew_state.get('isActive')}, pressure={brew_state.get('pressure')}, flow={brew_state.get('flow')}")
+        else:
+            logger.debug("API /brew/state - No brew state data available")
+        return jsonify(brew_state)
+    except Exception as e:
+        logger.error(f"ERROR in /api/brew/state: {type(e).__name__}: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/machine/state')
 def api_machine_state():
@@ -448,8 +484,19 @@ def api_profile_select():
 @app.route('/api/phase')
 def api_phase():
     """Get current phase information"""
-    phase_data = device_data.get('current_phase', {})
-    return jsonify(phase_data)
+    try:
+        logger.debug("GET /api/phase - Request received")
+        phase_data = device_data.get('current_phase', {})
+        if phase_data:
+            logger.debug(f"API /phase returning: phase={phase_data.get('phase')}, phase_time={phase_data.get('phase_time')}")
+        else:
+            logger.debug("API /phase - No phase data available")
+        return jsonify(phase_data)
+    except Exception as e:
+        logger.error(f"ERROR in /api/phase: {type(e).__name__}: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/profiles/send', methods=['POST'])
 def api_profile_send():
@@ -501,14 +548,39 @@ def static_files(filename):
     return send_from_directory('static', filename)
 
 if __name__ == '__main__':
-    # Initialize MQTT
-    init_mqtt()
+    logger.info("=" * 60)
+    logger.info("MaraX Controller Add-on Starting")
+    logger.info("=" * 60)
     
-    # Request initial data
-    time.sleep(2)
-    request_profile_list()
-    
-    # Start Flask app
-    logger.info("Starting MaraX Controller add-on")
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    try:
+        # Initialize MQTT
+        logger.info("Step 1/4: Initializing MQTT connection...")
+        init_mqtt()
+        logger.info("✓ MQTT initialization complete")
+        
+        # Request initial data
+        logger.info("Step 2/4: Waiting for MQTT connection to stabilize...")
+        time.sleep(2)
+        logger.info("Step 3/4: Requesting initial profile list...")
+        request_profile_list()
+        logger.info("✓ Initial data request sent")
+        
+        # Start Flask app
+        logger.info("Step 4/4: Starting Flask web server...")
+        logger.info("=" * 60)
+        logger.info("Flask server will start on: http://0.0.0.0:8080")
+        logger.info("Ingress URL will be available via Home Assistant")
+        logger.info("=" * 60)
+        app.run(host='0.0.0.0', port=8080, debug=False, threaded=True)
+    except Exception as e:
+        logger.error("=" * 60)
+        logger.error("FATAL ERROR: Failed to start add-on")
+        logger.error("=" * 60)
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error message: {str(e)}")
+        import traceback
+        logger.error("Full traceback:")
+        logger.error(traceback.format_exc())
+        logger.error("=" * 60)
+        raise
 
