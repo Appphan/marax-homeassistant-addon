@@ -146,10 +146,18 @@
         async function updateStatus() {
             const status = await fetchAPI('status');
             if (status) {
+                const mqttStatus = status.mqtt_connected ? '✅ Connected' : '❌ Disconnected';
+                const mqttInfo = status.mqtt_broker ? `(${status.mqtt_broker}:${status.mqtt_port})` : '';
+                
                 document.getElementById('device-status').innerHTML = `
                     <div class="status-grid">
                         <div class="stat-item">
-                            <div class="stat-label">Status</div>
+                            <div class="stat-label">MQTT Status</div>
+                            <div class="stat-value">${mqttStatus}</div>
+                            <div style="font-size: 0.8em; opacity: 0.7;">${mqttInfo}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Device Status</div>
                             <div class="stat-value">${status.status || 'Unknown'}</div>
                         </div>
                         <div class="stat-item">
@@ -161,11 +169,14 @@
                             <div class="stat-value">${status.info ? Math.floor(status.info.uptime / 3600) + 'h' : 'N/A'}</div>
                         </div>
                     </div>
+                    ${!status.mqtt_connected ? '<div class="error" style="margin-top: 15px;">⚠️ MQTT not connected. Check configuration and ensure your MaraX device is publishing to MQTT.</div>' : ''}
                 `;
+            } else {
+                document.getElementById('device-status').innerHTML = '<div class="error">Failed to fetch status. Check add-on logs.</div>';
             }
 
             const brewState = await fetchAPI('brew/state');
-            if (brewState) {
+            if (brewState && Object.keys(brewState).length > 0) {
                 document.getElementById('brew-status').innerHTML = `
                     <div class="status-grid">
                         <div class="stat-item">
@@ -186,10 +197,12 @@
                         </div>
                     </div>
                 `;
+            } else {
+                document.getElementById('brew-status').innerHTML = '<p style="opacity: 0.7;">No brew data available. Ensure your MaraX device is connected and publishing to MQTT.</p>';
             }
 
             const machineState = await fetchAPI('machine/state');
-            if (machineState) {
+            if (machineState && Object.keys(machineState).length > 0) {
                 document.getElementById('machine-status').innerHTML = `
                     <div class="status-grid">
                         <div class="stat-item">
@@ -206,6 +219,8 @@
                         </div>
                     </div>
                 `;
+            } else {
+                document.getElementById('machine-status').innerHTML = '<p style="opacity: 0.7;">No machine data available. Ensure your MaraX device is connected and publishing to MQTT.</p>';
             }
 
             const profiles = await fetchAPI('profiles');

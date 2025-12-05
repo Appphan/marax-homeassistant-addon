@@ -30,6 +30,24 @@ INGRESS_PATH = os.getenv('SUPERVISOR_TOKEN', '')
 
 # Configuration from Home Assistant options
 MQTT_BROKER = os.getenv('MQTT_BROKER', 'core-mosquitto')
+# For Home Assistant add-ons, try supervisor hostname if core-mosquitto doesn't work
+if MQTT_BROKER == 'core-mosquitto':
+    # Try alternative hostnames
+    import socket
+    try:
+        socket.gethostbyname('core-mosquitto')
+        logger.info("core-mosquitto resolves correctly")
+    except socket.gaierror:
+        # Try supervisor hostname
+        try:
+            socket.gethostbyname('supervisor')
+            MQTT_BROKER = 'supervisor'
+            logger.info("Using supervisor as MQTT broker hostname")
+        except socket.gaierror:
+            # Fallback to localhost
+            MQTT_BROKER = 'localhost'
+            logger.info("Using localhost as MQTT broker hostname")
+
 MQTT_PORT = int(os.getenv('MQTT_PORT', 1883))
 MQTT_USER = os.getenv('MQTT_USER', '')
 MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', '')
@@ -134,13 +152,25 @@ def init_mqtt():
     
     if MQTT_USER and MQTT_PASSWORD:
         mqtt_client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
+        logger.info(f"Using MQTT authentication: user={MQTT_USER}")
+    else:
+        logger.info("No MQTT authentication configured")
     
     try:
+        logger.info(f"Attempting to connect to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}")
         mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
         mqtt_client.loop_start()
-        logger.info(f"Connecting to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}")
+        logger.info(f"MQTT connection initiated to {MQTT_BROKER}:{MQTT_PORT}")
+        
+        # Wait a bit for connection to establish
+        time.sleep(2)
+        if not mqtt_connected:
+            logger.warning("MQTT connection not established after 2 seconds")
     except Exception as e:
-        logger.error(f"Failed to connect to MQTT broker: {e}")
+        logger.error(f"Failed to connect to MQTT broker {MQTT_BROKER}:{MQTT_PORT}: {e}")
+        logger.error(f"Error type: {type(e).__name__}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 def request_profile_list():
     """Request profile list from device"""
@@ -182,7 +212,11 @@ def health():
 @app.route('/api/status')
 def api_status():
     """Get device status"""
-    return jsonify(device_data)
+    status = device_data.copy()
+    status['mqtt_connected'] = mqtt_connected
+    status['mqtt_broker'] = MQTT_BROKER
+    status['mqtt_port'] = MQTT_PORT
+    return jsonify(status)
 
 @app.route('/api/brew/state')
 def api_brew_state():
