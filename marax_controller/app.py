@@ -190,10 +190,19 @@ def on_message(client, userdata, msg):
             device_data['current_phase'] = json.loads(payload)
             logger.debug(f"Updated current phase: {device_data['current_phase']}")
         elif topic == TOPIC_PROFILE_LIST:
-            data = json.loads(payload)
-            if 'profiles' in data:
-                device_data['profiles'] = data['profiles']
-                logger.debug(f"Updated profiles: {len(data['profiles'])} profiles")
+            try:
+                data = json.loads(payload)
+                logger.info(f"Received profile list response: {json.dumps(data)}")
+                if 'profiles' in data:
+                    device_data['profiles'] = data['profiles']
+                    logger.info(f"✅ Updated profiles: {len(data['profiles'])} profiles found")
+                    if 'active_profile' in data:
+                        device_data['active_profile'] = data['active_profile']
+                        logger.info(f"Active profile: {data['active_profile']}")
+                else:
+                    logger.warning(f"Profile list response missing 'profiles' key: {data}")
+            except Exception as e:
+                logger.error(f"Error parsing profile list: {e}, payload: {payload[:200]}")
         else:
             logger.debug(f"Unhandled topic: {topic}")
     except json.JSONDecodeError as e:
@@ -360,12 +369,27 @@ def api_machine_state():
 def api_profiles():
     """Get profiles list"""
     logger.info("API /profiles endpoint called")
-    if not device_data.get('profiles'):
-        request_profile_list()
-        time.sleep(0.5)  # Wait for response
+    
+    # Always request fresh profile list
+    request_profile_list()
+    
+    # Wait a bit longer for response
+    time.sleep(1.0)
+    
     profiles = device_data.get('profiles', [])
+    active_profile = device_data.get('active_profile', None)
+    
     logger.info(f"API /profiles returning {len(profiles)} profiles")
-    return jsonify(profiles)
+    logger.info(f"Profiles data: {json.dumps(profiles)}")
+    
+    # Add active_profile to response if available
+    response = {
+        'profiles': profiles,
+        'active_profile': active_profile,
+        'count': len(profiles)
+    }
+    
+    return jsonify(response)
 
 @app.route('/api/profiles/select', methods=['POST'])
 def api_profile_select():

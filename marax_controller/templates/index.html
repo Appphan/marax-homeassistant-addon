@@ -671,9 +671,25 @@
         }
         
         async function updateProfiles() {
-            const profiles = await fetchAPI('profiles');
-            console.log('Profiles response:', profiles);
-            currentProfiles = profiles || [];
+            const response = await fetchAPI('profiles');
+            console.log('Profiles response:', response);
+            
+            // Handle both old format (array) and new format (object with profiles array)
+            let profiles = [];
+            if (Array.isArray(response)) {
+                profiles = response;
+            } else if (response && response.profiles) {
+                profiles = response.profiles;
+                if (response.active_profile !== undefined) {
+                    activeProfileId = response.active_profile;
+                }
+            } else if (response && typeof response === 'object') {
+                // Try to extract profiles from any object structure
+                profiles = Object.values(response).find(v => Array.isArray(v)) || [];
+            }
+            
+            currentProfiles = profiles;
+            console.log(`Found ${profiles.length} profiles:`, profiles);
             
             if (profiles && Array.isArray(profiles) && profiles.length > 0) {
                 document.getElementById('profiles-list').innerHTML = `
@@ -694,7 +710,17 @@
                     </div>
                 `;
             } else {
-                document.getElementById('profiles-list').innerHTML = '<p style="opacity: 0.7;">No profiles available. Create a new profile to get started.</p>';
+                document.getElementById('profiles-list').innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <p style="opacity: 0.7; margin-bottom: 20px;">No profiles found on the device.</p>
+                        <p style="opacity: 0.6; font-size: 0.9em; margin-bottom: 20px;">
+                            The ESP32 should have default profiles initialized.<br>
+                            Check the device logs to see if profiles are being initialized.
+                        </p>
+                        <button class="button" onclick="updateProfiles()">🔄 Refresh Profile List</button>
+                        <button class="button primary" onclick="openProfileEditor()" style="margin-left: 10px;">+ Create New Profile</button>
+                    </div>
+                `;
             }
         }
         
