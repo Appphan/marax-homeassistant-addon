@@ -1317,7 +1317,10 @@
             try {
                 const status = await fetchAPI('control/status');
                 if (status && status.system) {
-                    document.getElementById('current-control-system').textContent = status.system.toUpperCase();
+                    const currentSystemEl = document.getElementById('current-control-system');
+                    if (currentSystemEl) {
+                        currentSystemEl.textContent = status.system.toUpperCase();
+                    }
                     // Update button states
                     ['pid', 'fuzzy', 'adaptive'].forEach(sys => {
                         const btn = document.getElementById(`btn-control-${sys}`);
@@ -3168,12 +3171,13 @@
                         console.error('Error in updateStatus:', err);
                     });
                     // Update PID and Learning status when dashboard is active
-                    if (document.getElementById('dashboard').classList.contains('active')) {
+                    const dashboardEl = document.getElementById('dashboard');
+                    if (dashboardEl && dashboardEl.classList.contains('active')) {
                         updateControlSystemStatus().catch(err => {
                             console.error('Error in updateControlSystemStatus:', err);
                         });
-                        updatePIDLearningStatus().catch(err => {
-                            console.error('Error in updatePIDLearningStatus:', err);
+                        updateLearningStatus().catch(err => {
+                            console.error('Error in updateLearningStatus:', err);
                         });
                     }
                 }, 2000);
