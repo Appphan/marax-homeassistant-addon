@@ -198,18 +198,27 @@ def on_message(client, userdata, msg):
                 logger.info(f"ESP32 Debug [{topic}]: {payload}")
         elif topic == TOPIC_PROFILE_LIST:
             try:
+                # Ignore our own "get" request message
+                if payload == "get":
+                    logger.debug("Ignoring our own profile list request")
+                    return
+                
                 data = json.loads(payload)
-                logger.info(f"Received profile list response: {json.dumps(data)}")
+                logger.info(f"✅ Received profile list response with {len(data.get('profiles', []))} profiles")
                 if 'profiles' in data:
                     device_data['profiles'] = data['profiles']
                     logger.info(f"✅ Updated profiles: {len(data['profiles'])} profiles found")
+                    # Log profile names for debugging
+                    for p in data['profiles']:
+                        logger.info(f"  - Profile {p.get('id')}: {p.get('name', 'unnamed')} ({p.get('phase_count', 0)} phases)")
                     if 'active_profile' in data:
                         device_data['active_profile'] = data['active_profile']
                         logger.info(f"Active profile: {data['active_profile']}")
                 else:
                     logger.warning(f"Profile list response missing 'profiles' key: {data}")
             except Exception as e:
-                logger.error(f"Error parsing profile list: {e}, payload: {payload[:200]}")
+                logger.error(f"Error parsing profile list: {e}")
+                logger.error(f"Payload (first 500 chars): {payload[:500]}")
         else:
             logger.debug(f"Unhandled topic: {topic}")
     except json.JSONDecodeError as e:
@@ -223,6 +232,12 @@ def on_message(client, userdata, msg):
 def init_mqtt():
     """Initialize MQTT client with retry logic"""
     global mqtt_client, MQTT_BROKER
+    
+    # Request profile list on startup
+    def request_profiles_after_connect():
+        time.sleep(2)  # Wait for subscriptions to be established
+        request_profile_list()
+        logger.info("Requested profile list on startup")
     
     # Use a local variable for broker attempts to avoid modifying global during retries
     current_broker = MQTT_BROKER
@@ -382,8 +397,8 @@ def api_profiles():
     if refresh:
         logger.info("Refresh requested, requesting profile list from device")
         request_profile_list()
-        # Wait a bit longer for response
-        time.sleep(1.0)
+        # Wait longer for response (ESP32 needs time to process and publish)
+        time.sleep(2.0)
     else:
         logger.info("Using cached profile data (no refresh requested)")
     
@@ -391,7 +406,10 @@ def api_profiles():
     active_profile = device_data.get('active_profile', None)
     
     logger.info(f"API /profiles returning {len(profiles)} profiles")
-    logger.info(f"Profiles data: {json.dumps(profiles)}")
+    if profiles:
+        logger.info(f"Profile names: {[p.get('name', 'unnamed') for p in profiles]}")
+    else:
+        logger.warning("No profiles in device_data - ESP32 may not have responded yet")
     
     # Add active_profile to response if available
     response = {
