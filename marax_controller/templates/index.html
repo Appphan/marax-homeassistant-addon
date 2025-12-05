@@ -373,8 +373,12 @@
             flow: [],
             weight: []
         };
+        let brewStartTime = null;
+        let brewEndTime = null;
+        let brewPhases = [];
         let currentProfiles = [];
         let activeProfileId = null;
+        let profileCharts = {};
         
         // Detect ingress base path
         const getBasePath = () => {
@@ -444,6 +448,9 @@
             
             if (tabName === 'live') {
                 initLiveChart();
+            } else if (tabName === 'profiles') {
+                // Request profiles when profiles tab is clicked
+                updateProfiles(true);
             }
         }
         
@@ -462,21 +469,24 @@
                             data: [],
                             borderColor: 'rgb(255, 99, 132)',
                             backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            yAxisID: 'y'
+                            yAxisID: 'y',
+                            tension: 0.1
                         },
                         {
                             label: 'Flow (ml/s)',
                             data: [],
                             borderColor: 'rgb(54, 162, 235)',
                             backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                            yAxisID: 'y1'
+                            yAxisID: 'y1',
+                            tension: 0.1
                         },
                         {
                             label: 'Weight (g)',
                             data: [],
                             borderColor: 'rgb(75, 192, 192)',
                             backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                            yAxisID: 'y2'
+                            yAxisID: 'y2',
+                            tension: 0.1
                         }
                     ]
                 },
@@ -487,7 +497,25 @@
                         mode: 'index',
                         intersect: false,
                     },
+                    animation: {
+                        duration: 0 // Disable animation for real-time updates
+                    },
                     scales: {
+                        x: {
+                            title: { display: true, text: 'Time (s)' },
+                            min: 0,
+                            max: function(context) {
+                                // During brewing: show current time, after brewing: show end time
+                                if (brewEndTime !== null) {
+                                    return brewEndTime;
+                                }
+                                if (brewStartTime !== null) {
+                                    const currentTime = (Date.now() / 1000) - brewStartTime;
+                                    return Math.max(currentTime, 10); // At least 10 seconds
+                                }
+                                return 10;
+                            }
+                        },
                         y: {
                             type: 'linear',
                             display: true,
@@ -517,34 +545,159 @@
         }
         
         function updateLiveChart(brewState, time) {
-            if (!liveChart || !brewState || !brewState.isActive) return;
+            if (!liveChart || !brewState) return;
             
-            liveChartData.labels.push(time.toFixed(1));
-            liveChartData.pressure.push(brewState.pressure || 0);
-            liveChartData.flow.push(brewState.flow || 0);
-            
-            // Keep only last 100 data points
-            if (liveChartData.labels.length > 100) {
-                liveChartData.labels.shift();
-                liveChartData.pressure.shift();
-                liveChartData.flow.shift();
-                liveChartData.weight.shift();
+            // Track brew start time
+            if (brewState.isActive && brewStartTime === null) {
+                brewStartTime = Date.now() / 1000;
+                brewEndTime = null;
+                liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
             }
             
+            // Track brew end time
+            if (!brewState.isActive && brewStartTime !== null && brewEndTime === null) {
+                brewEndTime = time;
+            }
+            
+            if (!brewState.isActive) {
+                // Don't update chart if brew is not active
+                return;
+            }
+            
+            // Calculate time relative to brew start
+            const relativeTime = brewStartTime !== null ? (time - brewStartTime) : time;
+            
+            liveChartData.labels.push(relativeTime.toFixed(1));
+            liveChartData.pressure.push(brewState.pressure || 0);
+            liveChartData.flow.push(brewState.flow || 0);
+            liveChartData.weight.push(brewState.weight || 0);
+            
+            // Update chart data
             liveChart.data.labels = liveChartData.labels;
             liveChart.data.datasets[0].data = liveChartData.pressure;
             liveChart.data.datasets[1].data = liveChartData.flow;
             liveChart.data.datasets[2].data = liveChartData.weight;
+            
+            // Update x-axis max: during brew = current time, after brew = end time (fixed)
+            if (brewEndTime !== null) {
+                // Brew finished - fix the x-axis at end time
+                liveChart.options.scales.x.max = brewEndTime - brewStartTime;
+            } else if (brewStartTime !== null) {
+                // Brew active - x-axis follows current time
+                const currentRelativeTime = (Date.now() / 1000) - brewStartTime;
+                liveChart.options.scales.x.max = Math.max(currentRelativeTime, 10);
+            }
+            
+            // Update chart without animation for real-time feel
             liveChart.update('none');
         }
         
         function resetLiveChart() {
             liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
+            brewStartTime = null;
+            brewEndTime = null;
+            brewPhases = [];
             if (liveChart) {
                 liveChart.data.labels = [];
                 liveChart.data.datasets.forEach(d => d.data = []);
                 liveChart.update();
             }
+        }
+        
+        function renderProfileGraph(profile) {
+            if (!profile || !profile.phases || profile.phases.length === 0) {
+                return;
+            }
+            
+            const canvasId = `profile-chart-${profile.id}`;
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            // Destroy existing chart if any
+            if (profileCharts[profile.id]) {
+                profileCharts[profile.id].destroy();
+            }
+            
+            // Calculate time points for each phase
+            let timePoints = [];
+            let pressurePoints = [];
+            let flowPoints = [];
+            let currentTime = 0;
+            
+            profile.phases.forEach((phase, idx) => {
+                const phaseStart = currentTime;
+                const phaseEnd = currentTime + (phase.maxDuration || phase.minDuration || 10);
+                
+                // Add start point
+                timePoints.push(phaseStart);
+                pressurePoints.push(phase.targetPressureStart || 0);
+                flowPoints.push(phase.targetFlowStart || 0);
+                
+                // Add end point
+                timePoints.push(phaseEnd);
+                pressurePoints.push(phase.targetPressureEnd || phase.targetPressureStart || 0);
+                flowPoints.push(phase.targetFlowEnd || phase.targetFlowStart || 0);
+                
+                currentTime = phaseEnd;
+            });
+            
+            profileCharts[profile.id] = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: timePoints.map(t => t.toFixed(1) + 's'),
+                    datasets: [
+                        {
+                            label: 'Pressure (bar)',
+                            data: pressurePoints,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            yAxisID: 'y',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Flow (ml/s)',
+                            data: flowPoints,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            yAxisID: 'y1',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Time (s)' }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: 'Pressure (bar)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: 'Flow (ml/s)' },
+                            grid: { drawOnChartArea: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        title: {
+                            display: true,
+                            text: profile.name || 'Profile Graph'
+                        }
+                    }
+                }
+            });
         }
 
         async function updateStatus() {
@@ -613,8 +766,12 @@
                 
                 // Update live chart if brewing
                 if (brewState.isActive) {
-                    const brewTime = Date.now() / 1000; // Simplified - should get actual brew time
-                    updateLiveChart(brewState, brewTime);
+                    const currentTime = Date.now() / 1000;
+                    updateLiveChart(brewState, currentTime);
+                    
+                    // Calculate brew time relative to start
+                    const brewTime = brewStartTime !== null ? (currentTime - brewStartTime) : 0;
+                    
                     document.getElementById('live-brew-status').innerHTML = `
                         <div class="status-grid">
                             <div class="stat-item">
@@ -632,8 +789,16 @@
                         </div>
                     `;
                 } else {
-                    resetLiveChart();
-                    document.getElementById('live-brew-status').innerHTML = '<p>No active brew</p>';
+                    // If brew just ended, update chart one more time to show final state
+                    if (brewStartTime !== null && brewEndTime === null) {
+                        const currentTime = Date.now() / 1000;
+                        updateLiveChart(brewState, currentTime);
+                    }
+                    document.getElementById('live-brew-status').innerHTML = `
+                        <p>No active brew</p>
+                        ${brewEndTime !== null && brewStartTime !== null ? 
+                            `<p style="opacity: 0.7; margin-top: 10px;">Last brew duration: ${(brewEndTime - brewStartTime).toFixed(1)}s</p>` : ''}
+                    `;
                 }
             } else {
                 document.getElementById('brew-status').innerHTML = '<p style="opacity: 0.7;">No brew data available. Ensure your MaraX device is connected and publishing to MQTT.</p>';
@@ -665,13 +830,11 @@
             } else {
                 document.getElementById('machine-status').innerHTML = '<p style="opacity: 0.7;">No machine data available. Ensure your MaraX device is connected and publishing to MQTT.</p>';
             }
-            
-            // Update profiles
-            await updateProfiles();
         }
         
-        async function updateProfiles() {
-            const response = await fetchAPI('profiles');
+        async function updateProfiles(refresh = false) {
+            const endpoint = refresh ? 'profiles?refresh=true' : 'profiles';
+            const response = await fetchAPI(endpoint);
             console.log('Profiles response:', response);
             
             // Handle both old format (array) and new format (object with profiles array)
@@ -700,6 +863,9 @@
                                 <p style="opacity: 0.8; margin-bottom: 10px;">ID: ${p.id}</p>
                                 ${p.technique ? `<p style="opacity: 0.7; font-size: 0.9em;">Technique: ${p.technique}</p>` : ''}
                                 ${p.phaseCount ? `<p style="opacity: 0.7; font-size: 0.9em;">Phases: ${p.phaseCount}</p>` : ''}
+                                <div class="chart-container" style="height: 200px; margin: 15px 0;">
+                                    <canvas id="profile-chart-${p.id}"></canvas>
+                                </div>
                                 <div class="profile-actions">
                                     <button class="button" onclick="selectProfile(${p.id})">Select</button>
                                     <button class="button" onclick="viewProfile(${p.id})">View</button>
@@ -709,6 +875,11 @@
                         `).join('')}
                     </div>
                 `;
+                
+                // Render profile graphs
+                profiles.forEach(p => {
+                    renderProfileGraph(p);
+                });
             } else {
                 document.getElementById('profiles-list').innerHTML = `
                     <div style="text-align: center; padding: 40px;">
@@ -717,7 +888,7 @@
                             The ESP32 should have default profiles initialized.<br>
                             Check the device logs to see if profiles are being initialized.
                         </p>
-                        <button class="button" onclick="updateProfiles()">🔄 Refresh Profile List</button>
+                        <button class="button" onclick="updateProfiles(true)">🔄 Refresh Profile List</button>
                         <button class="button primary" onclick="openProfileEditor()" style="margin-left: 10px;">+ Create New Profile</button>
                     </div>
                 `;

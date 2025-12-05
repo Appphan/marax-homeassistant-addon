@@ -377,11 +377,15 @@ def api_profiles():
     """Get profiles list"""
     logger.info("API /profiles endpoint called")
     
-    # Always request fresh profile list
-    request_profile_list()
-    
-    # Wait a bit longer for response
-    time.sleep(1.0)
+    # Only request fresh profile list if 'refresh' parameter is set
+    refresh = request.args.get('refresh', 'false').lower() == 'true'
+    if refresh:
+        logger.info("Refresh requested, requesting profile list from device")
+        request_profile_list()
+        # Wait a bit longer for response
+        time.sleep(1.0)
+    else:
+        logger.info("Using cached profile data (no refresh requested)")
     
     profiles = device_data.get('profiles', [])
     active_profile = device_data.get('active_profile', None)
