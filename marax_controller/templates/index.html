@@ -2899,6 +2899,15 @@
                     updateStatus().catch(err => {
                         console.error('Error in updateStatus:', err);
                     });
+                    // Update PID and Learning status when dashboard is active
+                    if (document.getElementById('dashboard').classList.contains('active')) {
+                        updateControlSystemStatus().catch(err => {
+                            console.error('Error in updateControlSystemStatus:', err);
+                        });
+                        updateLearningStatus().catch(err => {
+                            console.error('Error in updateLearningStatus:', err);
+                        });
+                    }
                 }, 2000);
                 console.log('Update interval set to 2 seconds');
                 
