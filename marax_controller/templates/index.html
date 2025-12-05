@@ -150,9 +150,13 @@
 
         async function updateStatus() {
             const status = await fetchAPI('status');
+            console.log('Status response:', status);
             if (status) {
                 const mqttStatus = status.mqtt_connected ? '✅ Connected' : '❌ Disconnected';
                 const mqttInfo = status.mqtt_broker ? `(${status.mqtt_broker}:${status.mqtt_port})` : '';
+                const deviceStatus = status.status || (status.info ? 'Online' : 'Unknown');
+                const firmware = status.info?.version || 'N/A';
+                const uptime = status.info?.uptime ? Math.floor(status.info.uptime / 3600) + 'h' : 'N/A';
                 
                 document.getElementById('device-status').innerHTML = `
                     <div class="status-grid">
@@ -163,25 +167,30 @@
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">Device Status</div>
-                            <div class="stat-value">${status.status || 'Unknown'}</div>
+                            <div class="stat-value">${deviceStatus}</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">Firmware</div>
-                            <div class="stat-value">${status.info?.version || 'N/A'}</div>
+                            <div class="stat-value">${firmware}</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">Uptime</div>
-                            <div class="stat-value">${status.info ? Math.floor(status.info.uptime / 3600) + 'h' : 'N/A'}</div>
+                            <div class="stat-value">${uptime}</div>
                         </div>
                     </div>
                     ${!status.mqtt_connected ? '<div class="error" style="margin-top: 15px;">⚠️ MQTT not connected. Check configuration and ensure your MaraX device is publishing to MQTT.</div>' : ''}
                 `;
             } else {
-                document.getElementById('device-status').innerHTML = '<div class="error">Failed to fetch status. Check add-on logs.</div>';
+                document.getElementById('device-status').innerHTML = '<div class="error">Failed to fetch status. Check add-on logs and browser console.</div>';
             }
 
             const brewState = await fetchAPI('brew/state');
-            if (brewState && Object.keys(brewState).length > 0) {
+            console.log('Brew state response:', brewState);
+            if (brewState && typeof brewState === 'object' && Object.keys(brewState).length > 0) {
+                const pressure = brewState.pressure !== undefined ? brewState.pressure.toFixed(1) : '0.0';
+                const flow = brewState.flow !== undefined ? brewState.flow.toFixed(1) : '0.0';
+                const pumpPower = brewState.pumpPower !== undefined ? brewState.pumpPower.toFixed(0) : '0';
+                
                 document.getElementById('brew-status').innerHTML = `
                     <div class="status-grid">
                         <div class="stat-item">
@@ -190,15 +199,15 @@
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">Pressure</div>
-                            <div class="stat-value">${brewState.pressure?.toFixed(1) || '0.0'} bar</div>
+                            <div class="stat-value">${pressure} bar</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">Flow</div>
-                            <div class="stat-value">${brewState.flow?.toFixed(1) || '0.0'} ml/s</div>
+                            <div class="stat-value">${flow} ml/s</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">Pump Power</div>
-                            <div class="stat-value">${brewState.pumpPower?.toFixed(0) || '0'}%</div>
+                            <div class="stat-value">${pumpPower}%</div>
                         </div>
                     </div>
                 `;
@@ -207,20 +216,25 @@
             }
 
             const machineState = await fetchAPI('machine/state');
-            if (machineState && Object.keys(machineState).length > 0) {
+            console.log('Machine state response:', machineState);
+            if (machineState && typeof machineState === 'object' && Object.keys(machineState).length > 0) {
+                const mode = machineState.mode || 'N/A';
+                const coffeeTemp = machineState.coffee_temp !== undefined ? machineState.coffee_temp : 0;
+                const steamTemp = machineState.steam_temp !== undefined ? machineState.steam_temp : 0;
+                
                 document.getElementById('machine-status').innerHTML = `
                     <div class="status-grid">
                         <div class="stat-item">
                             <div class="stat-label">Mode</div>
-                            <div class="stat-value">${machineState.mode || 'N/A'}</div>
+                            <div class="stat-value">${mode}</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">Coffee Temp</div>
-                            <div class="stat-value">${machineState.coffee_temp || '0'}°C</div>
+                            <div class="stat-value">${coffeeTemp}°C</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">Steam Temp</div>
-                            <div class="stat-value">${machineState.steam_temp || '0'}°C</div>
+                            <div class="stat-value">${steamTemp}°C</div>
                         </div>
                     </div>
                 `;
