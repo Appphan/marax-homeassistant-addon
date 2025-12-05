@@ -1645,12 +1645,22 @@
             
             phaseDiv.innerHTML = `
                 <div class="phase-item" style="border-left: 4px solid ${getPhaseColor(index)};">
-                    <div class="phase-header">
-                        <h4><i class="fas fa-layer-group"></i> Phase ${index + 1}</h4>
-                        <button type="button" class="button danger" onclick="removePhase(this)"><i class="fas fa-trash"></i> Remove</button>
+                    <div class="phase-header-collapsible" onclick="togglePhaseCollapse(${index})">
+                        <div class="phase-header-left">
+                            <i class="fas fa-chevron-down collapse-icon"></i>
+                            <div class="phase-header-title">
+                                <h4 style="margin: 0;"><i class="fas fa-layer-group"></i> Phase ${index + 1}</h4>
+                                <span id="phase-name-display-${index}" style="margin-left: 10px; opacity: 0.8; font-size: 0.9em;">${phase ? phase.name : ''}</span>
+                            </div>
+                            <canvas id="phase-mini-graph-${index}" class="phase-mini-graph"></canvas>
+                        </div>
+                        <div class="phase-header-actions">
+                            <button type="button" class="button danger" onclick="event.stopPropagation(); removePhase(this)"><i class="fas fa-trash"></i> Remove</button>
+                        </div>
                     </div>
                     
-                    <div class="phase-editor-grid">
+                    <div class="phase-content">
+                        <div class="phase-editor-grid">
                         <div>
                             <div class="form-section">
                                 <div class="form-section-title"><i class="fas fa-info-circle"></i> Phase Information</div>
@@ -1774,14 +1784,37 @@
                             </div>
                         </div>
                     </div>
+                    </div>
                 </div>
             `;
             phasesList.appendChild(phaseDiv);
             
-            // Initialize phase graph
+            // Initialize phase graph and mini graph
             setTimeout(() => {
                 updatePhaseGraph(index);
+                updatePhaseMiniGraph(index);
+                
+                // Add listener to phase name input to update header
+                const nameInput = phaseDiv.querySelector(`input[name="phaseName_${index}"]`);
+                if (nameInput) {
+                    nameInput.addEventListener('input', () => {
+                        const display = document.getElementById(`phase-name-display-${index}`);
+                        if (display) {
+                            display.textContent = nameInput.value || '';
+                        }
+                    });
+                }
             }, 100);
+            
+            // Collapse previous phases when adding a new one
+            if (index > 0) {
+                const previousPhases = document.querySelectorAll('.phase-editor-item');
+                previousPhases.forEach((prevPhase, prevIdx) => {
+                    if (prevIdx < index && !prevPhase.classList.contains('collapsed')) {
+                        prevPhase.classList.add('collapsed');
+                    }
+                });
+            }
             
             // Update preview graph after adding phase
             updateProfilePreview();
@@ -1868,15 +1901,14 @@
             }
         }
         
-        function updatePhaseGraph(phaseIndex) {
-            const canvas = document.getElementById(`phase-graph-${phaseIndex}`);
-            if (!canvas) return;
-            
+        let phaseMiniCharts = {};  // Store mini charts for phase headers
+        
+        function getPhaseData(phaseIndex) {
             const form = document.getElementById('profile-form');
-            if (!form) return;
+            if (!form) return null;
             
             const formData = new FormData(form);
-            const phase = {
+            return {
                 name: formData.get(`phaseName_${phaseIndex}`) || `Phase ${phaseIndex + 1}`,
                 targetPressureStart: parseFloat(formData.get(`targetPressureStart_${phaseIndex}`)) || 0,
                 targetPressureEnd: parseFloat(formData.get(`targetPressureEnd_${phaseIndex}`)) || 0,
@@ -1887,8 +1919,9 @@
                 useRamp: formData.get(`useRamp_${phaseIndex}`) === 'on',
                 rampDuration: parseFloat(formData.get(`rampDuration_${phaseIndex}`)) || 0
             };
-            
-            // Calculate time points
+        }
+        
+        function calculatePhasePoints(phase) {
             let timePoints = [];
             let pressurePoints = [];
             let flowPoints = [];
@@ -1916,6 +1949,18 @@
                 pressurePoints = [phase.targetPressureStart, phase.targetPressureEnd];
                 flowPoints = [phase.targetFlowStart, phase.targetFlowEnd];
             }
+            
+            return { timePoints, pressurePoints, flowPoints };
+        }
+        
+        function updatePhaseGraph(phaseIndex) {
+            const canvas = document.getElementById(`phase-graph-${phaseIndex}`);
+            if (!canvas) return;
+            
+            const phase = getPhaseData(phaseIndex);
+            if (!phase) return;
+            
+            const { timePoints, pressurePoints, flowPoints } = calculatePhasePoints(phase);
             
             // Destroy existing chart
             if (phaseCharts[phaseIndex]) {
@@ -1967,7 +2012,11 @@
                             position: 'left',
                             title: { display: true, text: 'Pressure (bar)', color: 'white' },
                             ticks: { color: 'white' },
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            min: 0,
+                            max: 10,
+                            suggestedMin: 0,
+                            suggestedMax: 10
                         },
                         y1: {
                             type: 'linear',
@@ -1994,8 +2043,64 @@
                 }
             });
             
-            // Also update main preview
+            // Also update mini graph and main preview
+            updatePhaseMiniGraph(phaseIndex);
             updateProfilePreview();
+        }
+        
+        function updatePhaseMiniGraph(phaseIndex) {
+            const canvas = document.getElementById(`phase-mini-graph-${phaseIndex}`);
+            if (!canvas) return;
+            
+            const phase = getPhaseData(phaseIndex);
+            if (!phase) return;
+            
+            const { timePoints, pressurePoints } = calculatePhasePoints(phase);
+            
+            // Destroy existing mini chart
+            if (phaseMiniCharts[phaseIndex]) {
+                phaseMiniCharts[phaseIndex].destroy();
+            }
+            
+            // Create mini chart (pressure only, simplified)
+            phaseMiniCharts[phaseIndex] = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: timePoints.map(t => ''),
+                    datasets: [{
+                        label: 'Pressure',
+                        data: pressurePoints,
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            display: false,
+                            min: 0,
+                            max: 10
+                        }
+                    }
+                }
+            });
+        }
+        
+        function togglePhaseCollapse(phaseIndex) {
+            const phaseItem = document.querySelector(`[data-phase-index="${phaseIndex}"]`);
+            if (phaseItem) {
+                phaseItem.classList.toggle('collapsed');
+            }
         }
         
         let profileEditorChart = null;
@@ -2171,16 +2276,26 @@
                 phases: []
             };
             
-            // Collect phases
+            // Collect phases - use data-phase-index attribute to get correct index
             const phaseItems = document.querySelectorAll('.phase-editor-item');
-            phaseItems.forEach((item, idx) => {
-                // Collect breakout criteria
+            const phases = [];
+            
+            phaseItems.forEach((item) => {
+                const phaseIndexAttr = item.getAttribute('data-phase-index');
+                if (phaseIndexAttr === null) return;
+                
+                const idx = parseInt(phaseIndexAttr);
+                if (isNaN(idx)) return;
+                
+                // Collect breakout criteria - check both main and expandable criteria
                 const breakoutCriteria = [];
-                for (let c = 0; c < 4; c++) {
+                for (let c = 0; c < 7; c++) {  // Increased to 7 to include expandable criteria
                     const enabled = formData.get(`criteriaEnabled_${idx}_${c}`) === 'on';
-                    if (enabled) {
+                    const type = parseInt(formData.get(`criteriaType_${idx}_${c}`)) || 0;
+                    
+                    if (enabled && type !== 0) {  // Only add if enabled and type is not "None"
                         breakoutCriteria.push({
-                            type: parseInt(formData.get(`criteriaType_${idx}_${c}`)) || 0,
+                            type: type,
                             threshold: parseFloat(formData.get(`criteriaThreshold_${idx}_${c}`)) || 0,
                             enabled: true,
                             minDuration: parseFloat(formData.get(`criteriaMinDuration_${idx}_${c}`)) || 0
@@ -2188,8 +2303,14 @@
                     }
                 }
                 
+                const phaseName = formData.get(`phaseName_${idx}`);
+                if (!phaseName || phaseName.trim() === '') {
+                    console.warn(`Phase ${idx} has no name, skipping`);
+                    return;
+                }
+                
                 const phase = {
-                    name: formData.get(`phaseName_${idx}`),
+                    name: phaseName,
                     phaseIndex: idx,
                     controlMode: parseInt(formData.get(`controlMode_${idx}`)) || 0,
                     targetPressureStart: parseFloat(formData.get(`targetPressureStart_${idx}`)) || 0,
@@ -2198,7 +2319,7 @@
                     targetFlowEnd: parseFloat(formData.get(`targetFlowEnd_${idx}`)) || 0,
                     minDuration: parseFloat(formData.get(`minDuration_${idx}`)) || 0,
                     maxDuration: parseFloat(formData.get(`maxDuration_${idx}`)) || 0,
-                    useRamp: formData.get(`useRamp_${idx}`) === 'on' || (phase && phase.useRamp),
+                    useRamp: formData.get(`useRamp_${idx}`) === 'on',
                     rampDuration: parseFloat(formData.get(`rampDuration_${idx}`)) || 0,
                     allowManualStop: formData.get(`allowManualStop_${idx}`) === 'on',
                     publishEvents: formData.get(`publishEvents_${idx}`) === 'on',
@@ -2206,8 +2327,14 @@
                     criteriaLogic: parseInt(formData.get(`criteriaLogic_${idx}`)) || 8,
                     breakoutCriteria: breakoutCriteria
                 };
-                profile.phases.push(phase);
+                
+                phases.push(phase);
             });
+            
+            // Sort phases by phaseIndex to ensure correct order
+            phases.sort((a, b) => a.phaseIndex - b.phaseIndex);
+            profile.phases = phases;
+            profile.phaseCount = phases.length;
             
             profile.phaseCount = profile.phases.length;
             if (profileId !== null && profileId !== undefined) {
@@ -2314,6 +2441,11 @@
                 if (chart) chart.destroy();
             });
             phaseCharts = {};
+            // Clean up mini charts
+            Object.values(phaseMiniCharts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            phaseMiniCharts = {};
         }
         
         async function stopBrew() {
