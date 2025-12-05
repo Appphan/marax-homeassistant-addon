@@ -8,24 +8,18 @@ WORKDIR /app
 RUN apk add --no-cache \
     python3 \
     py3-pip \
-    py3-paho-mqtt \
-    py3-flask \
-    py3-flask-cors \
-    nodejs \
-    npm
+    wget \
+    curl
 
 # Copy application files
 COPY . /app/
 
 # Install Python dependencies
-RUN pip3 install --no-cache-dir \
+RUN pip3 install --no-cache-dir --break-system-packages \
     paho-mqtt==1.6.1 \
     flask==2.3.3 \
     flask-cors==4.0.0 \
     python-dotenv==1.0.0
-
-# Install Node.js dependencies (if using a frontend framework)
-# RUN npm install
 
 # Expose port
 EXPOSE 8080
