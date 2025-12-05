@@ -249,7 +249,7 @@
             background: rgba(255, 255, 255, 0.08);
             border-radius: 12px;
             padding: 0;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border: 2px solid rgba(255, 255, 255, 0.2);
             transition: all 0.3s;
             overflow: hidden;
@@ -259,12 +259,15 @@
             border-color: rgba(255, 255, 255, 0.4);
         }
         .phase-editor-item.collapsed {
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
         .phase-editor-item.collapsed .phase-content {
             display: none !important;
-            padding: 0;
-            margin: 0;
+            padding: 0 !important;
+            margin: 0 !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
         }
         .phase-editor-item:not(.collapsed) .phase-content {
             display: block;
@@ -281,7 +284,7 @@
             }
         }
         .phase-header-collapsible {
-            padding: 15px 20px;
+            padding: 12px 20px;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
@@ -292,6 +295,7 @@
         }
         .phase-editor-item.collapsed .phase-header-collapsible {
             border-bottom: none;
+            padding-bottom: 12px;
         }
         .phase-header-collapsible:hover {
             background: rgba(255, 255, 255, 0.1);
