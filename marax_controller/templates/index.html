@@ -7,163 +7,357 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* Apple Human Interface Guidelines - macOS Design System */
+        :root {
+            /* macOS System Colors - Light Mode */
+            --system-background: #f5f5f7;
+            --system-secondary-background: #ffffff;
+            --system-tertiary-background: #fafafa;
+            --system-grouped-background: #f2f2f7;
+            --system-grouped-secondary-background: #ffffff;
+            
+            --system-label: #000000;
+            --system-secondary-label: rgba(0, 0, 0, 0.6);
+            --system-tertiary-label: rgba(0, 0, 0, 0.4);
+            --system-quaternary-label: rgba(0, 0, 0, 0.18);
+            
+            --system-blue: #007aff;
+            --system-green: #34c759;
+            --system-orange: #ff9500;
+            --system-red: #ff3b30;
+            --system-purple: #af52de;
+            --system-pink: #ff2d55;
+            --system-yellow: #ffcc00;
+            --system-teal: #5ac8fa;
+            --system-indigo: #5856d6;
+            
+            --system-separator: rgba(60, 60, 67, 0.29);
+            --system-opaque-separator: rgba(198, 198, 200, 1);
+            
+            --system-fill: rgba(120, 120, 128, 0.2);
+            --system-secondary-fill: rgba(120, 120, 128, 0.16);
+            --system-tertiary-fill: rgba(120, 120, 128, 0.12);
+            --system-quaternary-fill: rgba(120, 120, 128, 0.08);
+            
+            /* Spacing System - 8px grid */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-2xl: 48px;
+            
+            /* Typography */
+            --font-size-large-title: 34px;
+            --font-size-title-1: 28px;
+            --font-size-title-2: 22px;
+            --font-size-title-3: 20px;
+            --font-size-headline: 17px;
+            --font-size-body: 17px;
+            --font-size-callout: 16px;
+            --font-size-subheadline: 15px;
+            --font-size-footnote: 13px;
+            --font-size-caption-1: 12px;
+            --font-size-caption-2: 11px;
+            
+            /* Border Radius */
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 10px;
+            --radius-xl: 12px;
+            --radius-2xl: 16px;
+            
+            /* Shadows - macOS style */
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+            
+            /* Transitions */
+            --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --system-background: #1c1c1e;
+                --system-secondary-background: #2c2c2e;
+                --system-tertiary-background: #3a3a3c;
+                --system-grouped-background: #000000;
+                --system-grouped-secondary-background: #1c1c1e;
+                
+                --system-label: #ffffff;
+                --system-secondary-label: rgba(255, 255, 255, 0.6);
+                --system-tertiary-label: rgba(255, 255, 255, 0.4);
+                --system-quaternary-label: rgba(255, 255, 255, 0.18);
+                
+                --system-separator: rgba(84, 84, 88, 0.65);
+                --system-opaque-separator: rgba(56, 56, 58, 1);
+                
+                --system-fill: rgba(120, 120, 128, 0.36);
+                --system-secondary-fill: rgba(120, 120, 128, 0.32);
+                --system-tertiary-fill: rgba(120, 120, 128, 0.24);
+                --system-quaternary-fill: rgba(120, 120, 128, 0.18);
+            }
+        }
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            background: var(--system-background);
+            color: var(--system-label);
             min-height: 100vh;
-            padding: 20px;
+            padding: var(--spacing-lg);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            line-height: 1.5;
         }
         .container {
             max-width: 1400px;
             margin: 0 auto;
         }
+        
         h1 {
+            font-size: var(--font-size-large-title);
+            font-weight: 700;
+            color: var(--system-label);
+            margin-bottom: var(--spacing-xl);
             text-align: center;
-            margin-bottom: 30px;
-            font-size: 2.5em;
+            letter-spacing: -0.5px;
         }
+        
+        h2 {
+            font-size: var(--font-size-title-2);
+            font-weight: 600;
+            color: var(--system-label);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        h3 {
+            font-size: var(--font-size-title-3);
+            font-weight: 600;
+            color: var(--system-label);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        /* macOS-style Tabs */
         .tabs {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-lg);
+            padding: var(--spacing-xs);
+            background: var(--system-grouped-background);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-xs);
         }
+        
         .tab {
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid white;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
+            flex: 1;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-size: 1em;
-            transition: all 0.3s;
+            font-size: var(--font-size-body);
+            font-weight: 500;
+            color: var(--system-secondary-label);
+            background: transparent;
+            border: none;
+            transition: all var(--transition-base);
+            text-align: center;
         }
+        
         .tab:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: var(--system-fill);
+            color: var(--system-label);
         }
+        
         .tab.active {
-            background: white;
-            color: #667eea;
+            background: var(--system-secondary-background);
+            color: var(--system-blue);
+            box-shadow: var(--shadow-sm);
         }
+        
         .tab-content {
             display: none;
+            animation: fadeIn var(--transition-base);
         }
+        
         .tab-content.active {
             display: block;
         }
-        .status-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
         }
+        
+        /* macOS-style Cards */
+        .status-card {
+            background: var(--system-secondary-background);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+            box-shadow: var(--shadow-md);
+            border: 0.5px solid var(--system-separator);
+        }
+        
         .status-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-md);
         }
+        
         .stat-item {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
+            background: var(--system-grouped-background);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-lg);
             text-align: center;
+            border: 0.5px solid var(--system-separator);
         }
+        
         .stat-label {
-            font-size: 0.9em;
-            opacity: 0.8;
-            margin-bottom: 5px;
+            font-size: var(--font-size-subheadline);
+            color: var(--system-secondary-label);
+            margin-bottom: var(--spacing-xs);
+            font-weight: 500;
         }
+        
         .stat-value {
-            font-size: 1.5em;
-            font-weight: bold;
+            font-size: var(--font-size-title-2);
+            font-weight: 600;
+            color: var(--system-label);
         }
+        
+        /* macOS-style Buttons */
         .button {
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid white;
+            background: var(--system-blue);
             color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
+            border: none;
+            padding: var(--spacing-sm) var(--spacing-lg);
+            border-radius: var(--radius-md);
             cursor: pointer;
-            font-size: 1em;
-            margin: 5px;
-            transition: all 0.3s;
+            font-size: var(--font-size-body);
+            font-weight: 500;
+            transition: all var(--transition-base);
+            box-shadow: var(--shadow-sm);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            margin: var(--spacing-xs);
         }
+        
         .button:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: #0051d5;
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
         }
+        
         .button:active {
-            transform: scale(0.95);
+            transform: translateY(0);
+            box-shadow: var(--shadow-sm);
         }
+        
         .button.primary {
-            background: white;
-            color: #667eea;
+            background: var(--system-blue);
         }
+        
         .button.danger {
-            background: rgba(255, 0, 0, 0.3);
-            border-color: #ff4444;
+            background: var(--system-red);
         }
+        
+        .button.danger:hover {
+            background: #d70015;
+        }
+        
+        .button.secondary {
+            background: var(--system-fill);
+            color: var(--system-label);
+        }
+        
+        .button.secondary:hover {
+            background: var(--system-secondary-fill);
+        }
+        
+        /* macOS-style Messages */
         .error {
-            background: rgba(255, 0, 0, 0.2);
-            border: 2px solid #ff4444;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
+            background: rgba(255, 59, 48, 0.1);
+            border: 0.5px solid var(--system-red);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-lg);
+            margin: var(--spacing-md) 0;
+            color: var(--system-red);
         }
+        
         .success {
-            background: rgba(0, 255, 0, 0.2);
-            border: 2px solid #44ff44;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
+            background: rgba(52, 199, 89, 0.1);
+            border: 0.5px solid var(--system-green);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-lg);
+            margin: var(--spacing-md) 0;
+            color: var(--system-green);
         }
+        
         .loading {
             text-align: center;
-            padding: 20px;
+            padding: var(--spacing-xl);
+            color: var(--system-secondary-label);
         }
+        /* Profile Cards - macOS style */
         .profile-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: var(--spacing-md);
         }
+        
         .profile-card {
-            background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            padding: 20px;
+            background: var(--system-secondary-background);
+            border: 0.5px solid var(--system-separator);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-lg);
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all var(--transition-base);
+            box-shadow: var(--shadow-sm);
         }
+        
         .profile-card:hover {
-            background: rgba(255, 255, 255, 0.25);
+            background: var(--system-tertiary-background);
+            box-shadow: var(--shadow-md);
             transform: translateY(-2px);
         }
+        
         .profile-card.active {
-            border-color: #44ff44;
-            background: rgba(0, 255, 0, 0.1);
+            border-color: var(--system-blue);
+            background: rgba(0, 122, 255, 0.1);
+            box-shadow: var(--shadow-md);
         }
+        
         .profile-card h3 {
-            margin-bottom: 10px;
+            margin-bottom: var(--spacing-sm);
+            font-size: var(--font-size-title-3);
+            font-weight: 600;
         }
+        
         .profile-actions {
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-md);
             justify-content: center;
             align-items: center;
         }
+        
         .profile-actions .button {
             flex: 1;
             margin: 0;
             min-width: 80px;
         }
+        
+        /* macOS-style Modal */
         .modal {
             display: none;
             position: fixed;
@@ -171,70 +365,104 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
             z-index: 1000;
             overflow-y: auto;
+            animation: fadeIn var(--transition-base);
         }
+        
         .modal.active {
             display: flex;
             align-items: center;
             justify-content: center;
         }
+        
         .modal-content {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 15px;
-            padding: 30px;
+            background: var(--system-secondary-background);
+            border-radius: var(--radius-2xl);
+            padding: var(--spacing-xl);
             max-width: 1200px;
             width: 95%;
             max-height: 95vh;
             overflow-y: auto;
-            margin: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin: var(--spacing-lg);
+            box-shadow: var(--shadow-xl);
+            border: 0.5px solid var(--system-separator);
         }
+        
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: var(--spacing-lg);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 0.5px solid var(--system-separator);
         }
+        
         .modal-header h2 {
             margin: 0;
+            font-size: var(--font-size-title-2);
+            font-weight: 600;
         }
+        
         .close-button {
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid white;
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
+            background: var(--system-fill);
+            border: none;
+            color: var(--system-label);
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-md);
             cursor: pointer;
-            font-size: 1.5em;
+            font-size: var(--font-size-title-3);
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all var(--transition-base);
         }
+        
+        .close-button:hover {
+            background: var(--system-secondary-fill);
+        }
+        
+        /* macOS-style Form Controls */
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: var(--spacing-lg);
         }
+        
         .form-group label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
+            margin-bottom: var(--spacing-xs);
+            font-weight: 500;
+            font-size: var(--font-size-subheadline);
+            color: var(--system-label);
         }
+        
         .form-group input,
         .form-group select,
         .form-group textarea {
             width: 100%;
-            padding: 10px;
-            border-radius: 5px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 1em;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-md);
+            border: 0.5px solid var(--system-separator);
+            background: var(--system-grouped-background);
+            color: var(--system-label);
+            font-size: var(--font-size-body);
+            font-family: inherit;
+            transition: all var(--transition-base);
         }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--system-blue);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+        
         .form-group input::placeholder,
         .form-group textarea::placeholder {
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--system-tertiary-label);
         }
         .phase-list {
             margin-top: 20px;
