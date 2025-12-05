@@ -483,11 +483,35 @@
             }
         }
 
-        function showMessage(message, type) {
-            const el = document.getElementById(type === 'error' ? 'error-message' : 'success-message');
-            el.textContent = message;
-            el.style.display = 'block';
-            setTimeout(() => el.style.display = 'none', 5000);
+        function showMessage(message, type = 'info') {
+            const errorDiv = document.getElementById('error-message');
+            const successDiv = document.getElementById('success-message');
+            
+            if (type === 'error') {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                successDiv.style.display = 'none';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 5000);
+            } else if (type === 'info') {
+                // Use success div for info messages too (blue background)
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+                successDiv.style.background = 'rgba(54, 162, 235, 0.8)';
+                errorDiv.style.display = 'none';
+                setTimeout(() => {
+                    successDiv.style.display = 'none';
+                }, 3000);
+            } else {
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+                successDiv.style.background = 'rgba(76, 175, 80, 0.8)';
+                errorDiv.style.display = 'none';
+                setTimeout(() => {
+                    successDiv.style.display = 'none';
+                }, 5000);
+            }
         }
         
         function showTab(tabName) {
