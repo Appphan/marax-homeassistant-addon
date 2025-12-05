@@ -1415,39 +1415,45 @@
         async function updateStatus() {
             try {
                 const status = await fetchAPI('status');
-            console.log('Status response:', status);
-            if (status) {
+                console.log('Status response:', status);
+                if (status) {
                 const mqttStatus = status.mqtt_connected ? '✅ Connected' : '❌ Disconnected';
                 const mqttInfo = status.mqtt_broker ? `(${status.mqtt_broker}:${status.mqtt_port})` : '';
                 const deviceStatus = status.status || (status.info ? 'Online' : 'Unknown');
                 const firmware = status.info?.version || 'N/A';
                 const uptime = status.info?.uptime ? Math.floor(status.info.uptime / 3600) + 'h' : 'N/A';
                 
-                document.getElementById('device-status').innerHTML = `
-                    <div class="status-grid">
-                        <div class="stat-item">
-                            <div class="stat-label">MQTT Status</div>
-                            <div class="stat-value">${mqttStatus}</div>
-                            <div style="font-size: 0.8em; opacity: 0.7;">${mqttInfo}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Device Status</div>
-                            <div class="stat-value">${deviceStatus}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Firmware</div>
-                            <div class="stat-value">${firmware}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Uptime</div>
-                            <div class="stat-value">${uptime}</div>
-                        </div>
-                    </div>
-                    ${!status.mqtt_connected ? '<div class="error" style="margin-top: 15px;">⚠️ MQTT not connected. Check configuration and ensure your MaraX device is publishing to MQTT.</div>' : ''}
-                `;
-            } else {
-                document.getElementById('device-status').innerHTML = '<div class="error">Failed to fetch status. Check add-on logs and browser console.</div>';
-            }
+                    const deviceStatusEl = document.getElementById('device-status');
+                    if (deviceStatusEl) {
+                        deviceStatusEl.innerHTML = `
+                            <div class="status-grid">
+                                <div class="stat-item">
+                                    <div class="stat-label">MQTT Status</div>
+                                    <div class="stat-value">${mqttStatus}</div>
+                                    <div style="font-size: 0.8em; opacity: 0.7;">${mqttInfo}</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Device Status</div>
+                                    <div class="stat-value">${deviceStatus}</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Firmware</div>
+                                    <div class="stat-value">${firmware}</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Uptime</div>
+                                    <div class="stat-value">${uptime}</div>
+                                </div>
+                            </div>
+                            ${!status.mqtt_connected ? '<div class="error" style="margin-top: 15px;">⚠️ MQTT not connected. Check configuration and ensure your MaraX device is publishing to MQTT.</div>' : ''}
+                        `;
+                    }
+                } else {
+                    const deviceStatusEl = document.getElementById('device-status');
+                    if (deviceStatusEl) {
+                        deviceStatusEl.innerHTML = '<div class="error">Failed to fetch status. Check add-on logs and browser console.</div>';
+                    }
+                }
 
             const brewState = await fetchAPI('brew/state');
             console.log('Brew state response:', brewState);
@@ -1458,30 +1464,33 @@
                     flow: brewState.flow,
                     weight: brewState.weight
                 });
-                const pressure = brewState.pressure !== undefined ? brewState.pressure.toFixed(1) : '0.0';
-                const flow = brewState.flow !== undefined ? brewState.flow.toFixed(1) : '0.0';
-                const pumpPower = brewState.pumpPower !== undefined ? brewState.pumpPower.toFixed(0) : '0';
-                
-                document.getElementById('brew-status').innerHTML = `
-                    <div class="status-grid">
-                        <div class="stat-item">
-                            <div class="stat-label">Active</div>
-                            <div class="stat-value">${brewState.isActive ? 'Yes' : 'No'}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Pressure</div>
-                            <div class="stat-value">${pressure} bar</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Flow</div>
-                            <div class="stat-value">${flow} ml/s</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Pump Power</div>
-                            <div class="stat-value">${pumpPower}%</div>
-                        </div>
-                    </div>
-                `;
+                    const pressure = brewState.pressure !== undefined ? brewState.pressure.toFixed(1) : '0.0';
+                    const flow = brewState.flow !== undefined ? brewState.flow.toFixed(1) : '0.0';
+                    const pumpPower = brewState.pumpPower !== undefined ? brewState.pumpPower.toFixed(0) : '0';
+                    
+                    const brewStatusEl = document.getElementById('brew-status');
+                    if (brewStatusEl) {
+                        brewStatusEl.innerHTML = `
+                            <div class="status-grid">
+                                <div class="stat-item">
+                                    <div class="stat-label">Active</div>
+                                    <div class="stat-value">${brewState.isActive ? 'Yes' : 'No'}</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Pressure</div>
+                                    <div class="stat-value">${pressure} bar</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Flow</div>
+                                    <div class="stat-value">${flow} ml/s</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Pump Power</div>
+                                    <div class="stat-value">${pumpPower}%</div>
+                                </div>
+                            </div>
+                        `;
+                    }
                 
                 // Auto-switch to live tab if brewing starts and option is enabled
                 if (autoSwitchEnabled && brewState.isActive && !lastBrewState) {
@@ -1573,21 +1582,27 @@
                     // Hide phase info when not brewing
                     document.getElementById('phase-info-card').style.display = 'none';
                 }
-            } else {
-                console.warn('No brew state data received');
-                document.getElementById('brew-status').innerHTML = '<p style="opacity: 0.7;">No brew data available. Ensure your MaraX device is connected and publishing to MQTT.</p>';
-                // Hide phase info when no brew state
-                document.getElementById('phase-info-card').style.display = 'none';
-            }
+                } else {
+                    console.warn('No brew state data received');
+                    const brewStatusEl = document.getElementById('brew-status');
+                    if (brewStatusEl) {
+                        brewStatusEl.innerHTML = '<p style="opacity: 0.7;">No brew data available. Ensure your MaraX device is connected and publishing to MQTT.</p>';
+                    }
+                    // Hide phase info when no brew state
+                    const phaseInfoCard = document.getElementById('phase-info-card');
+                    if (phaseInfoCard) {
+                        phaseInfoCard.style.display = 'none';
+                    }
+                }
             } catch (error) {
-                console.error('Error in updateStatus:', error);
+                console.error('Error in updateStatus (status/brew):', error);
                 // Don't freeze the UI if there's an error
             }
 
             try {
                 const machineState = await fetchAPI('machine/state');
-            console.log('Machine state response:', machineState);
-            if (machineState && typeof machineState === 'object' && Object.keys(machineState).length > 0) {
+                console.log('Machine state response:', machineState);
+                if (machineState && typeof machineState === 'object' && Object.keys(machineState).length > 0) {
                 const mode = machineState.mode || 'N/A';
                 const coffeeTemp = machineState.coffee_temp !== undefined ? machineState.coffee_temp : 0;
                 const steamTemp = machineState.steam_temp !== undefined ? machineState.steam_temp : 0;
@@ -1608,16 +1623,28 @@
                         </div>
                     </div>
                 `;
-            } else {
-                document.getElementById('machine-status').innerHTML = '<p style="opacity: 0.7;">No machine data available. Ensure your MaraX device is connected and publishing to MQTT.</p>';
-            }
+                } else {
+                    const machineStatusEl = document.getElementById('machine-status');
+                    if (machineStatusEl) {
+                        machineStatusEl.innerHTML = '<p style="opacity: 0.7;">No machine data available. Ensure your MaraX device is connected and publishing to MQTT.</p>';
+                    }
+                }
             } catch (error) {
                 console.error('Error fetching machine state:', error);
             }
             
-            // Update scale and shot status
-            await updateScaleStatus();
-            await updateShotStatus();
+            // Update scale and shot status (non-blocking, with error handling)
+            try {
+                await updateScaleStatus();
+            } catch (error) {
+                console.error('Error updating scale status:', error);
+            }
+            
+            try {
+                await updateShotStatus();
+            } catch (error) {
+                console.error('Error updating shot status:', error);
+            }
         }
         
         async function updateProfiles(refresh = false) {
@@ -2991,14 +3018,15 @@
             try {
                 const scaleData = await fetchAPI('scale/status');
                 if (scaleData) {
-                    document.getElementById('scale-weight').textContent = 
-                        scaleData.weight !== undefined ? scaleData.weight.toFixed(1) + ' g' : '-';
-                    document.getElementById('scale-target-weight').textContent = 
-                        scaleData.target_weight !== undefined ? scaleData.target_weight.toFixed(1) + ' g' : '-';
-                    document.getElementById('scale-battery').textContent = 
-                        scaleData.battery !== undefined ? scaleData.battery + '%' : '-';
-                    document.getElementById('scale-status').textContent = 
-                        scaleData.connected ? 'Connected' : 'Disconnected';
+                    const weightEl = document.getElementById('scale-weight');
+                    const targetWeightEl = document.getElementById('scale-target-weight');
+                    const batteryEl = document.getElementById('scale-battery');
+                    const statusEl = document.getElementById('scale-status');
+                    
+                    if (weightEl) weightEl.textContent = scaleData.weight !== undefined ? scaleData.weight.toFixed(1) + ' g' : '-';
+                    if (targetWeightEl) targetWeightEl.textContent = scaleData.target_weight !== undefined ? scaleData.target_weight.toFixed(1) + ' g' : '-';
+                    if (batteryEl) batteryEl.textContent = scaleData.battery !== undefined ? scaleData.battery + '%' : '-';
+                    if (statusEl) statusEl.textContent = scaleData.connected ? 'Connected' : 'Disconnected';
                 }
             } catch (error) {
                 console.error('Error fetching scale status:', error);
@@ -3009,12 +3037,13 @@
             try {
                 const shotData = await fetchAPI('shot/data');
                 if (shotData) {
-                    document.getElementById('shot-number').textContent = 
-                        shotData.number !== undefined ? shotData.number : '-';
-                    document.getElementById('shot-time').textContent = 
-                        shotData.time !== undefined ? shotData.time + 's' : '-';
-                    document.getElementById('shot-weight').textContent = 
-                        shotData.weight !== undefined ? shotData.weight.toFixed(1) + ' g' : '-';
+                    const numberEl = document.getElementById('shot-number');
+                    const timeEl = document.getElementById('shot-time');
+                    const weightEl = document.getElementById('shot-weight');
+                    
+                    if (numberEl) numberEl.textContent = shotData.number !== undefined ? shotData.number : '-';
+                    if (timeEl) timeEl.textContent = shotData.time !== undefined ? shotData.time + 's' : '-';
+                    if (weightEl) weightEl.textContent = shotData.weight !== undefined ? shotData.weight.toFixed(1) + ' g' : '-';
                 }
             } catch (error) {
                 console.error('Error fetching shot status:', error);
@@ -3025,23 +3054,24 @@
             try {
                 const shotData = await fetchAPI('shot/data');
                 if (shotData) {
-                    // Update summary
-                    document.getElementById('analytics-total-shots').textContent = 
-                        shotData.number || '-';
+                    // Update summary (check if elements exist)
+                    const totalShotsEl = document.getElementById('analytics-total-shots');
+                    const lastTimeEl = document.getElementById('analytics-last-time');
+                    const lastWeightEl = document.getElementById('analytics-last-weight');
+                    const lastRatioEl = document.getElementById('analytics-last-ratio');
+                    
+                    if (totalShotsEl) totalShotsEl.textContent = shotData.number || '-';
                     
                     if (shotData.data) {
                         const data = shotData.data;
-                        document.getElementById('analytics-last-time').textContent = 
-                            data.total_time ? data.total_time.toFixed(1) + 's' : '-';
-                        document.getElementById('analytics-last-weight').textContent = 
-                            data.total_weight ? data.total_weight.toFixed(1) + 'g' : '-';
-                        document.getElementById('analytics-last-ratio').textContent = 
-                            data.ratio ? data.ratio.toFixed(2) : '-';
+                        if (lastTimeEl) lastTimeEl.textContent = data.total_time ? data.total_time.toFixed(1) + 's' : '-';
+                        if (lastWeightEl) lastWeightEl.textContent = data.total_weight ? data.total_weight.toFixed(1) + 'g' : '-';
+                        if (lastRatioEl) lastRatioEl.textContent = data.ratio ? data.ratio.toFixed(2) : '-';
                     }
                     
                     // Update events list
-                    if (shotData.events && shotData.events.length > 0) {
-                        const eventsList = document.getElementById('events-list');
+                    const eventsList = document.getElementById('events-list');
+                    if (eventsList && shotData.events && shotData.events.length > 0) {
                         eventsList.innerHTML = shotData.events.slice(-10).reverse().map(event => {
                             const eventType = event.event || 'unknown';
                             const time = event.time ? event.time.toFixed(1) + 's' : '';
@@ -3053,6 +3083,8 @@
                                 </div>
                             `;
                         }).join('');
+                    } else if (eventsList) {
+                        eventsList.innerHTML = '<p style="opacity: 0.7;">No events yet</p>';
                     }
                 }
             } catch (error) {
