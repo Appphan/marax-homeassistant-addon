@@ -33,6 +33,18 @@ logger.info(f"Log level set to: {LOG_LEVEL}")
 app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)
 
+# Add request logging
+@app.before_request
+def log_request_info():
+    """Log all incoming requests"""
+    logger.debug(f"🌐 {request.method} {request.path} - From: {request.remote_addr}")
+
+@app.after_request
+def log_response_info(response):
+    """Log all outgoing responses"""
+    logger.debug(f"📤 {request.method} {request.path} - Status: {response.status_code}")
+    return response
+
 # Handle ingress path if present
 INGRESS_PATH = os.getenv('SUPERVISOR_TOKEN', '')
 
