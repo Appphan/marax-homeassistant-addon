@@ -112,6 +112,19 @@ TOPIC_PROFILE_LIST = f"{MQTT_BASE_TOPIC}/brew/profile/list"
 TOPIC_PROFILE_SELECT = f"{MQTT_BASE_TOPIC}/brew/profile/select"
 TOPIC_PROFILE_SET = f"{MQTT_BASE_TOPIC}/brew/profile/set"
 TOPIC_PROFILE_STATUS = f"{MQTT_BASE_TOPIC}/profile/status"
+TOPIC_LEARNING_CONTROL = f"{MQTT_BASE_TOPIC}/learning/control"
+TOPIC_LEARNING_STATUS = f"{MQTT_BASE_TOPIC}/learning/status"
+TOPIC_LEARNING_PROGRESS = f"{MQTT_BASE_TOPIC}/learning/progress"
+TOPIC_LEARNING_KP = f"{MQTT_BASE_TOPIC}/learning/kp"
+TOPIC_LEARNING_KI = f"{MQTT_BASE_TOPIC}/learning/ki"
+TOPIC_LEARNING_KD = f"{MQTT_BASE_TOPIC}/learning/kd"
+TOPIC_LEARNING_OVERSHOOT = f"{MQTT_BASE_TOPIC}/learning/overshoot"
+TOPIC_LEARNING_SETTLING_TIME = f"{MQTT_BASE_TOPIC}/learning/settling_time"
+TOPIC_LEARNING_STEADY_STATE_ERROR = f"{MQTT_BASE_TOPIC}/learning/steady_state_error"
+TOPIC_LEARNING_SHOT_COUNT = f"{MQTT_BASE_TOPIC}/learning/shot_count"
+TOPIC_LEARNING_PID_PARAMETERS = f"{MQTT_BASE_TOPIC}/learning/pid_parameters"
+TOPIC_CONTROL_SYSTEM = f"{MQTT_BASE_TOPIC}/control/system"
+TOPIC_CONTROL_STATUS = f"{MQTT_BASE_TOPIC}/control/status"
 
 # Data storage
 device_data = {
@@ -121,7 +134,18 @@ device_data = {
     'machine_state': {},
     'scale_state': {},
     'current_phase': {},
-    'profiles': []
+    'profiles': [],
+    'learning': {
+        'status': 'disabled',
+        'kp': 0.0,
+        'ki': 0.0,
+        'kd': 0.0,
+        'overshoot': 0.0,
+        'settling_time': 0.0,
+        'steady_state_error': 0.0,
+        'shot_count': 0
+    },
+    'control_system': 'pid'
 }
 
 # MQTT Client
@@ -216,6 +240,66 @@ def on_message(client, userdata, msg):
                 logger.info(f"🔍 ESP32 Debug [{topic}]: {debug_data.get('message', payload)}")
             except:
                 logger.info(f"🔍 ESP32 Debug [{topic}]: {payload}")
+        elif topic == TOPIC_LEARNING_STATUS:
+            device_data['learning']['status'] = payload
+            logger.debug(f"Updated learning status: {payload}")
+        elif topic == TOPIC_LEARNING_KP:
+            try:
+                device_data['learning']['kp'] = float(payload)
+            except:
+                pass
+        elif topic == TOPIC_LEARNING_KI:
+            try:
+                device_data['learning']['ki'] = float(payload)
+            except:
+                pass
+        elif topic == TOPIC_LEARNING_KD:
+            try:
+                device_data['learning']['kd'] = float(payload)
+            except:
+                pass
+        elif topic == TOPIC_LEARNING_OVERSHOOT:
+            try:
+                device_data['learning']['overshoot'] = float(payload)
+            except:
+                pass
+        elif topic == TOPIC_LEARNING_SETTLING_TIME:
+            try:
+                device_data['learning']['settling_time'] = float(payload)
+            except:
+                pass
+        elif topic == TOPIC_LEARNING_STEADY_STATE_ERROR:
+            try:
+                device_data['learning']['steady_state_error'] = float(payload)
+            except:
+                pass
+        elif topic == TOPIC_LEARNING_SHOT_COUNT:
+            try:
+                device_data['learning']['shot_count'] = int(payload)
+            except:
+                pass
+        elif topic == TOPIC_LEARNING_PROGRESS:
+            try:
+                progress_data = json.loads(payload)
+                device_data['learning'].update(progress_data)
+            except:
+                pass
+        elif topic == TOPIC_LEARNING_PID_PARAMETERS:
+            try:
+                pid_data = json.loads(payload)
+                if 'Kp' in pid_data:
+                    device_data['learning']['kp'] = pid_data['Kp']
+                if 'Ki' in pid_data:
+                    device_data['learning']['ki'] = pid_data['Ki']
+                if 'Kd' in pid_data:
+                    device_data['learning']['kd'] = pid_data['Kd']
+                if 'shot_count' in pid_data:
+                    device_data['learning']['shot_count'] = pid_data['shot_count']
+            except:
+                pass
+        elif topic == TOPIC_CONTROL_STATUS:
+            device_data['control_system'] = payload
+            logger.debug(f"Updated control system: {payload}")
         elif topic == TOPIC_PROFILE_LIST:
             try:
                 # Ignore our own "get" request message
@@ -576,6 +660,54 @@ def api_target_weight():
         return jsonify({'success': True, 'weight': weight})
     else:
         return jsonify({'error': 'MQTT not connected'}), 503
+
+@app.route('/api/learning/control', methods=['POST'])
+def api_learning_control():
+    """Control learning system"""
+    data = request.json
+    command = data.get('command')
+    
+    if not command:
+        return jsonify({'error': 'command required'}), 400
+    
+    valid_commands = ['enable', 'disable', 'reset', 'clear', 'status', 'info', 'pid', 'test']
+    if command not in valid_commands:
+        return jsonify({'error': f'Invalid command. Valid: {valid_commands}'}), 400
+    
+    if mqtt_client and mqtt_connected:
+        mqtt_client.publish(TOPIC_LEARNING_CONTROL, command, qos=1)
+        return jsonify({'success': True, 'command': command})
+    else:
+        return jsonify({'error': 'MQTT not connected'}), 503
+
+@app.route('/api/learning/status', methods=['GET'])
+def api_learning_status():
+    """Get learning system status"""
+    return jsonify(device_data.get('learning', {}))
+
+@app.route('/api/control/system', methods=['POST'])
+def api_control_system():
+    """Set control system"""
+    data = request.json
+    system = data.get('system')
+    
+    if not system:
+        return jsonify({'error': 'system required'}), 400
+    
+    valid_systems = ['pid', 'fuzzy', 'adaptive']
+    if system not in valid_systems:
+        return jsonify({'error': f'Invalid system. Valid: {valid_systems}'}), 400
+    
+    if mqtt_client and mqtt_connected:
+        mqtt_client.publish(TOPIC_CONTROL_SYSTEM, system, qos=1)
+        return jsonify({'success': True, 'system': system})
+    else:
+        return jsonify({'error': 'MQTT not connected'}), 503
+
+@app.route('/api/control/status', methods=['GET'])
+def api_control_status():
+    """Get control system status"""
+    return jsonify({'system': device_data.get('control_system', 'pid')})
 
 # Static files
 @app.route('/static/<path:filename>')

@@ -544,6 +544,131 @@
                 <h2>Machine State</h2>
                 <div id="machine-status" class="loading">Loading...</div>
             </div>
+            
+            <!-- PID Control Section -->
+            <div class="status-card">
+                <h2><i class="fas fa-sliders-h"></i> PID Control & Learning System</h2>
+                
+                <!-- Control System Selection -->
+                <div style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 10px;"><i class="fas fa-cog"></i> Control System</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="button" id="btn-control-pid" onclick="setControlSystem('pid')">
+                            <i class="fas fa-chart-line"></i> PID
+                        </button>
+                        <button class="button" id="btn-control-fuzzy" onclick="setControlSystem('fuzzy')">
+                            <i class="fas fa-project-diagram"></i> Fuzzy Logic
+                        </button>
+                        <button class="button" id="btn-control-adaptive" onclick="setControlSystem('adaptive')">
+                            <i class="fas fa-brain"></i> Adaptive
+                        </button>
+                    </div>
+                    <div style="margin-top: 10px; padding: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+                        <strong>Current:</strong> <span id="current-control-system">Loading...</span>
+                    </div>
+                </div>
+                
+                <!-- PID Parameters -->
+                <div style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 10px;"><i class="fas fa-tachometer-alt"></i> PID Parameters</h3>
+                    <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                        <div class="stat-item">
+                            <div class="stat-label">Kp (Proportional)</div>
+                            <div class="stat-value" id="pid-kp">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Ki (Integral)</div>
+                            <div class="stat-value" id="pid-ki">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Kd (Derivative)</div>
+                            <div class="stat-value" id="pid-kd">-</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Learning System Controls -->
+                <div style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 10px;"><i class="fas fa-graduation-cap"></i> Learning System</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
+                        <button class="button" id="btn-learning-enable" onclick="learningControl('enable')">
+                            <i class="fas fa-play"></i> Enable
+                        </button>
+                        <button class="button" id="btn-learning-disable" onclick="learningControl('disable')">
+                            <i class="fas fa-pause"></i> Disable
+                        </button>
+                        <button class="button" onclick="learningControl('reset')">
+                            <i class="fas fa-redo"></i> Reset
+                        </button>
+                        <button class="button danger" onclick="learningControl('clear')">
+                            <i class="fas fa-trash"></i> Clear All
+                        </button>
+                        <button class="button" onclick="learningControl('info')">
+                            <i class="fas fa-info-circle"></i> Refresh Info
+                        </button>
+                    </div>
+                    <div style="padding: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 8px; margin-bottom: 15px;">
+                        <strong>Status:</strong> <span id="learning-status">Loading...</span>
+                    </div>
+                </div>
+                
+                <!-- Learning Metrics -->
+                <div style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 10px;"><i class="fas fa-chart-bar"></i> Learning Metrics</h3>
+                    <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                        <div class="stat-item">
+                            <div class="stat-label">Shot Count</div>
+                            <div class="stat-value" id="learning-shot-count">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Avg Overshoot (bar)</div>
+                            <div class="stat-value" id="learning-overshoot">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Settling Time (s)</div>
+                            <div class="stat-value" id="learning-settling-time">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Steady State Error</div>
+                            <div class="stat-value" id="learning-error">-</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Learning Progress Visualization -->
+                <div>
+                    <h3 style="margin-bottom: 10px;"><i class="fas fa-chart-line"></i> Learning Progress</h3>
+                    <div style="padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+                        <div style="margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span>Overshoot Target: &lt; 0.3 bar</span>
+                                <span id="overshoot-status">-</span>
+                            </div>
+                            <div style="background: rgba(0, 0, 0, 0.3); border-radius: 4px; height: 20px; overflow: hidden;">
+                                <div id="overshoot-progress" style="background: linear-gradient(90deg, #4CAF50, #8BC34A); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span>Settling Time Target: &lt; 2.5s</span>
+                                <span id="settling-status">-</span>
+                            </div>
+                            <div style="background: rgba(0, 0, 0, 0.3); border-radius: 4px; height: 20px; overflow: hidden;">
+                                <div id="settling-progress" style="background: linear-gradient(90deg, #4CAF50, #8BC34A); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span>Steady State Error Target: &lt; 0.1</span>
+                                <span id="error-status">-</span>
+                            </div>
+                            <div style="background: rgba(0, 0, 0, 0.3); border-radius: 4px; height: 20px; overflow: hidden;">
+                                <div id="error-progress" style="background: linear-gradient(90deg, #4CAF50, #8BC34A); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- Profiles Tab -->
@@ -766,6 +891,12 @@
                 initLiveChart();
             } else if (tabName === 'profiles') {
                 // Request profiles when profiles tab is clicked
+            } else if (tabName === 'dashboard') {
+                // Update PID/Learning status when dashboard is shown
+                updateControlSystemStatus();
+                updateLearningStatus();
+                // Request learning info
+                learningControl('info');
                 updateProfiles(true);  // Request fresh profiles on page load
             }
         }
@@ -1077,6 +1208,125 @@
             });
         }
 
+        async function setControlSystem(system) {
+            try {
+                await postAPI('control/system', { system: system });
+                showMessage(`Switched to ${system.toUpperCase()} control system`, 'success');
+                updateControlSystemStatus();
+            } catch (error) {
+                showMessage(`Failed to set control system: ${error.message}`, 'error');
+            }
+        }
+        
+        async function learningControl(command) {
+            try {
+                await postAPI('learning/control', { command: command });
+                showMessage(`Learning system: ${command}`, 'success');
+                setTimeout(updateLearningStatus, 1000);
+            } catch (error) {
+                showMessage(`Failed to control learning: ${error.message}`, 'error');
+            }
+        }
+        
+        async function updateControlSystemStatus() {
+            try {
+                const status = await fetchAPI('control/status');
+                if (status && status.system) {
+                    document.getElementById('current-control-system').textContent = status.system.toUpperCase();
+                    // Update button states
+                    ['pid', 'fuzzy', 'adaptive'].forEach(sys => {
+                        const btn = document.getElementById(`btn-control-${sys}`);
+                        if (btn) {
+                            if (sys === status.system) {
+                                btn.classList.add('active');
+                            } else {
+                                btn.classList.remove('active');
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error updating control system status:', error);
+            }
+        }
+        
+        async function updateLearningStatus() {
+            try {
+                const learning = await fetchAPI('learning/status');
+                if (learning) {
+                    // Update status
+                    const statusEl = document.getElementById('learning-status');
+                    if (statusEl) {
+                        const status = learning.status || 'unknown';
+                        statusEl.textContent = status;
+                        statusEl.style.color = status === 'enabled' ? '#4CAF50' : status === 'disabled' ? '#f44336' : '#ff9800';
+                    }
+                    
+                    // Update PID parameters
+                    if (learning.kp !== undefined) {
+                        document.getElementById('pid-kp').textContent = learning.kp.toFixed(3);
+                    }
+                    if (learning.ki !== undefined) {
+                        document.getElementById('pid-ki').textContent = learning.ki.toFixed(4);
+                    }
+                    if (learning.kd !== undefined) {
+                        document.getElementById('pid-kd').textContent = learning.kd.toFixed(3);
+                    }
+                    
+                    // Update learning metrics
+                    if (learning.shot_count !== undefined) {
+                        document.getElementById('learning-shot-count').textContent = learning.shot_count;
+                    }
+                    if (learning.overshoot !== undefined) {
+                        const overshoot = learning.overshoot || 0;
+                        document.getElementById('learning-overshoot').textContent = overshoot.toFixed(3);
+                        updateProgressBar('overshoot', overshoot, 0.3);
+                    }
+                    if (learning.settling_time !== undefined) {
+                        const settling = learning.settling_time || 0;
+                        document.getElementById('learning-settling-time').textContent = settling.toFixed(2);
+                        updateProgressBar('settling', settling, 2.5);
+                    }
+                    if (learning.steady_state_error !== undefined) {
+                        const error = learning.steady_state_error || 0;
+                        document.getElementById('learning-error').textContent = error.toFixed(4);
+                        updateProgressBar('error', error, 0.1);
+                    }
+                    
+                    // Update button states
+                    const enableBtn = document.getElementById('btn-learning-enable');
+                    const disableBtn = document.getElementById('btn-learning-disable');
+                    if (learning.status === 'enabled') {
+                        if (enableBtn) enableBtn.classList.add('active');
+                        if (disableBtn) disableBtn.classList.remove('active');
+                    } else {
+                        if (enableBtn) enableBtn.classList.remove('active');
+                        if (disableBtn) disableBtn.classList.add('active');
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating learning status:', error);
+            }
+        }
+        
+        function updateProgressBar(type, current, target) {
+            const progressEl = document.getElementById(`${type}-progress`);
+            const statusEl = document.getElementById(`${type}-status`);
+            
+            if (!progressEl || !statusEl) return;
+            
+            const percentage = Math.min((current / target) * 100, 100);
+            const isGood = current <= target;
+            
+            progressEl.style.width = `${percentage}%`;
+            progressEl.style.background = isGood 
+                ? 'linear-gradient(90deg, #4CAF50, #8BC34A)' 
+                : 'linear-gradient(90deg, #f44336, #ff9800)';
+            
+            statusEl.textContent = isGood ? '✓ Good' : '⚠ Needs Improvement';
+            statusEl.style.color = isGood ? '#4CAF50' : '#ff9800';
+        }
+        
         async function updateStatus() {
             try {
                 const status = await fetchAPI('status');
