@@ -1031,10 +1031,10 @@
                     targetFlowEnd: parseFloat(formData.get(`targetFlowEnd_${idx}`)) || 0,
                     minDuration: parseFloat(formData.get(`minDuration_${idx}`)) || 0,
                     maxDuration: parseFloat(formData.get(`maxDuration_${idx}`)) || 0,
-                    useRamp: formData.get(`useRamp_${idx}`) === 'on',
+                    useRamp: formData.get(`useRamp_${idx}`) === 'on' || (phase && phase.useRamp),
                     rampDuration: parseFloat(formData.get(`rampDuration_${idx}`)) || 0,
-                    allowManualStop: formData.get(`allowManualStop_${idx}`) !== 'off',
-                    publishEvents: formData.get(`publishEvents_${idx}`) !== 'off',
+                    allowManualStop: formData.get(`allowManualStop_${idx}`) === 'on',
+                    publishEvents: formData.get(`publishEvents_${idx}`) === 'on',
                     criteriaCount: breakoutCriteria.length,
                     criteriaLogic: parseInt(formData.get(`criteriaLogic_${idx}`)) || 8,
                     breakoutCriteria: breakoutCriteria
