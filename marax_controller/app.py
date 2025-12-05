@@ -189,6 +189,13 @@ def on_message(client, userdata, msg):
         elif topic == TOPIC_BREW_PHASE_STATUS:
             device_data['current_phase'] = json.loads(payload)
             logger.debug(f"Updated current phase: {device_data['current_phase']}")
+        elif topic == "marax/debug/profile" or topic == "marax/debug/mqtt":
+            # Log debug messages for troubleshooting
+            try:
+                debug_data = json.loads(payload)
+                logger.info(f"ESP32 Debug [{topic}]: {debug_data.get('message', payload)}")
+            except:
+                logger.info(f"ESP32 Debug [{topic}]: {payload}")
         elif topic == TOPIC_PROFILE_LIST:
             try:
                 data = json.loads(payload)
