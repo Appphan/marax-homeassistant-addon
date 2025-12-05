@@ -48,13 +48,33 @@ If you see error code 5, it means the MQTT broker is refusing the connection. Th
 }
 ```
 
-### Step 3: Alternative Broker Hostnames
+### Step 3: Using IP Address (Recommended for External Brokers)
+
+**If your MQTT broker is on a different machine or IP address:**
+
+Use the IP address directly in the configuration:
+```json
+{
+  "mqtt_broker": "192.168.178.2",
+  "mqtt_port": 1883,
+  "mqtt_user": "mqtt-user",
+  "mqtt_password": "smart123",
+  "mqtt_base_topic": "marax",
+  "update_interval": 1,
+  "log_level": "info"
+}
+```
+
+**Note:** Using an IP address is often more reliable than hostnames.
+
+### Step 4: Alternative Broker Hostnames
 
 If `core-mosquitto` doesn't work, try these in order:
 
-1. `supervisor` - Most reliable in Home Assistant
-2. `localhost` - If broker is on same container
-3. Your Home Assistant IP address (e.g., `192.168.1.100`)
+1. **IP Address** (e.g., `192.168.178.2`) - Most reliable
+2. `supervisor` - Alternative hostname in Home Assistant
+3. `localhost` - If broker is on same container
+4. Your Home Assistant IP address (e.g., `192.168.1.100`)
 
 ### Step 4: Verify Mosquitto is Running
 

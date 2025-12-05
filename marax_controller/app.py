@@ -29,18 +29,21 @@ CORS(app)
 INGRESS_PATH = os.getenv('SUPERVISOR_TOKEN', '')
 
 # Configuration from Home Assistant options
-# Note: In Home Assistant, the MQTT broker is typically accessible via:
+# Note: You can use:
+# - IP address (e.g., '192.168.178.2') - Most reliable
 # - 'core-mosquitto' (if Mosquitto add-on is installed)
 # - 'supervisor' (alternative hostname)
 # - 'localhost' (if on same container)
 MQTT_BROKER = os.getenv('MQTT_BROKER', 'core-mosquitto')
 
-# For Home Assistant add-ons, MQTT broker is accessible via supervisor network
-# Try multiple hostnames in order of preference
-MQTT_BROKER_OPTIONS = ['core-mosquitto', 'supervisor', 'localhost', '127.0.0.1']
+# If broker is set to default and it's not an IP, try to resolve it
+# IP addresses don't need resolution
+import re
+is_ip_address = re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', MQTT_BROKER)
 
-# If default broker doesn't work, try alternatives
-if MQTT_BROKER == 'core-mosquitto':
+if not is_ip_address and MQTT_BROKER == 'core-mosquitto':
+    # For hostnames, try multiple options in order of preference
+    MQTT_BROKER_OPTIONS = ['core-mosquitto', 'supervisor', 'localhost', '127.0.0.1']
     import socket
     resolved = False
     for broker_option in MQTT_BROKER_OPTIONS:
@@ -56,6 +59,8 @@ if MQTT_BROKER == 'core-mosquitto':
         # Use supervisor as default (most reliable in Home Assistant)
         MQTT_BROKER = 'supervisor'
         logger.warning(f"Could not resolve hostnames, using {MQTT_BROKER} as fallback")
+else:
+    logger.info(f"Using MQTT broker: {MQTT_BROKER} (IP address or custom hostname)")
 
 MQTT_PORT = int(os.getenv('MQTT_PORT', 1883))
 MQTT_USER = os.getenv('MQTT_USER', '')
