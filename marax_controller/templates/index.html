@@ -1348,33 +1348,41 @@
                     }
                     
                     // Update PID parameters
-                    if (learning.kp !== undefined) {
-                        document.getElementById('pid-kp').textContent = learning.kp.toFixed(3);
+                    const kpEl = document.getElementById('pid-kp');
+                    const kiEl = document.getElementById('pid-ki');
+                    const kdEl = document.getElementById('pid-kd');
+                    if (learning.kp !== undefined && kpEl) {
+                        kpEl.textContent = learning.kp.toFixed(3);
                     }
-                    if (learning.ki !== undefined) {
-                        document.getElementById('pid-ki').textContent = learning.ki.toFixed(4);
+                    if (learning.ki !== undefined && kiEl) {
+                        kiEl.textContent = learning.ki.toFixed(4);
                     }
-                    if (learning.kd !== undefined) {
-                        document.getElementById('pid-kd').textContent = learning.kd.toFixed(3);
+                    if (learning.kd !== undefined && kdEl) {
+                        kdEl.textContent = learning.kd.toFixed(3);
                     }
                     
                     // Update learning metrics
-                    if (learning.shot_count !== undefined) {
-                        document.getElementById('learning-shot-count').textContent = learning.shot_count;
+                    const shotCountEl = document.getElementById('learning-shot-count');
+                    const overshootEl = document.getElementById('learning-overshoot');
+                    const settlingEl = document.getElementById('learning-settling-time');
+                    const errorEl = document.getElementById('learning-error');
+                    
+                    if (learning.shot_count !== undefined && shotCountEl) {
+                        shotCountEl.textContent = learning.shot_count;
                     }
-                    if (learning.overshoot !== undefined) {
+                    if (learning.overshoot !== undefined && overshootEl) {
                         const overshoot = learning.overshoot || 0;
-                        document.getElementById('learning-overshoot').textContent = overshoot.toFixed(3);
+                        overshootEl.textContent = overshoot.toFixed(3);
                         updateProgressBar('overshoot', overshoot, 0.3);
                     }
-                    if (learning.settling_time !== undefined) {
+                    if (learning.settling_time !== undefined && settlingEl) {
                         const settling = learning.settling_time || 0;
-                        document.getElementById('learning-settling-time').textContent = settling.toFixed(2);
+                        settlingEl.textContent = settling.toFixed(2);
                         updateProgressBar('settling', settling, 2.5);
                     }
-                    if (learning.steady_state_error !== undefined) {
+                    if (learning.steady_state_error !== undefined && errorEl) {
                         const error = learning.steady_state_error || 0;
-                        document.getElementById('learning-error').textContent = error.toFixed(4);
+                        errorEl.textContent = error.toFixed(4);
                         updateProgressBar('error', error, 0.1);
                     }
                     
@@ -1417,12 +1425,12 @@
                 const status = await fetchAPI('status');
                 console.log('Status response:', status);
                 if (status) {
-                const mqttStatus = status.mqtt_connected ? '✅ Connected' : '❌ Disconnected';
-                const mqttInfo = status.mqtt_broker ? `(${status.mqtt_broker}:${status.mqtt_port})` : '';
-                const deviceStatus = status.status || (status.info ? 'Online' : 'Unknown');
-                const firmware = status.info?.version || 'N/A';
-                const uptime = status.info?.uptime ? Math.floor(status.info.uptime / 3600) + 'h' : 'N/A';
-                
+                    const mqttStatus = status.mqtt_connected ? '✅ Connected' : '❌ Disconnected';
+                    const mqttInfo = status.mqtt_broker ? `(${status.mqtt_broker}:${status.mqtt_port})` : '';
+                    const deviceStatus = status.status || (status.info ? 'Online' : 'Unknown');
+                    const firmware = status.info?.version || 'N/A';
+                    const uptime = status.info?.uptime ? Math.floor(status.info.uptime / 3600) + 'h' : 'N/A';
+                    
                     const deviceStatusEl = document.getElementById('device-status');
                     if (deviceStatusEl) {
                         deviceStatusEl.innerHTML = `
@@ -1455,15 +1463,15 @@
                     }
                 }
 
-            const brewState = await fetchAPI('brew/state');
-            console.log('Brew state response:', brewState);
-            if (brewState && typeof brewState === 'object' && Object.keys(brewState).length > 0) {
-                console.log('Brew state details:', {
-                    isActive: brewState.isActive,
-                    pressure: brewState.pressure,
-                    flow: brewState.flow,
-                    weight: brewState.weight
-                });
+                const brewState = await fetchAPI('brew/state');
+                console.log('Brew state response:', brewState);
+                if (brewState && typeof brewState === 'object' && Object.keys(brewState).length > 0) {
+                    console.log('Brew state details:', {
+                        isActive: brewState.isActive,
+                        pressure: brewState.pressure,
+                        flow: brewState.flow,
+                        weight: brewState.weight
+                    });
                     const pressure = brewState.pressure !== undefined ? brewState.pressure.toFixed(1) : '0.0';
                     const flow = brewState.flow !== undefined ? brewState.flow.toFixed(1) : '0.0';
                     const pumpPower = brewState.pumpPower !== undefined ? brewState.pumpPower.toFixed(0) : '0';
@@ -1492,24 +1500,24 @@
                         `;
                     }
                 
-                // Auto-switch to live tab if brewing starts and option is enabled
-                if (autoSwitchEnabled && brewState.isActive && !lastBrewState) {
-                    console.log('Brew started - auto-switching to Live Brew tab');
-                    showTab('live');
-                    // Trigger click event to properly activate tab
-                    document.querySelectorAll('.tab').forEach(t => {
-                        if (t.textContent.includes('Live Brew')) {
-                            t.click();
-                        }
-                    });
-                }
-                lastBrewState = brewState.isActive;
+                    // Auto-switch to live tab if brewing starts and option is enabled
+                    if (autoSwitchEnabled && brewState.isActive && !lastBrewState) {
+                        console.log('Brew started - auto-switching to Live Brew tab');
+                        showTab('live');
+                        // Trigger click event to properly activate tab
+                        document.querySelectorAll('.tab').forEach(t => {
+                            if (t.textContent.includes('Live Brew')) {
+                                t.click();
+                            }
+                        });
+                    }
+                    lastBrewState = brewState.isActive;
                 
-                // Update live chart if brewing
-                if (brewState.isActive) {
-                    console.log('Brew is active, updating chart...');
-                    const currentTime = Date.now() / 1000;
-                    updateLiveChart(brewState, currentTime);
+                    // Update live chart if brewing
+                    if (brewState.isActive) {
+                        console.log('Brew is active, updating chart...');
+                        const currentTime = Date.now() / 1000;
+                        updateLiveChart(brewState, currentTime);
                     
                     // Use ESP32's brew time if available, otherwise calculate from frontend start time
                     let brewTime = 0;
@@ -1540,33 +1548,42 @@
                         brewTime = brewStartTime !== null ? (currentTime - brewStartTime) : 0;
                     }
                     
-                    document.getElementById('live-brew-status').innerHTML = `
-                        <div class="status-grid">
-                            <div class="stat-item">
-                                <div class="stat-label">Brew Time</div>
-                                <div class="stat-value">${brewTime.toFixed(1)}s</div>
+                    const liveBrewStatusEl = document.getElementById('live-brew-status');
+                    if (liveBrewStatusEl) {
+                        liveBrewStatusEl.innerHTML = `
+                            <div class="status-grid">
+                                <div class="stat-item">
+                                    <div class="stat-label">Brew Time</div>
+                                    <div class="stat-value">${brewTime.toFixed(1)}s</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Pressure</div>
+                                    <div class="stat-value">${pressure} bar</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Flow</div>
+                                    <div class="stat-value">${flow} ml/s</div>
+                                </div>
                             </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Pressure</div>
-                                <div class="stat-value">${pressure} bar</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-label">Flow</div>
-                                <div class="stat-value">${flow} ml/s</div>
-                            </div>
-                        </div>
-                    `;
+                        `;
+                    }
                     
                     // Update phase information (non-blocking)
                     fetchAPI('phase').then(phaseData => {
                         if (phaseData && phaseData.phase) {
                             updatePhaseInfo(phaseData);
                         } else {
-                            document.getElementById('phase-info-card').style.display = 'none';
+                            const phaseInfoCard = document.getElementById('phase-info-card');
+                            if (phaseInfoCard) {
+                                phaseInfoCard.style.display = 'none';
+                            }
                         }
                     }).catch(e => {
                         console.error('Error fetching phase data:', e);
-                        document.getElementById('phase-info-card').style.display = 'none';
+                        const phaseInfoCard = document.getElementById('phase-info-card');
+                        if (phaseInfoCard) {
+                            phaseInfoCard.style.display = 'none';
+                        }
                     });
                 } else {
                     // If brew just ended, update chart one more time to show final state
@@ -1574,13 +1591,19 @@
                         const currentTime = Date.now() / 1000;
                         updateLiveChart(brewState, currentTime);
                     }
-                    document.getElementById('live-brew-status').innerHTML = `
-                        <p>No active brew</p>
-                        ${brewEndTime !== null && brewStartTime !== null ? 
-                            `<p style="opacity: 0.7; margin-top: 10px;">Last brew duration: ${(brewEndTime - brewStartTime).toFixed(1)}s</p>` : ''}
-                    `;
+                    const liveBrewStatusEl = document.getElementById('live-brew-status');
+                    if (liveBrewStatusEl) {
+                        liveBrewStatusEl.innerHTML = `
+                            <p>No active brew</p>
+                            ${brewEndTime !== null && brewStartTime !== null ? 
+                                `<p style="opacity: 0.7; margin-top: 10px;">Last brew duration: ${(brewEndTime - brewStartTime).toFixed(1)}s</p>` : ''}
+                        `;
+                    }
                     // Hide phase info when not brewing
-                    document.getElementById('phase-info-card').style.display = 'none';
+                    const phaseInfoCard = document.getElementById('phase-info-card');
+                    if (phaseInfoCard) {
+                        phaseInfoCard.style.display = 'none';
+                    }
                 }
                 } else {
                     console.warn('No brew state data received');
@@ -1603,26 +1626,29 @@
                 const machineState = await fetchAPI('machine/state');
                 console.log('Machine state response:', machineState);
                 if (machineState && typeof machineState === 'object' && Object.keys(machineState).length > 0) {
-                const mode = machineState.mode || 'N/A';
-                const coffeeTemp = machineState.coffee_temp !== undefined ? machineState.coffee_temp : 0;
-                const steamTemp = machineState.steam_temp !== undefined ? machineState.steam_temp : 0;
-                
-                document.getElementById('machine-status').innerHTML = `
-                    <div class="status-grid">
-                        <div class="stat-item">
-                            <div class="stat-label">Mode</div>
-                            <div class="stat-value">${mode}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Coffee Temp</div>
-                            <div class="stat-value">${coffeeTemp}°C</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Steam Temp</div>
-                            <div class="stat-value">${steamTemp}°C</div>
-                        </div>
-                    </div>
-                `;
+                    const mode = machineState.mode || 'N/A';
+                    const coffeeTemp = machineState.coffee_temp !== undefined ? machineState.coffee_temp : 0;
+                    const steamTemp = machineState.steam_temp !== undefined ? machineState.steam_temp : 0;
+                    
+                    const machineStatusEl = document.getElementById('machine-status');
+                    if (machineStatusEl) {
+                        machineStatusEl.innerHTML = `
+                            <div class="status-grid">
+                                <div class="stat-item">
+                                    <div class="stat-label">Mode</div>
+                                    <div class="stat-value">${mode}</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Coffee Temp</div>
+                                    <div class="stat-value">${coffeeTemp}°C</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Steam Temp</div>
+                                    <div class="stat-value">${steamTemp}°C</div>
+                                </div>
+                            </div>
+                        `;
+                    }
                 } else {
                     const machineStatusEl = document.getElementById('machine-status');
                     if (machineStatusEl) {
@@ -3097,30 +3123,7 @@
             showMessage('Analytics refreshed', 'info');
         }
         
-        // Analytics update is already defined above
-            // For now, show placeholder
-            document.getElementById('analytics-content').innerHTML = `
-                <div class="analytics-grid">
-                    <div class="analytics-card">
-                        <div class="analytics-label">Total Shots</div>
-                        <div class="analytics-value">-</div>
-                    </div>
-                    <div class="analytics-card">
-                        <div class="analytics-label">Avg Brew Time</div>
-                        <div class="analytics-value">-</div>
-                    </div>
-                    <div class="analytics-card">
-                        <div class="analytics-label">Avg Yield</div>
-                        <div class="analytics-value">-</div>
-                    </div>
-                    <div class="analytics-card">
-                        <div class="analytics-label">Success Rate</div>
-                        <div class="analytics-value">-</div>
-                    </div>
-                </div>
-                <p style="margin-top: 20px; opacity: 0.7;">Analytics data will be available after brewing shots.</p>
-            `;
-        }
+        // Analytics update function is defined above
 
         // Start updating every 2 seconds
         console.log('MaraX Controller script loaded and starting...');
@@ -3169,8 +3172,8 @@
                         updateControlSystemStatus().catch(err => {
                             console.error('Error in updateControlSystemStatus:', err);
                         });
-                        updateLearningStatus().catch(err => {
-                            console.error('Error in updateLearningStatus:', err);
+                        updatePIDLearningStatus().catch(err => {
+                            console.error('Error in updatePIDLearningStatus:', err);
                         });
                     }
                 }, 2000);
