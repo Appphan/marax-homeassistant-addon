@@ -35,6 +35,11 @@ INGRESS_PATH = os.getenv('SUPERVISOR_TOKEN', '')
 # - 'supervisor' (alternative hostname)
 # - 'localhost' (if on same container)
 MQTT_BROKER = os.getenv('MQTT_BROKER', 'core-mosquitto')
+logger.info(f"Loading MQTT configuration from environment:")
+logger.info(f"  MQTT_BROKER={MQTT_BROKER}")
+logger.info(f"  MQTT_PORT={os.getenv('MQTT_PORT', '1883')}")
+logger.info(f"  MQTT_USER={'***' if os.getenv('MQTT_USER') else '(empty)'}")
+logger.info(f"  MQTT_PASSWORD={'***' if os.getenv('MQTT_PASSWORD') else '(empty)'}")
 
 # If broker is set to default and it's not an IP, try to resolve it
 # IP addresses don't need resolution
@@ -62,11 +67,18 @@ if not is_ip_address and MQTT_BROKER == 'core-mosquitto':
 else:
     logger.info(f"Using MQTT broker: {MQTT_BROKER} (IP address or custom hostname)")
 
-MQTT_PORT = int(os.getenv('MQTT_PORT', 1883))
+MQTT_PORT = int(os.getenv('MQTT_PORT', '1883'))
 MQTT_USER = os.getenv('MQTT_USER', '')
 MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', '')
 MQTT_BASE_TOPIC = os.getenv('MQTT_BASE_TOPIC', 'marax')
-UPDATE_INTERVAL = int(os.getenv('UPDATE_INTERVAL', 1))
+UPDATE_INTERVAL = int(os.getenv('UPDATE_INTERVAL', '1'))
+
+# Log configuration (after loading)
+logger.info(f"MQTT Configuration loaded:")
+logger.info(f"  Broker: {MQTT_BROKER}:{MQTT_PORT}")
+logger.info(f"  User: {MQTT_USER if MQTT_USER else '(none)'}")
+logger.info(f"  Password: {'***' if MQTT_PASSWORD else '(none)'}")
+logger.info(f"  Base Topic: {MQTT_BASE_TOPIC}")
 
 # MQTT Topics
 TOPIC_DEVICE_STATUS = f"{MQTT_BASE_TOPIC}/device/status"
