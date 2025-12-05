@@ -184,7 +184,6 @@ def on_message(client, userdata, msg):
         payload_preview = payload[:100] + "..." if len(payload) > 100 else payload
         logger.debug(f"📨 MQTT message received: {topic} = {payload_preview}")
         
-        try:
         if topic == TOPIC_DEVICE_STATUS:
             device_data['status'] = payload
             logger.debug(f"Updated device status: {payload}")
