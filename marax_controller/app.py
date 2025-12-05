@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)
 
+# Handle ingress path if present
+INGRESS_PATH = os.getenv('SUPERVISOR_TOKEN', '')
+
 # Configuration from Home Assistant options
 MQTT_BROKER = os.getenv('MQTT_BROKER', 'core-mosquitto')
 MQTT_PORT = int(os.getenv('MQTT_PORT', 1883))
@@ -149,7 +152,23 @@ def request_profile_list():
 @app.route('/')
 def index():
     """Main page"""
-    return render_template('index.html')
+    try:
+        return render_template('index.html')
+    except Exception as e:
+        logger.error(f"Error rendering template: {e}")
+        # Fallback HTML if template doesn't exist
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head><title>MaraX Controller</title></head>
+        <body>
+            <h1>MaraX Controller</h1>
+            <p>Web interface is loading...</p>
+            <p>API Status: <a href="/api/status">/api/status</a></p>
+            <p>Health: <a href="/health">/health</a></p>
+        </body>
+        </html>
+        """
 
 @app.route('/health')
 def health():

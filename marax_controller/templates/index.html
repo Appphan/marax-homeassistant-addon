@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaraX Controller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .status-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        .button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .button:active {
+            transform: scale(0.95);
+        }
+        .error {
+            background: rgba(255, 0, 0, 0.2);
+            border: 2px solid #ff4444;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .success {
+            background: rgba(0, 255, 0, 0.2);
+            border: 2px solid #44ff44;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>☕ MaraX Controller</h1>
+        
+        <div id="error-message" style="display: none;" class="error"></div>
+        <div id="success-message" style="display: none;" class="success"></div>
+        
+        <div class="status-card">
+            <h2>Device Status</h2>
+            <div id="device-status" class="loading">Loading...</div>
+        </div>
+        
+        <div class="status-card">
+            <h2>Brew State</h2>
+            <div id="brew-status" class="loading">Loading...</div>
+            <div style="margin-top: 15px;">
+                <button class="button" onclick="stopBrew()">Stop Brew</button>
+            </div>
+        </div>
+        
+        <div class="status-card">
+            <h2>Machine State</h2>
+            <div id="machine-status" class="loading">Loading...</div>
+        </div>
+        
+        <div class="status-card">
+            <h2>Profiles</h2>
+            <div id="profiles" class="loading">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        let updateInterval;
+
+        async function fetchAPI(endpoint) {
+            try {
+                const response = await fetch(`/api/${endpoint}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error(`Error fetching ${endpoint}:`, error);
+                return null;
+            }
+        }
+
+        function showMessage(message, type) {
+            const el = document.getElementById(type === 'error' ? 'error-message' : 'success-message');
+            el.textContent = message;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 5000);
+        }
+
+        async function updateStatus() {
+            const status = await fetchAPI('status');
+            if (status) {
+                document.getElementById('device-status').innerHTML = `
+                    <div class="status-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">Status</div>
+                            <div class="stat-value">${status.status || 'Unknown'}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Firmware</div>
+                            <div class="stat-value">${status.info?.version || 'N/A'}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Uptime</div>
+                            <div class="stat-value">${status.info ? Math.floor(status.info.uptime / 3600) + 'h' : 'N/A'}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const brewState = await fetchAPI('brew/state');
+            if (brewState) {
+                document.getElementById('brew-status').innerHTML = `
+                    <div class="status-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">Active</div>
+                            <div class="stat-value">${brewState.isActive ? 'Yes' : 'No'}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Pressure</div>
+                            <div class="stat-value">${brewState.pressure?.toFixed(1) || '0.0'} bar</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Flow</div>
+                            <div class="stat-value">${brewState.flow?.toFixed(1) || '0.0'} ml/s</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Pump Power</div>
+                            <div class="stat-value">${brewState.pumpPower?.toFixed(0) || '0'}%</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const machineState = await fetchAPI('machine/state');
+            if (machineState) {
+                document.getElementById('machine-status').innerHTML = `
+                    <div class="status-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">Mode</div>
+                            <div class="stat-value">${machineState.mode || 'N/A'}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Coffee Temp</div>
+                            <div class="stat-value">${machineState.coffee_temp || '0'}°C</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Steam Temp</div>
+                            <div class="stat-value">${machineState.steam_temp || '0'}°C</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const profiles = await fetchAPI('profiles');
+            if (profiles && Array.isArray(profiles)) {
+                if (profiles.length > 0) {
+                    document.getElementById('profiles').innerHTML = `
+                        <div class="status-grid">
+                            ${profiles.map(p => `
+                                <div class="stat-item">
+                                    <div class="stat-label">${p.name || 'Unknown'}</div>
+                                    <div class="stat-value">ID: ${p.id}</div>
+                                    <button class="button" onclick="selectProfile(${p.id})" style="margin-top: 10px;">Select</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('profiles').innerHTML = '<p>No profiles available</p>';
+                }
+            }
+        }
+
+        async function stopBrew() {
+            const response = await fetch('/api/brew/stop', { method: 'POST' });
+            if (response.ok) {
+                showMessage('Brew stopped', 'success');
+            } else {
+                showMessage('Failed to stop brew', 'error');
+            }
+        }
+
+        async function selectProfile(id) {
+            const response = await fetch('/api/profiles/select', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profile_id: id })
+            });
+            if (response.ok) {
+                showMessage('Profile selected', 'success');
+            } else {
+                showMessage('Failed to select profile', 'error');
+            }
+        }
+
+        // Start updating every 2 seconds
+        updateStatus();
+        updateInterval = setInterval(updateStatus, 2000);
+
+        // Health check
+        fetch('/health').then(r => r.json()).then(data => {
+            console.log('Health check:', data);
+        });
+    </script>
+</body>
+</html>
+
