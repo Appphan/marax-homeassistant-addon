@@ -1,6 +1,6 @@
 {
   "name": "MaraX Controller",
-  "version": "2.4.16",
+  "version": "2.4.17",
   "slug": "marax_controller",
   "description": "Web-based interface for managing MaraX ESP32 Controller profiles, monitoring brew stats, and controlling your espresso machine",
   "url": "https://github.com/Appphan/maraxcontroller_V2",
