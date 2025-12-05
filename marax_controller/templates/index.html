@@ -894,8 +894,19 @@
                     const currentTime = Date.now() / 1000;
                     updateLiveChart(brewState, currentTime);
                     
-                    // Calculate brew time relative to start
-                    const brewTime = brewStartTime !== null ? (currentTime - brewStartTime) : 0;
+                    // Use ESP32's brew time if available, otherwise calculate from frontend start time
+                    let brewTime = 0;
+                    if (brewState.brewTime !== undefined && brewState.brewTime !== null) {
+                        // Use ESP32's brew time (most accurate)
+                        brewTime = brewState.brewTime;
+                        // Sync frontend start time to match ESP32's time
+                        if (brewStartTime === null) {
+                            brewStartTime = currentTime - brewTime;
+                        }
+                    } else {
+                        // Fallback to frontend calculation
+                        brewTime = brewStartTime !== null ? (currentTime - brewStartTime) : 0;
+                    }
                     
                     document.getElementById('live-brew-status').innerHTML = `
                         <div class="status-grid">
