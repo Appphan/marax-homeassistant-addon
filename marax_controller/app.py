@@ -284,13 +284,21 @@ def request_profile_list():
         logger.info("Requested profile list")
 
 # Flask Routes
+@app.before_request
+def log_request():
+    """Log all incoming requests"""
+    logger.debug(f"Request: {request.method} {request.path}")
+
 @app.route('/')
 def index():
     """Main page"""
     try:
+        logger.info("Serving index page")
         return render_template('index.html')
     except Exception as e:
         logger.error(f"Error rendering template: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         # Fallback HTML if template doesn't exist
         return """
         <!DOCTYPE html>
@@ -317,20 +325,22 @@ def health():
 @app.route('/api/status')
 def api_status():
     """Get device status"""
+    logger.info("API /status endpoint called")
     status = device_data.copy()
     status['mqtt_connected'] = mqtt_connected
     status['mqtt_broker'] = MQTT_BROKER
     status['mqtt_port'] = MQTT_PORT
     status['last_update'] = datetime.now().isoformat()
     # Log what we're returning for debugging
-    logger.debug(f"API /status called, returning: {status}")
+    logger.info(f"API /status returning data: status={status.get('status')}, has_info={bool(status.get('info'))}, has_brew_state={bool(status.get('brew_state'))}, has_machine_state={bool(status.get('machine_state'))}")
     return jsonify(status)
 
 @app.route('/api/brew/state')
 def api_brew_state():
     """Get brew state"""
+    logger.info("API /brew/state endpoint called")
     brew_state = device_data.get('brew_state', {})
-    logger.debug(f"API /brew/state called, returning: {brew_state}")
+    logger.info(f"API /brew/state returning: {brew_state}")
     if not brew_state:
         logger.warning("No brew state data available")
     return jsonify(brew_state)
@@ -338,8 +348,9 @@ def api_brew_state():
 @app.route('/api/machine/state')
 def api_machine_state():
     """Get machine state"""
+    logger.info("API /machine/state endpoint called")
     machine_state = device_data.get('machine_state', {})
-    logger.debug(f"API /machine/state called, returning: {machine_state}")
+    logger.info(f"API /machine/state returning: {machine_state}")
     if not machine_state:
         logger.warning("No machine state data available")
     return jsonify(machine_state)
