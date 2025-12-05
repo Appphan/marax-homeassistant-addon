@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MaraX Controller</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -331,7 +332,13 @@
         <!-- Live Brew Tab -->
         <div id="live" class="tab-content">
             <div class="status-card">
-                <h2>Live Brew Monitoring</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0;"><i class="fas fa-chart-line"></i> Live Brew Monitoring</h2>
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="auto-switch-checkbox" style="width: 20px; height: 20px; cursor: pointer;">
+                        <span><i class="fas fa-magic"></i> Auto-switch when brewing starts</span>
+                    </label>
+                </div>
                 <div id="live-brew-status" style="margin-bottom: 20px;">
                     <p>No active brew</p>
                 </div>
@@ -420,6 +427,8 @@
         let currentProfiles = [];
         let activeProfileId = null;
         let profileCharts = {};
+        let autoSwitchEnabled = localStorage.getItem('autoSwitchEnabled') === 'true';
+        let lastBrewState = false;
         
         // Detect ingress base path
         const getBasePath = () => {
@@ -484,7 +493,16 @@
         function showTab(tabName) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // If called programmatically, find the tab button
+                document.querySelectorAll('.tab').forEach(t => {
+                    if (t.textContent.includes(tabName === 'live' ? 'Live Brew' : tabName === 'profiles' ? 'Profiles' : tabName === 'dashboard' ? 'Dashboard' : tabName === 'analytics' ? 'Analytics' : '')) {
+                        t.classList.add('active');
+                    }
+                });
+            }
             document.getElementById(tabName).classList.add('active');
             
             if (tabName === 'live') {
@@ -492,6 +510,15 @@
             } else if (tabName === 'profiles') {
                 // Request profiles when profiles tab is clicked
                 updateProfiles(true);  // Request fresh profiles on page load
+            }
+        }
+        
+        function updateCriteriaIcon(select, phaseIndex, critIndex) {
+            const type = parseInt(select.value);
+            const criteriaItem = select.closest('.criteria-item');
+            const header = criteriaItem.querySelector('strong');
+            if (header) {
+                header.innerHTML = `${getCriteriaIcon(type)} Criteria ${critIndex + 1}`;
             }
         }
         
@@ -848,6 +875,19 @@
                     </div>
                 `;
                 
+                // Auto-switch to live tab if brewing starts and option is enabled
+                if (autoSwitchEnabled && brewState.isActive && !lastBrewState) {
+                    console.log('Brew started - auto-switching to Live Brew tab');
+                    showTab('live');
+                    // Trigger click event to properly activate tab
+                    document.querySelectorAll('.tab').forEach(t => {
+                        if (t.textContent.includes('Live Brew')) {
+                            t.click();
+                        }
+                    });
+                }
+                lastBrewState = brewState.isActive;
+                
                 // Update live chart if brewing
                 if (brewState.isActive) {
                     console.log('Brew is active, updating chart...');
@@ -970,22 +1010,30 @@
             if (profiles && Array.isArray(profiles) && profiles.length > 0) {
                 document.getElementById('profiles-list').innerHTML = `
                     <div class="profile-list">
-                        ${profiles.map(p => `
-                            <div class="profile-card ${p.id === activeProfileId ? 'active' : ''}">
-                                <h3>${p.name || 'Unnamed Profile'}</h3>
-                                <p style="opacity: 0.8; margin-bottom: 10px;">ID: ${p.id}</p>
-                                ${p.technique ? `<p style="opacity: 0.7; font-size: 0.9em;">Technique: ${p.technique}</p>` : ''}
-                                ${p.phaseCount ? `<p style="opacity: 0.7; font-size: 0.9em;">Phases: ${p.phaseCount}</p>` : ''}
+                        ${profiles.map(p => {
+                            const techniqueIcon = getTechniqueIcon(p.technique);
+                            return `
+                            <div class="profile-card ${p.id === activeProfileId ? 'active' : ''}" style="border-left: ${p.id === activeProfileId ? '5px solid #44ff44' : '5px solid transparent'};">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                                    <div>
+                                        <h3><i class="fas fa-coffee"></i> ${p.name || 'Unnamed Profile'}</h3>
+                                        <p style="opacity: 0.8; margin-bottom: 5px;"><i class="fas fa-hashtag"></i> ID: ${p.id}</p>
+                                        ${p.technique ? `<p style="opacity: 0.7; font-size: 0.9em;">${techniqueIcon} ${p.technique}</p>` : ''}
+                                        ${p.phaseCount ? `<p style="opacity: 0.7; font-size: 0.9em;"><i class="fas fa-layer-group"></i> ${p.phaseCount} phases</p>` : ''}
+                                    </div>
+                                    ${p.id === activeProfileId ? '<span style="background: #44ff44; color: #000; padding: 5px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold;"><i class="fas fa-check-circle"></i> Active</span>' : ''}
+                                </div>
                                 <div class="chart-container" style="height: 200px; margin: 15px 0;">
                                     <canvas id="profile-chart-${p.id}"></canvas>
                                 </div>
                                 <div class="profile-actions">
-                                    <button class="button" onclick="selectProfile(${p.id})">Select</button>
-                                    <button class="button" onclick="viewProfile(${p.id})">View</button>
-                                    <button class="button" onclick="editProfile(${p.id})">Edit</button>
+                                    <button class="button" onclick="selectProfile(${p.id})"><i class="fas fa-check"></i> Select</button>
+                                    <button class="button" onclick="viewProfile(${p.id})"><i class="fas fa-eye"></i> View</button>
+                                    <button class="button" onclick="editProfile(${p.id})"><i class="fas fa-edit"></i> Edit</button>
                                 </div>
                             </div>
-                        `).join('')}
+                        `;
+                        }).join('')}
                     </div>
                 `;
                 
@@ -1058,7 +1106,7 @@
             criteriaList.innerHTML = '';
             
             if (phaseData.breakout_criteria && phaseData.breakout_criteria.length > 0) {
-                const criteriaLogic = phaseData.criteria_logic === 8 ? 'OR' : 'AND';
+                const activeCriteria = phaseData.breakout_criteria.filter(c => c && c.enabled);const criteriaLogic = phaseData.criteria_logic === 8 ? 'OR' : 'AND';
                 criteriaList.innerHTML += `<p style="margin-bottom: 10px; opacity: 0.8;"><strong>Logic:</strong> ${criteriaLogic} (${criteriaLogic === 'OR' ? 'any' : 'all'} criteria must be met)</p>`;
                 
                 phaseData.breakout_criteria.forEach((crit, idx) => {
@@ -1136,19 +1184,50 @@
                 </div>
                 ${profile.phases && profile.phases.length > 0 ? `
                     <div>
-                        <h3>Phases</h3>
-                        ${profile.phases.map((phase, idx) => `
-                            <div class="phase-item">
+                        <h3><i class="fas fa-list-ol"></i> Phases</h3>
+                        ${profile.phases.map((phase, idx) => {
+                            const criteria = phase.breakoutCriteria || [];
+                            const activeCriteria = criteria.filter(c => c && c.enabled && c.type > 0);
+                            return `
+                            <div class="phase-item" style="border-left: 4px solid ${getPhaseColor(idx)}; margin-bottom: 20px;">
                                 <div class="phase-header">
-                                    <h4>Phase ${idx + 1}: ${phase.name || 'Unnamed'}</h4>
+                                    <h4><i class="fas fa-layer-group"></i> Phase ${idx + 1}: ${phase.name || 'Unnamed'}</h4>
                                 </div>
-                                <p><strong>Control Mode:</strong> ${getControlModeName(phase.controlMode)}</p>
-                                <p><strong>Target Pressure:</strong> ${phase.targetPressureStart || 0} - ${phase.targetPressureEnd || 0} bar</p>
-                                <p><strong>Target Flow:</strong> ${phase.targetFlowStart || 0} - ${phase.targetFlowEnd || 0} ml/s</p>
-                                <p><strong>Duration:</strong> ${phase.minDuration || 0} - ${phase.maxDuration || 0}s</p>
-                                <p><strong>Breakout Criteria:</strong> ${phase.criteriaCount || 0} criteria</p>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin: 15px 0;">
+                                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
+                                        <strong>${getControlModeIcon(phase.controlMode)} Control Mode:</strong><br>
+                                        ${getControlModeName(phase.controlMode)}
+                                    </div>
+                                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
+                                        <strong><i class="fas fa-tachometer-alt"></i> Pressure:</strong><br>
+                                        ${phase.targetPressureStart || 0} - ${phase.targetPressureEnd || 0} bar
+                                    </div>
+                                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
+                                        <strong><i class="fas fa-tint"></i> Flow:</strong><br>
+                                        ${phase.targetFlowStart || 0} - ${phase.targetFlowEnd || 0} ml/s
+                                    </div>
+                                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
+                                        <strong><i class="fas fa-clock"></i> Duration:</strong><br>
+                                        ${phase.minDuration || 0} - ${phase.maxDuration || 0}s
+                                    </div>
+                                </div>
+                                ${activeCriteria.length > 0 ? `
+                                    <div style="margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                                        <strong><i class="fas fa-flag-checkered"></i> Breakout Criteria (${activeCriteria.length}):</strong>
+                                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
+                                            ${activeCriteria.map(crit => `
+                                                <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 5px; border-left: 3px solid #44ff44;">
+                                                    ${getCriteriaIcon(crit.type)} <strong>${getCriteriaName(crit.type)}</strong><br>
+                                                    <small>Threshold: ${crit.threshold || 0}${getCriteriaUnit(crit.type)}</small>
+                                                    ${crit.minDuration > 0 ? `<br><small><i class="fas fa-hourglass-half"></i> Min: ${crit.minDuration}s</small>` : ''}
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                ` : '<p style="opacity: 0.7; margin-top: 10px;"><i class="fas fa-info-circle"></i> No breakout criteria - phase continues until max duration or manual stop</p>'}
                             </div>
-                        `).join('')}
+                        `;
+                        }).join('')}
                     </div>
                 ` : '<p>No phases defined</p>'}
                 <div style="margin-top: 20px;">
@@ -1162,6 +1241,19 @@
             document.getElementById('profileViewModal').classList.remove('active');
         }
         
+        function getControlModeIcon(mode) {
+            const icons = {
+                0: '<i class="fas fa-tachometer-alt"></i>',
+                1: '<i class="fas fa-tint"></i>',
+                2: '<i class="fas fa-sliders-h"></i>',
+                3: '<i class="fas fa-pause-circle"></i>',
+                4: '<i class="fas fa-arrow-up"></i>',
+                5: '<i class="fas fa-arrow-up"></i>',
+                6: '<i class="fas fa-arrows-alt-v"></i>'
+            };
+            return icons[mode] || '<i class="fas fa-question"></i>';
+        }
+        
         function getControlModeName(mode) {
             const modes = {
                 0: 'Pressure',
@@ -1173,6 +1265,61 @@
                 6: 'Ramp Both'
             };
             return modes[mode] || 'Unknown';
+        }
+        
+        function getCriteriaIcon(type) {
+            const icons = {
+                1: '<i class="fas fa-clock"></i>',
+                2: '<i class="fas fa-weight"></i>',
+                3: '<i class="fas fa-tint"></i>',
+                4: '<i class="fas fa-tachometer-alt"></i>',
+                5: '<i class="fas fa-eye"></i>',
+                6: '<i class="fas fa-arrow-down"></i>',
+                7: '<i class="fas fa-chart-line"></i>'
+            };
+            return icons[type] || '<i class="fas fa-circle"></i>';
+        }
+        
+        function getCriteriaName(type) {
+            const names = {
+                1: 'Time',
+                2: 'Weight',
+                3: 'Flow',
+                4: 'Pressure',
+                5: 'Flow Detected',
+                6: 'Flow Decline',
+                7: 'Weight Rate'
+            };
+            return names[type] || 'Unknown';
+        }
+        
+        function getCriteriaUnit(type) {
+            const units = {
+                1: 's',
+                2: 'g',
+                3: ' ml/s',
+                4: ' bar',
+                5: '',
+                6: ' ml/s',
+                7: ' g/s'
+            };
+            return units[type] || '';
+        }
+        
+        function getPhaseColor(index) {
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#f0932b', '#eb4d4b', '#6c5ce7', '#a29bfe', '#fd79a8', '#00b894'];
+            return colors[index % colors.length];
+        }
+        
+        function getTechniqueIcon(technique) {
+            const icons = {
+                'traditional': '<i class="fas fa-coffee"></i>',
+                'blooming': '<i class="fas fa-seedling"></i>',
+                'lever': '<i class="fas fa-hand-paper"></i>',
+                'turbo': '<i class="fas fa-bolt"></i>',
+                'custom': '<i class="fas fa-cog"></i>'
+            };
+            return icons[technique] || '<i class="fas fa-coffee"></i>';
         }
         
         async function openProfileEditor(profileId = null) {
@@ -1260,34 +1407,34 @@
             for (let c = 0; c < 4; c++) {
                 const crit = criteria[c] || { type: 0, threshold: 0, enabled: false, minDuration: 0 };
                 criteriaHtml += `
-                    <div class="criteria-item" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                    <div class="criteria-item" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; margin-bottom: 10px; border-left: 3px solid ${getPhaseColor(c)};">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <strong>Criteria ${c + 1}</strong>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="criteriaEnabled_${index}_${c}" ${crit.enabled ? 'checked' : ''}>
-                                Enabled
+                            <strong>${getCriteriaIcon(crit.type || 0)} Criteria ${c + 1}</strong>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                                <input type="checkbox" name="criteriaEnabled_${index}_${c}" ${crit.enabled ? 'checked' : ''} style="cursor: pointer;">
+                                <span>Enabled</span>
                             </label>
                         </div>
                         <div class="form-group">
-                            <label>Type</label>
-                            <select name="criteriaType_${index}_${c}">
+                            <label><i class="fas fa-list"></i> Type</label>
+                            <select name="criteriaType_${index}_${c}" onchange="updateCriteriaIcon(this, ${index}, ${c})">
                                 <option value="0" ${crit.type === 0 ? 'selected' : ''}>None</option>
-                                <option value="1" ${crit.type === 1 ? 'selected' : ''}>Time (seconds)</option>
-                                <option value="2" ${crit.type === 2 ? 'selected' : ''}>Weight (grams)</option>
-                                <option value="3" ${crit.type === 3 ? 'selected' : ''}>Flow (ml/s)</option>
-                                <option value="4" ${crit.type === 4 ? 'selected' : ''}>Pressure (bar)</option>
-                                <option value="5" ${crit.type === 5 ? 'selected' : ''}>Flow Detected</option>
-                                <option value="6" ${crit.type === 6 ? 'selected' : ''}>Flow Decline (ml/s)</option>
-                                <option value="7" ${crit.type === 7 ? 'selected' : ''}>Weight Rate (g/s)</option>
+                                <option value="1" ${crit.type === 1 ? 'selected' : ''}><i class="fas fa-clock"></i> Time (seconds)</option>
+                                <option value="2" ${crit.type === 2 ? 'selected' : ''}><i class="fas fa-weight"></i> Weight (grams)</option>
+                                <option value="3" ${crit.type === 3 ? 'selected' : ''}><i class="fas fa-tint"></i> Flow (ml/s)</option>
+                                <option value="4" ${crit.type === 4 ? 'selected' : ''}><i class="fas fa-tachometer-alt"></i> Pressure (bar)</option>
+                                <option value="5" ${crit.type === 5 ? 'selected' : ''}><i class="fas fa-eye"></i> Flow Detected</option>
+                                <option value="6" ${crit.type === 6 ? 'selected' : ''}><i class="fas fa-arrow-down"></i> Flow Decline (ml/s)</option>
+                                <option value="7" ${crit.type === 7 ? 'selected' : ''}><i class="fas fa-chart-line"></i> Weight Rate (g/s)</option>
                             </select>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                             <div class="form-group">
-                                <label>Threshold</label>
+                                <label><i class="fas fa-bullseye"></i> Threshold</label>
                                 <input type="number" step="0.1" name="criteriaThreshold_${index}_${c}" value="${crit.threshold || 0}">
                             </div>
                             <div class="form-group">
-                                <label>Min Duration (s)</label>
+                                <label><i class="fas fa-hourglass-half"></i> Min Duration (s)</label>
                                 <input type="number" step="0.1" name="criteriaMinDuration_${index}_${c}" value="${crit.minDuration || 0}">
                             </div>
                         </div>
@@ -1296,54 +1443,54 @@
             }
             
             phaseDiv.innerHTML = `
-                <div class="phase-item">
+                <div class="phase-item" style="border-left: 4px solid ${getPhaseColor(index)};">
                     <div class="phase-header">
-                        <h4>Phase ${index + 1}</h4>
-                        <button type="button" class="button danger" onclick="removePhase(this)">Remove</button>
+                        <h4><i class="fas fa-layer-group"></i> Phase ${index + 1}</h4>
+                        <button type="button" class="button danger" onclick="removePhase(this)"><i class="fas fa-trash"></i> Remove</button>
                     </div>
                     <div class="form-group">
-                        <label>Phase Name</label>
+                        <label><i class="fas fa-tag"></i> Phase Name</label>
                         <input type="text" name="phaseName_${index}" value="${phase ? phase.name : ''}" required>
                     </div>
                     <div class="form-group">
-                        <label>Control Mode</label>
+                        <label>${getControlModeIcon(phase ? phase.controlMode : 0)} Control Mode</label>
                         <select name="controlMode_${index}" onchange="updatePhaseFields(${index})">
-                            <option value="0" ${phase && phase.controlMode === 0 ? 'selected' : ''}>Pressure</option>
-                            <option value="1" ${phase && phase.controlMode === 1 ? 'selected' : ''}>Flow</option>
-                            <option value="2" ${phase && phase.controlMode === 2 ? 'selected' : ''}>Pressure + Flow</option>
-                            <option value="3" ${phase && phase.controlMode === 3 ? 'selected' : ''}>Pause</option>
-                            <option value="4" ${phase && phase.controlMode === 4 ? 'selected' : ''}>Ramp Pressure</option>
-                            <option value="5" ${phase && phase.controlMode === 5 ? 'selected' : ''}>Ramp Flow</option>
-                            <option value="6" ${phase && phase.controlMode === 6 ? 'selected' : ''}>Ramp Both</option>
+                            <option value="0" ${phase && phase.controlMode === 0 ? 'selected' : ''}><i class="fas fa-tachometer-alt"></i> Pressure</option>
+                            <option value="1" ${phase && phase.controlMode === 1 ? 'selected' : ''}><i class="fas fa-tint"></i> Flow</option>
+                            <option value="2" ${phase && phase.controlMode === 2 ? 'selected' : ''}><i class="fas fa-sliders-h"></i> Pressure + Flow</option>
+                            <option value="3" ${phase && phase.controlMode === 3 ? 'selected' : ''}><i class="fas fa-pause-circle"></i> Pause</option>
+                            <option value="4" ${phase && phase.controlMode === 4 ? 'selected' : ''}><i class="fas fa-arrow-up"></i> Ramp Pressure</option>
+                            <option value="5" ${phase && phase.controlMode === 5 ? 'selected' : ''}><i class="fas fa-arrow-up"></i> Ramp Flow</option>
+                            <option value="6" ${phase && phase.controlMode === 6 ? 'selected' : ''}><i class="fas fa-arrows-alt-v"></i> Ramp Both</option>
                         </select>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div class="form-group">
-                            <label>Start Pressure (bar)</label>
+                            <label><i class="fas fa-tachometer-alt"></i> Start Pressure (bar)</label>
                             <input type="number" step="0.1" name="targetPressureStart_${index}" value="${phase ? phase.targetPressureStart : 0}">
                         </div>
                         <div class="form-group">
-                            <label>End Pressure (bar)</label>
+                            <label><i class="fas fa-tachometer-alt"></i> End Pressure (bar)</label>
                             <input type="number" step="0.1" name="targetPressureEnd_${index}" value="${phase ? phase.targetPressureEnd : 0}">
                         </div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div class="form-group">
-                            <label>Start Flow (ml/s)</label>
+                            <label><i class="fas fa-tint"></i> Start Flow (ml/s)</label>
                             <input type="number" step="0.1" name="targetFlowStart_${index}" value="${phase ? phase.targetFlowStart : 0}">
                         </div>
                         <div class="form-group">
-                            <label>End Flow (ml/s)</label>
+                            <label><i class="fas fa-tint"></i> End Flow (ml/s)</label>
                             <input type="number" step="0.1" name="targetFlowEnd_${index}" value="${phase ? phase.targetFlowEnd : 0}">
                         </div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div class="form-group">
-                            <label>Min Duration (s)</label>
+                            <label><i class="fas fa-hourglass-start"></i> Min Duration (s)</label>
                             <input type="number" step="0.1" name="minDuration_${index}" value="${phase ? phase.minDuration : 0}">
                         </div>
                         <div class="form-group">
-                            <label>Max Duration (s) (0 = unlimited)</label>
+                            <label><i class="fas fa-hourglass-end"></i> Max Duration (s) (0 = unlimited)</label>
                             <input type="number" step="0.1" name="maxDuration_${index}" value="${phase ? phase.maxDuration : 0}">
                         </div>
                     </div>
@@ -1372,8 +1519,9 @@
                             <option value="9" ${phase && phase.criteriaLogic === 9 ? 'selected' : ''}>AND (All criteria)</option>
                         </select>
                     </div>
-                    <div style="margin-top: 15px;">
-                        <h5>Breakout Criteria (up to 4)</h5>
+                    <div style="margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 5px;">
+                        <h5><i class="fas fa-flag-checkered"></i> Breakout Criteria (up to 4)</h5>
+                        <p style="opacity: 0.7; font-size: 0.9em; margin-bottom: 10px;">Define conditions that trigger transition to the next phase</p>
                         ${criteriaHtml}
                     </div>
                 </div>
@@ -1557,6 +1705,17 @@
         function initializeApp() {
             console.log('Initializing app...');
             try {
+                // Initialize auto-switch checkbox
+                const autoSwitchCheckbox = document.getElementById('auto-switch-checkbox');
+                if (autoSwitchCheckbox) {
+                    autoSwitchCheckbox.checked = autoSwitchEnabled;
+                    autoSwitchCheckbox.addEventListener('change', (e) => {
+                        autoSwitchEnabled = e.target.checked;
+                        localStorage.setItem('autoSwitchEnabled', autoSwitchEnabled);
+                        console.log('Auto-switch enabled:', autoSwitchEnabled);
+                    });
+                }
+                
                 // Initialize live chart (only if on live tab, but safe to call)
                 const liveTab = document.getElementById('live');
                 if (liveTab) {
