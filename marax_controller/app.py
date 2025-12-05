@@ -15,11 +15,19 @@ import threading
 import time
 
 # Configure logging
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'info').upper()
+log_level_map = {
+    'DEBUG': logging.DEBUG,
+    'INFO': logging.INFO,
+    'WARNING': logging.WARNING,
+    'ERROR': logging.ERROR
+}
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level_map.get(LOG_LEVEL, logging.INFO),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+logger.info(f"Log level set to: {LOG_LEVEL}")
 
 # Flask app
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -124,12 +132,18 @@ def on_connect(client, userdata, flags, rc):
             (TOPIC_SCALE_STATE, 1),
             (TOPIC_BREW_PHASE, 0),
             (TOPIC_BREW_PHASE_STATUS, 0),
-            (TOPIC_PROFILE_STATUS, 0)
+            (TOPIC_PROFILE_STATUS, 0),
+            (TOPIC_PROFILE_LIST, 0)  # Subscribe to profile list responses
         ]
+        
+        # Also subscribe to wildcard to catch any messages we might have missed
+        wildcard_topic = f"{MQTT_BASE_TOPIC}/#"
+        client.subscribe(wildcard_topic, 0)
+        logger.info(f"Subscribed to wildcard: {wildcard_topic}")
         
         for topic, qos in topics:
             client.subscribe(topic, qos)
-            logger.info(f"Subscribed to {topic}")
+            logger.info(f"Subscribed to {topic} (QoS {qos})")
     else:
         mqtt_connected = False
         error_messages = {
@@ -153,27 +167,42 @@ def on_message(client, userdata, msg):
     topic = msg.topic
     payload = msg.payload.decode()
     
+    # Log received messages for debugging
+    logger.debug(f"Received MQTT message: {topic} = {payload[:100]}...")
+    
     try:
         if topic == TOPIC_DEVICE_STATUS:
             device_data['status'] = payload
+            logger.debug(f"Updated device status: {payload}")
         elif topic == TOPIC_DEVICE_INFO:
             device_data['info'] = json.loads(payload)
+            logger.debug(f"Updated device info: {device_data['info']}")
         elif topic == TOPIC_BREW_STATE:
             device_data['brew_state'] = json.loads(payload)
+            logger.debug(f"Updated brew state: {device_data['brew_state']}")
         elif topic == TOPIC_MACHINE_STATE:
             device_data['machine_state'] = json.loads(payload)
+            logger.debug(f"Updated machine state: {device_data['machine_state']}")
         elif topic == TOPIC_SCALE_STATE:
             device_data['scale_state'] = json.loads(payload)
+            logger.debug(f"Updated scale state: {device_data['scale_state']}")
         elif topic == TOPIC_BREW_PHASE_STATUS:
             device_data['current_phase'] = json.loads(payload)
+            logger.debug(f"Updated current phase: {device_data['current_phase']}")
         elif topic == TOPIC_PROFILE_LIST:
             data = json.loads(payload)
             if 'profiles' in data:
                 device_data['profiles'] = data['profiles']
+                logger.debug(f"Updated profiles: {len(data['profiles'])} profiles")
+        else:
+            logger.debug(f"Unhandled topic: {topic}")
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse JSON from {topic}: {e}")
+        logger.error(f"Payload was: {payload}")
     except Exception as e:
         logger.error(f"Error processing message from {topic}: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 def init_mqtt():
     """Initialize MQTT client with retry logic"""
@@ -292,6 +321,9 @@ def api_status():
     status['mqtt_connected'] = mqtt_connected
     status['mqtt_broker'] = MQTT_BROKER
     status['mqtt_port'] = MQTT_PORT
+    status['last_update'] = datetime.now().isoformat()
+    # Log what we're returning for debugging
+    logger.debug(f"API /status called, returning: {status}")
     return jsonify(status)
 
 @app.route('/api/brew/state')
