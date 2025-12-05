@@ -359,10 +359,13 @@ def api_machine_state():
 @app.route('/api/profiles')
 def api_profiles():
     """Get profiles list"""
+    logger.info("API /profiles endpoint called")
     if not device_data.get('profiles'):
         request_profile_list()
         time.sleep(0.5)  # Wait for response
-    return jsonify(device_data.get('profiles', []))
+    profiles = device_data.get('profiles', [])
+    logger.info(f"API /profiles returning {len(profiles)} profiles")
+    return jsonify(profiles)
 
 @app.route('/api/profiles/select', methods=['POST'])
 def api_profile_select():
@@ -382,16 +385,19 @@ def api_profile_select():
 @app.route('/api/profiles/send', methods=['POST'])
 def api_profile_send():
     """Send a profile to device"""
+    logger.info("API /profiles/send endpoint called")
     profile = request.json
     
     if not profile:
         return jsonify({'error': 'Profile data required'}), 400
     
+    logger.info(f"Received profile: {profile.get('profileName', 'Unknown')} with {profile.get('phaseCount', 0)} phases")
+    
     if mqtt_client and mqtt_connected:
         payload = json.dumps(profile)
         mqtt_client.publish(TOPIC_PROFILE_SET, payload, qos=1)
-        logger.info(f"Sent profile: {profile.get('name', 'Unknown')}")
-        return jsonify({'success': True})
+        logger.info(f"Sent profile to device: {profile.get('profileName', 'Unknown')}")
+        return jsonify({'success': True, 'message': 'Profile sent to device'})
     else:
         return jsonify({'error': 'MQTT not connected'}), 503
 

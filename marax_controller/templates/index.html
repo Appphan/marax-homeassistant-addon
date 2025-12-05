@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MaraX Controller</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -18,13 +19,42 @@
             padding: 20px;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
         h1 {
             text-align: center;
             margin-bottom: 30px;
             font-size: 2.5em;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .tab.active {
+            background: white;
+            color: #667eea;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
         }
         .status-card {
             background: rgba(255, 255, 255, 0.1);
@@ -71,6 +101,14 @@
         .button:active {
             transform: scale(0.95);
         }
+        .button.primary {
+            background: white;
+            color: #667eea;
+        }
+        .button.danger {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: #ff4444;
+        }
         .error {
             background: rgba(255, 0, 0, 0.2);
             border: 2px solid #ff4444;
@@ -89,6 +127,147 @@
             text-align: center;
             padding: 20px;
         }
+        .profile-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        .profile-card {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .profile-card:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+        }
+        .profile-card.active {
+            border-color: #44ff44;
+            background: rgba(0, 255, 0, 0.1);
+        }
+        .profile-card h3 {
+            margin-bottom: 10px;
+        }
+        .profile-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            margin: 20px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-header h2 {
+            margin: 0;
+        }
+        .close-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1em;
+        }
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        .phase-list {
+            margin-top: 20px;
+        }
+        .phase-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .phase-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .analytics-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        .analytics-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .analytics-label {
+            font-size: 1.1em;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
@@ -98,51 +277,115 @@
         <div id="error-message" style="display: none;" class="error"></div>
         <div id="success-message" style="display: none;" class="success"></div>
         
-        <div class="status-card">
-            <h2>Device Status</h2>
-            <div id="device-status" class="loading">Loading...</div>
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('dashboard')">Dashboard</div>
+            <div class="tab" onclick="showTab('profiles')">Profiles</div>
+            <div class="tab" onclick="showTab('live')">Live Brew</div>
+            <div class="tab" onclick="showTab('analytics')">Analytics</div>
         </div>
         
-        <div class="status-card">
-            <h2>Brew State</h2>
-            <div id="brew-status" class="loading">Loading...</div>
-            <div style="margin-top: 15px;">
-                <button class="button" onclick="stopBrew()">Stop Brew</button>
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="status-card">
+                <h2>Device Status</h2>
+                <div id="device-status" class="loading">Loading...</div>
+            </div>
+            
+            <div class="status-card">
+                <h2>Brew State</h2>
+                <div id="brew-status" class="loading">Loading...</div>
+                <div style="margin-top: 15px;">
+                    <button class="button danger" onclick="stopBrew()">Stop Brew</button>
+                </div>
+            </div>
+            
+            <div class="status-card">
+                <h2>Machine State</h2>
+                <div id="machine-status" class="loading">Loading...</div>
             </div>
         </div>
         
-        <div class="status-card">
-            <h2>Machine State</h2>
-            <div id="machine-status" class="loading">Loading...</div>
+        <!-- Profiles Tab -->
+        <div id="profiles" class="tab-content">
+            <div class="status-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>Brewing Profiles</h2>
+                    <button class="button primary" onclick="openProfileEditor()">+ New Profile</button>
+                </div>
+                <div id="profiles-list" class="loading">Loading...</div>
+            </div>
         </div>
         
-        <div class="status-card">
-            <h2>Profiles</h2>
-            <div id="profiles" class="loading">Loading...</div>
+        <!-- Live Brew Tab -->
+        <div id="live" class="tab-content">
+            <div class="status-card">
+                <h2>Live Brew Monitoring</h2>
+                <div id="live-brew-status" style="margin-bottom: 20px;">
+                    <p>No active brew</p>
+                </div>
+                <div class="chart-container">
+                    <canvas id="liveChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Analytics Tab -->
+        <div id="analytics" class="tab-content">
+            <div class="status-card">
+                <h2>Shot Analytics</h2>
+                <div id="analytics-content" class="loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Profile Editor Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">New Profile</h2>
+                <button class="close-button" onclick="closeProfileEditor()">×</button>
+            </div>
+            <div id="profile-editor-content">
+                <!-- Profile editor form will be inserted here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Profile Viewer Modal -->
+    <div id="profileViewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="viewModalTitle">Profile Details</h2>
+                <button class="close-button" onclick="closeProfileViewer()">×</button>
+            </div>
+            <div id="profile-view-content">
+                <!-- Profile details will be inserted here -->
+            </div>
         </div>
     </div>
 
     <script>
         let updateInterval;
+        let liveChart = null;
+        let liveChartData = {
+            labels: [],
+            pressure: [],
+            flow: [],
+            weight: []
+        };
+        let currentProfiles = [];
+        let activeProfileId = null;
         
-        // Detect if we're running in Home Assistant ingress mode
-        // Ingress URLs are like: /api/hassio_ingress/{token}/
-        // We need to use the current path as base
+        // Detect ingress base path
         const getBasePath = () => {
-            // Get the current path and extract the base path
             const path = window.location.pathname;
-            // If we're in ingress mode, the path will be something like /api/hassio_ingress/TOKEN/
-            // We need to preserve this base path
             if (path.includes('/api/hassio_ingress/')) {
-                // Extract the base path up to the last slash
                 const parts = path.split('/');
                 const ingressIndex = parts.indexOf('hassio_ingress');
                 if (ingressIndex !== -1 && ingressIndex + 1 < parts.length) {
-                    // Return base path like /api/hassio_ingress/TOKEN
                     return parts.slice(0, ingressIndex + 2).join('/');
                 }
             }
-            // If not in ingress, use empty string for relative paths
             return '';
         };
         
@@ -166,12 +409,142 @@
                 return null;
             }
         }
+        
+        async function postAPI(endpoint, data) {
+            try {
+                const url = basePath ? `${basePath}/api/${endpoint}` : `/api/${endpoint}`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || `HTTP ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error(`Error posting to ${endpoint}:`, error);
+                throw error;
+            }
+        }
 
         function showMessage(message, type) {
             const el = document.getElementById(type === 'error' ? 'error-message' : 'success-message');
             el.textContent = message;
             el.style.display = 'block';
             setTimeout(() => el.style.display = 'none', 5000);
+        }
+        
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            if (tabName === 'live') {
+                initLiveChart();
+            }
+        }
+        
+        function initLiveChart() {
+            const ctx = document.getElementById('liveChart');
+            if (liveChart) {
+                liveChart.destroy();
+            }
+            liveChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Pressure (bar)',
+                            data: [],
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Flow (ml/s)',
+                            data: [],
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: 'Weight (g)',
+                            data: [],
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            yAxisID: 'y2'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: 'Pressure (bar)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: 'Flow (ml/s)' },
+                            grid: { drawOnChartArea: false }
+                        },
+                        y2: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: 'Weight (g)' },
+                            grid: { drawOnChartArea: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    }
+                }
+            });
+        }
+        
+        function updateLiveChart(brewState, time) {
+            if (!liveChart || !brewState || !brewState.isActive) return;
+            
+            liveChartData.labels.push(time.toFixed(1));
+            liveChartData.pressure.push(brewState.pressure || 0);
+            liveChartData.flow.push(brewState.flow || 0);
+            
+            // Keep only last 100 data points
+            if (liveChartData.labels.length > 100) {
+                liveChartData.labels.shift();
+                liveChartData.pressure.shift();
+                liveChartData.flow.shift();
+                liveChartData.weight.shift();
+            }
+            
+            liveChart.data.labels = liveChartData.labels;
+            liveChart.data.datasets[0].data = liveChartData.pressure;
+            liveChart.data.datasets[1].data = liveChartData.flow;
+            liveChart.data.datasets[2].data = liveChartData.weight;
+            liveChart.update('none');
+        }
+        
+        function resetLiveChart() {
+            liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
+            if (liveChart) {
+                liveChart.data.labels = [];
+                liveChart.data.datasets.forEach(d => d.data = []);
+                liveChart.update();
+            }
         }
 
         async function updateStatus() {
@@ -237,6 +610,31 @@
                         </div>
                     </div>
                 `;
+                
+                // Update live chart if brewing
+                if (brewState.isActive) {
+                    const brewTime = Date.now() / 1000; // Simplified - should get actual brew time
+                    updateLiveChart(brewState, brewTime);
+                    document.getElementById('live-brew-status').innerHTML = `
+                        <div class="status-grid">
+                            <div class="stat-item">
+                                <div class="stat-label">Brew Time</div>
+                                <div class="stat-value">${brewTime.toFixed(1)}s</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Pressure</div>
+                                <div class="stat-value">${pressure} bar</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Flow</div>
+                                <div class="stat-value">${flow} ml/s</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resetLiveChart();
+                    document.getElementById('live-brew-status').innerHTML = '<p>No active brew</p>';
+                }
             } else {
                 document.getElementById('brew-status').innerHTML = '<p style="opacity: 0.7;">No brew data available. Ensure your MaraX device is connected and publishing to MQTT.</p>';
             }
@@ -267,59 +665,344 @@
             } else {
                 document.getElementById('machine-status').innerHTML = '<p style="opacity: 0.7;">No machine data available. Ensure your MaraX device is connected and publishing to MQTT.</p>';
             }
-
-            const profiles = await fetchAPI('profiles');
-            if (profiles && Array.isArray(profiles)) {
-                if (profiles.length > 0) {
-                    document.getElementById('profiles').innerHTML = `
-                        <div class="status-grid">
-                            ${profiles.map(p => `
-                                <div class="stat-item">
-                                    <div class="stat-label">${p.name || 'Unknown'}</div>
-                                    <div class="stat-value">ID: ${p.id}</div>
-                                    <button class="button" onclick="selectProfile(${p.id})" style="margin-top: 10px;">Select</button>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
-                } else {
-                    document.getElementById('profiles').innerHTML = '<p>No profiles available</p>';
-                }
-            }
+            
+            // Update profiles
+            await updateProfiles();
         }
-
-        async function stopBrew() {
-            const url = basePath ? `${basePath}/api/brew/stop` : '/api/brew/stop';
-            const response = await fetch(url, { method: 'POST' });
-            if (response.ok) {
-                showMessage('Brew stopped', 'success');
-            } else {
-                showMessage('Failed to stop brew', 'error');
-            }
-        }
-
-        async function selectProfile(id) {
-            const url = basePath ? `${basePath}/api/profiles/select` : '/api/profiles/select';
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ profile_id: id })
-            });
-            if (response.ok) {
-                showMessage('Profile selected', 'success');
-            } else {
-                showMessage('Failed to select profile', 'error');
-            }
-        }
-
-        // Log that script is running
-        console.log('MaraX Controller script loaded and starting...');
         
+        async function updateProfiles() {
+            const profiles = await fetchAPI('profiles');
+            console.log('Profiles response:', profiles);
+            currentProfiles = profiles || [];
+            
+            if (profiles && Array.isArray(profiles) && profiles.length > 0) {
+                document.getElementById('profiles-list').innerHTML = `
+                    <div class="profile-list">
+                        ${profiles.map(p => `
+                            <div class="profile-card ${p.id === activeProfileId ? 'active' : ''}">
+                                <h3>${p.name || 'Unnamed Profile'}</h3>
+                                <p style="opacity: 0.8; margin-bottom: 10px;">ID: ${p.id}</p>
+                                ${p.technique ? `<p style="opacity: 0.7; font-size: 0.9em;">Technique: ${p.technique}</p>` : ''}
+                                ${p.phaseCount ? `<p style="opacity: 0.7; font-size: 0.9em;">Phases: ${p.phaseCount}</p>` : ''}
+                                <div class="profile-actions">
+                                    <button class="button" onclick="selectProfile(${p.id})">Select</button>
+                                    <button class="button" onclick="viewProfile(${p.id})">View</button>
+                                    <button class="button" onclick="editProfile(${p.id})">Edit</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                document.getElementById('profiles-list').innerHTML = '<p style="opacity: 0.7;">No profiles available. Create a new profile to get started.</p>';
+            }
+        }
+        
+        async function selectProfile(id) {
+            try {
+                await postAPI('profiles/select', { profile_id: id });
+                activeProfileId = id;
+                showMessage('Profile selected successfully', 'success');
+                await updateProfiles();
+            } catch (error) {
+                showMessage('Failed to select profile: ' + error.message, 'error');
+            }
+        }
+        
+        function viewProfile(id) {
+            const profile = currentProfiles.find(p => p.id === id);
+            if (!profile) {
+                showMessage('Profile not found', 'error');
+                return;
+            }
+            
+            document.getElementById('viewModalTitle').textContent = profile.name || 'Profile Details';
+            document.getElementById('profile-view-content').innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <h3>Profile Information</h3>
+                    <p><strong>ID:</strong> ${profile.id}</p>
+                    <p><strong>Name:</strong> ${profile.name || 'N/A'}</p>
+                    <p><strong>Technique:</strong> ${profile.technique || 'N/A'}</p>
+                    <p><strong>Phases:</strong> ${profile.phaseCount || 0}</p>
+                    <p><strong>Default Dose:</strong> ${profile.defaultDose || 'N/A'}g</p>
+                    <p><strong>Default Yield:</strong> ${profile.defaultYield || 'N/A'}g</p>
+                    <p><strong>Default Ratio:</strong> ${profile.defaultRatio || 'N/A'}</p>
+                </div>
+                ${profile.phases && profile.phases.length > 0 ? `
+                    <div>
+                        <h3>Phases</h3>
+                        ${profile.phases.map((phase, idx) => `
+                            <div class="phase-item">
+                                <div class="phase-header">
+                                    <h4>Phase ${idx + 1}: ${phase.name || 'Unnamed'}</h4>
+                                </div>
+                                <p><strong>Control Mode:</strong> ${getControlModeName(phase.controlMode)}</p>
+                                <p><strong>Target Pressure:</strong> ${phase.targetPressureStart || 0} - ${phase.targetPressureEnd || 0} bar</p>
+                                <p><strong>Target Flow:</strong> ${phase.targetFlowStart || 0} - ${phase.targetFlowEnd || 0} ml/s</p>
+                                <p><strong>Duration:</strong> ${phase.minDuration || 0} - ${phase.maxDuration || 0}s</p>
+                                <p><strong>Breakout Criteria:</strong> ${phase.criteriaCount || 0} criteria</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : '<p>No phases defined</p>'}
+                <div style="margin-top: 20px;">
+                    <button class="button primary" onclick="editProfile(${profile.id}); closeProfileViewer();">Edit Profile</button>
+                </div>
+            `;
+            document.getElementById('profileViewModal').classList.add('active');
+        }
+        
+        function closeProfileViewer() {
+            document.getElementById('profileViewModal').classList.remove('active');
+        }
+        
+        function getControlModeName(mode) {
+            const modes = {
+                0: 'Pressure',
+                1: 'Flow',
+                2: 'Pressure + Flow',
+                3: 'Pause',
+                4: 'Ramp Pressure',
+                5: 'Ramp Flow',
+                6: 'Ramp Both'
+            };
+            return modes[mode] || 'Unknown';
+        }
+        
+        function openProfileEditor(profileId = null) {
+            const profile = profileId ? currentProfiles.find(p => p.id === profileId) : null;
+            document.getElementById('modalTitle').textContent = profile ? `Edit: ${profile.name}` : 'New Profile';
+            document.getElementById('profile-editor-content').innerHTML = `
+                <form id="profile-form" onsubmit="saveProfile(event, ${profileId || 'null'})">
+                    <div class="form-group">
+                        <label>Profile Name</label>
+                        <input type="text" name="profileName" value="${profile ? profile.name : ''}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Technique</label>
+                        <select name="technique">
+                            <option value="traditional" ${profile && profile.technique === 'traditional' ? 'selected' : ''}>Traditional</option>
+                            <option value="blooming" ${profile && profile.technique === 'blooming' ? 'selected' : ''}>Blooming</option>
+                            <option value="lever" ${profile && profile.technique === 'lever' ? 'selected' : ''}>Lever</option>
+                            <option value="turbo" ${profile && profile.technique === 'turbo' ? 'selected' : ''}>Turbo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Default Dose (g)</label>
+                        <input type="number" step="0.1" name="defaultDose" value="${profile ? profile.defaultDose : 18.0}">
+                    </div>
+                    <div class="form-group">
+                        <label>Default Yield (g)</label>
+                        <input type="number" step="0.1" name="defaultYield" value="${profile ? profile.defaultYield : 36.0}">
+                    </div>
+                    <div class="form-group">
+                        <label>Default Ratio</label>
+                        <input type="number" step="0.1" name="defaultRatio" value="${profile ? profile.defaultRatio : 2.0}">
+                    </div>
+                    <div id="phases-container">
+                        <h3>Phases</h3>
+                        <div id="phases-list"></div>
+                        <button type="button" class="button" onclick="addPhase()">+ Add Phase</button>
+                    </div>
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button type="submit" class="button primary">Save Profile</button>
+                        <button type="button" class="button" onclick="closeProfileEditor()">Cancel</button>
+                    </div>
+                </form>
+            `;
+            
+            if (profile && profile.phases) {
+                profile.phases.forEach((phase, idx) => {
+                    addPhaseToEditor(phase, idx);
+                });
+            }
+            
+            document.getElementById('profileModal').classList.add('active');
+        }
+        
+        function addPhase() {
+            addPhaseToEditor(null, document.querySelectorAll('.phase-editor-item').length);
+        }
+        
+        function addPhaseToEditor(phase, index) {
+            const phasesList = document.getElementById('phases-list');
+            const phaseDiv = document.createElement('div');
+            phaseDiv.className = 'phase-editor-item';
+            phaseDiv.innerHTML = `
+                <div class="phase-item">
+                    <div class="phase-header">
+                        <h4>Phase ${index + 1}</h4>
+                        <button type="button" class="button danger" onclick="removePhase(this)">Remove</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Phase Name</label>
+                        <input type="text" name="phaseName_${index}" value="${phase ? phase.name : ''}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Control Mode</label>
+                        <select name="controlMode_${index}">
+                            <option value="0" ${phase && phase.controlMode === 0 ? 'selected' : ''}>Pressure</option>
+                            <option value="1" ${phase && phase.controlMode === 1 ? 'selected' : ''}>Flow</option>
+                            <option value="2" ${phase && phase.controlMode === 2 ? 'selected' : ''}>Pressure + Flow</option>
+                            <option value="3" ${phase && phase.controlMode === 3 ? 'selected' : ''}>Pause</option>
+                            <option value="4" ${phase && phase.controlMode === 4 ? 'selected' : ''}>Ramp Pressure</option>
+                            <option value="5" ${phase && phase.controlMode === 5 ? 'selected' : ''}>Ramp Flow</option>
+                            <option value="6" ${phase && phase.controlMode === 6 ? 'selected' : ''}>Ramp Both</option>
+                        </select>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group">
+                            <label>Start Pressure (bar)</label>
+                            <input type="number" step="0.1" name="targetPressureStart_${index}" value="${phase ? phase.targetPressureStart : 0}">
+                        </div>
+                        <div class="form-group">
+                            <label>End Pressure (bar)</label>
+                            <input type="number" step="0.1" name="targetPressureEnd_${index}" value="${phase ? phase.targetPressureEnd : 0}">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group">
+                            <label>Start Flow (ml/s)</label>
+                            <input type="number" step="0.1" name="targetFlowStart_${index}" value="${phase ? phase.targetFlowStart : 0}">
+                        </div>
+                        <div class="form-group">
+                            <label>End Flow (ml/s)</label>
+                            <input type="number" step="0.1" name="targetFlowEnd_${index}" value="${phase ? phase.targetFlowEnd : 0}">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group">
+                            <label>Min Duration (s)</label>
+                            <input type="number" step="0.1" name="minDuration_${index}" value="${phase ? phase.minDuration : 0}">
+                        </div>
+                        <div class="form-group">
+                            <label>Max Duration (s)</label>
+                            <input type="number" step="0.1" name="maxDuration_${index}" value="${phase ? phase.maxDuration : 0}">
+                        </div>
+                    </div>
+                </div>
+            `;
+            phasesList.appendChild(phaseDiv);
+        }
+        
+        function removePhase(button) {
+            button.closest('.phase-editor-item').remove();
+            // Renumber phases
+            document.querySelectorAll('.phase-editor-item').forEach((item, idx) => {
+                item.querySelector('h4').textContent = `Phase ${idx + 1}`;
+            });
+        }
+        
+        async function saveProfile(event, profileId) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            
+            const profile = {
+                profileName: formData.get('profileName'),
+                technique: formData.get('technique'),
+                defaultDose: parseFloat(formData.get('defaultDose')) || 18.0,
+                defaultYield: parseFloat(formData.get('defaultYield')) || 36.0,
+                defaultRatio: parseFloat(formData.get('defaultRatio')) || 2.0,
+                phases: []
+            };
+            
+            // Collect phases
+            const phaseItems = document.querySelectorAll('.phase-editor-item');
+            phaseItems.forEach((item, idx) => {
+                const phase = {
+                    name: formData.get(`phaseName_${idx}`),
+                    phaseIndex: idx,
+                    controlMode: parseInt(formData.get(`controlMode_${idx}`)),
+                    targetPressureStart: parseFloat(formData.get(`targetPressureStart_${idx}`)) || 0,
+                    targetPressureEnd: parseFloat(formData.get(`targetPressureEnd_${idx}`)) || 0,
+                    targetFlowStart: parseFloat(formData.get(`targetFlowStart_${idx}`)) || 0,
+                    targetFlowEnd: parseFloat(formData.get(`targetFlowEnd_${idx}`)) || 0,
+                    minDuration: parseFloat(formData.get(`minDuration_${idx}`)) || 0,
+                    maxDuration: parseFloat(formData.get(`maxDuration_${idx}`)) || 0,
+                    criteriaCount: 0,
+                    criteriaLogic: 0,
+                    useRamp: false,
+                    allowManualStop: true,
+                    publishEvents: true
+                };
+                profile.phases.push(phase);
+            });
+            
+            profile.phaseCount = profile.phases.length;
+            if (profileId) profile.profileId = profileId;
+            
+            try {
+                await postAPI('profiles/send', profile);
+                showMessage('Profile saved successfully', 'success');
+                closeProfileEditor();
+                await updateProfiles();
+            } catch (error) {
+                showMessage('Failed to save profile: ' + error.message, 'error');
+            }
+        }
+        
+        function editProfile(id) {
+            openProfileEditor(id);
+        }
+        
+        function closeProfileEditor() {
+            document.getElementById('profileModal').classList.remove('active');
+        }
+        
+        async function stopBrew() {
+            try {
+                const url = basePath ? `${basePath}/api/brew/stop` : '/api/brew/stop';
+                const response = await fetch(url, { method: 'POST' });
+                if (response.ok) {
+                    showMessage('Brew stopped', 'success');
+                } else {
+                    showMessage('Failed to stop brew', 'error');
+                }
+            } catch (error) {
+                showMessage('Error stopping brew: ' + error.message, 'error');
+            }
+        }
+        
+        async function updateAnalytics() {
+            // This would fetch shot history and statistics
+            // For now, show placeholder
+            document.getElementById('analytics-content').innerHTML = `
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <div class="analytics-label">Total Shots</div>
+                        <div class="analytics-value">-</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Avg Brew Time</div>
+                        <div class="analytics-value">-</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Avg Yield</div>
+                        <div class="analytics-value">-</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Success Rate</div>
+                        <div class="analytics-value">-</div>
+                    </div>
+                </div>
+                <p style="margin-top: 20px; opacity: 0.7;">Analytics data will be available after brewing shots.</p>
+            `;
+        }
+
         // Start updating every 2 seconds
+        console.log('MaraX Controller script loaded and starting...');
         console.log('Calling updateStatus()...');
         updateStatus();
         updateInterval = setInterval(updateStatus, 2000);
         console.log('Update interval set to 2 seconds');
+        
+        // Initialize live chart
+        initLiveChart();
+        
+        // Update analytics
+        updateAnalytics();
+        setInterval(updateAnalytics, 5000);
 
         // Health check
         const healthUrl = basePath ? `${basePath}/health` : '/health';
@@ -331,4 +1014,3 @@
     </script>
 </body>
 </html>
-
