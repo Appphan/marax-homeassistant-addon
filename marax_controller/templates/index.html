@@ -124,10 +124,36 @@
 
     <script>
         let updateInterval;
+        
+        // Detect if we're running in Home Assistant ingress mode
+        // Ingress URLs are like: /api/hassio_ingress/{token}/
+        // We need to use the current path as base
+        const getBasePath = () => {
+            // Get the current path and extract the base path
+            const path = window.location.pathname;
+            // If we're in ingress mode, the path will be something like /api/hassio_ingress/TOKEN/
+            // We need to preserve this base path
+            if (path.includes('/api/hassio_ingress/')) {
+                // Extract the base path up to the last slash
+                const parts = path.split('/');
+                const ingressIndex = parts.indexOf('hassio_ingress');
+                if (ingressIndex !== -1 && ingressIndex + 1 < parts.length) {
+                    // Return base path like /api/hassio_ingress/TOKEN
+                    return parts.slice(0, ingressIndex + 2).join('/');
+                }
+            }
+            // If not in ingress, use empty string for relative paths
+            return '';
+        };
+        
+        const basePath = getBasePath();
+        console.log('Detected base path:', basePath || '(root)');
 
         async function fetchAPI(endpoint) {
             try {
-                const response = await fetch(`/api/${endpoint}`);
+                const url = basePath ? `${basePath}/api/${endpoint}` : `/api/${endpoint}`;
+                console.log(`Fetching: ${url}`);
+                const response = await fetch(url);
                 if (!response.ok) {
                     console.error(`HTTP ${response.status} for ${endpoint}`);
                     return null;
@@ -263,7 +289,8 @@
         }
 
         async function stopBrew() {
-            const response = await fetch('/api/brew/stop', { method: 'POST' });
+            const url = basePath ? `${basePath}/api/brew/stop` : '/api/brew/stop';
+            const response = await fetch(url, { method: 'POST' });
             if (response.ok) {
                 showMessage('Brew stopped', 'success');
             } else {
@@ -272,7 +299,8 @@
         }
 
         async function selectProfile(id) {
-            const response = await fetch('/api/profiles/select', {
+            const url = basePath ? `${basePath}/api/profiles/select` : '/api/profiles/select';
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ profile_id: id })
@@ -294,7 +322,8 @@
         console.log('Update interval set to 2 seconds');
 
         // Health check
-        fetch('/health').then(r => r.json()).then(data => {
+        const healthUrl = basePath ? `${basePath}/health` : '/health';
+        fetch(healthUrl).then(r => r.json()).then(data => {
             console.log('Health check:', data);
         }).catch(err => {
             console.error('Health check failed:', err);
