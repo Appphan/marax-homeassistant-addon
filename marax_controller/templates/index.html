@@ -2201,6 +2201,8 @@
             
             // Collect phase data from form - use data-phase-index to get correct index
             const phases = [];
+            const phaseDataArray = [];
+            
             phaseItems.forEach((item) => {
                 const phaseIndexAttr = item.getAttribute('data-phase-index');
                 if (phaseIndexAttr === null) return;
@@ -2223,15 +2225,12 @@
                     useRamp: formData.get(`useRamp_${idx}`) === 'on',
                     rampDuration: parseFloat(formData.get(`rampDuration_${idx}`)) || 0
                 };
-                phases.push(phase);
+                phaseDataArray.push({ index: idx, phase: phase });
             });
             
-            // Sort phases by index
-            phases.sort((a, b) => {
-                const aIdx = parseInt(phaseItems[phases.indexOf(a)]?.getAttribute('data-phase-index') || '0');
-                const bIdx = parseInt(phaseItems[phases.indexOf(b)]?.getAttribute('data-phase-index') || '0');
-                return aIdx - bIdx;
-            });
+            // Sort by index and extract phases
+            phaseDataArray.sort((a, b) => a.index - b.index);
+            phaseDataArray.forEach(item => phases.push(item.phase));
             
             // Calculate time points
             let timePoints = [];
