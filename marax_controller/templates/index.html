@@ -493,25 +493,9 @@
             
             if (tabName === 'live') {
                 initLiveChart();
-                // Start more frequent updates when Live Brew tab is active
-                if (updateInterval) {
-                    clearInterval(updateInterval);
-                }
-                updateInterval = setInterval(updateStatus, 1000); // Update every second when on Live Brew tab
             } else if (tabName === 'profiles') {
                 // Request profiles when profiles tab is clicked
                 updateProfiles(true);  // Request fresh profiles on page load
-                // Reset to normal update interval
-                if (updateInterval) {
-                    clearInterval(updateInterval);
-                }
-                updateInterval = setInterval(updateStatus, 2000);
-            } else {
-                // Reset to normal update interval for other tabs
-                if (updateInterval) {
-                    clearInterval(updateInterval);
-                }
-                updateInterval = setInterval(updateStatus, 2000);
             }
         }
         
@@ -798,7 +782,8 @@
         }
 
         async function updateStatus() {
-            const status = await fetchAPI('status');
+            try {
+                const status = await fetchAPI('status');
             console.log('Status response:', status);
             if (status) {
                 const mqttStatus = status.mqtt_connected ? '✅ Connected' : '❌ Disconnected';
@@ -893,18 +878,17 @@
                         </div>
                     `;
                     
-                    // Update phase information
-                    try {
-                        const phaseData = await fetchAPI('phase');
+                    // Update phase information (non-blocking)
+                    fetchAPI('phase').then(phaseData => {
                         if (phaseData && phaseData.phase) {
                             updatePhaseInfo(phaseData);
                         } else {
                             document.getElementById('phase-info-card').style.display = 'none';
                         }
-                    } catch (e) {
+                    }).catch(e => {
                         console.error('Error fetching phase data:', e);
                         document.getElementById('phase-info-card').style.display = 'none';
-                    }
+                    });
                 } else {
                     // If brew just ended, update chart one more time to show final state
                     if (brewStartTime !== null && brewEndTime === null) {
@@ -925,8 +909,13 @@
                 // Hide phase info when no brew state
                 document.getElementById('phase-info-card').style.display = 'none';
             }
+            } catch (error) {
+                console.error('Error in updateStatus:', error);
+                // Don't freeze the UI if there's an error
+            }
 
-            const machineState = await fetchAPI('machine/state');
+            try {
+                const machineState = await fetchAPI('machine/state');
             console.log('Machine state response:', machineState);
             if (machineState && typeof machineState === 'object' && Object.keys(machineState).length > 0) {
                 const mode = machineState.mode || 'N/A';
@@ -951,6 +940,9 @@
                 `;
             } else {
                 document.getElementById('machine-status').innerHTML = '<p style="opacity: 0.7;">No machine data available. Ensure your MaraX device is connected and publishing to MQTT.</p>';
+            }
+            } catch (error) {
+                console.error('Error fetching machine state:', error);
             }
         }
         
@@ -1560,25 +1552,8 @@
         console.log('MaraX Controller script loaded and starting...');
         console.log('Calling updateStatus()...');
         updateStatus();
-        // Update more frequently when on Live Brew tab
-        updateInterval = setInterval(() => {
-            updateStatus();
-            // If on Live Brew tab and brewing, update even more frequently
-            const liveTab = document.getElementById('live');
-            if (liveTab && liveTab.classList.contains('active')) {
-                const brewState = device_data?.brew_state;
-                if (brewState && brewState.isActive) {
-                    // Already updating via updateStatus, but ensure chart updates
-                    setTimeout(() => {
-                        const currentBrewState = device_data?.brew_state;
-                        if (currentBrewState && currentBrewState.isActive) {
-                            const currentTime = Date.now() / 1000;
-                            updateLiveChart(currentBrewState, currentTime);
-                        }
-                    }, 500);
-                }
-            }
-        }, 1000); // Update every second for better responsiveness
+        // Update every 2 seconds by default
+        updateInterval = setInterval(updateStatus, 2000);
         console.log('Update interval set to 2 seconds');
         
         // Initialize live chart
