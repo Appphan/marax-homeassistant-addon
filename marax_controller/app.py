@@ -669,8 +669,17 @@ def api_profiles():
     logger.info(f"API /profiles returning {len(profiles)} profiles")
     if profiles:
         logger.info(f"Profile names: {[p.get('name', 'unnamed') for p in profiles]}")
+        # Log first profile structure for debugging
+        if len(profiles) > 0:
+            logger.info(f"First profile keys: {list(profiles[0].keys())}")
+            logger.info(f"First profile phaseCount: {profiles[0].get('phaseCount', 'NOT FOUND')}")
+            logger.info(f"First profile phase_count: {profiles[0].get('phase_count', 'NOT FOUND')}")
     else:
         logger.warning("No profiles in device_data - ESP32 may not have responded yet")
+        logger.warning("This could mean:")
+        logger.warning("  1. ESP32 hasn't responded to profile list request yet")
+        logger.warning("  2. MQTT message wasn't received")
+        logger.warning("  3. Profile list was empty")
     
     # Add active_profile to response if available
     response = {
@@ -679,6 +688,7 @@ def api_profiles():
         'count': len(profiles)
     }
     
+    logger.info(f"API response structure: {list(response.keys())}")
     return jsonify(response)
 
 @app.route('/api/profiles/select', methods=['POST'])
