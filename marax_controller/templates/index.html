@@ -666,17 +666,22 @@
             grid-template-columns: 1fr 1fr;
             gap: 10px;
         }
+        /* iOS-style Toggle Switch - Apple Human Interface Guidelines */
         .toggle-switch {
             position: relative;
             display: inline-block;
-            width: 50px;
-            height: 24px;
+            width: 51px;
+            height: 31px;
+            flex-shrink: 0;
         }
+        
         .toggle-switch input {
             opacity: 0;
             width: 0;
             height: 0;
+            position: absolute;
         }
+        
         .toggle-slider {
             position: absolute;
             cursor: pointer;
@@ -684,26 +689,61 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: rgba(255, 255, 255, 0.3);
-            transition: 0.3s;
-            border-radius: 24px;
+            background-color: var(--system-fill);
+            transition: all var(--transition-base);
+            border-radius: 31px;
+            border: 0.5px solid var(--system-separator);
         }
+        
         .toggle-slider:before {
             position: absolute;
             content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
+            height: 27px;
+            width: 27px;
+            left: 2px;
+            bottom: 2px;
             background-color: white;
-            transition: 0.3s;
+            transition: all var(--transition-base);
             border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
+        
         .toggle-switch input:checked + .toggle-slider {
-            background-color: #4caf50;
+            background-color: var(--system-green);
+            border-color: var(--system-green);
         }
+        
         .toggle-switch input:checked + .toggle-slider:before {
-            transform: translateX(26px);
+            transform: translateX(20px);
+        }
+        
+        .toggle-switch:hover .toggle-slider {
+            background-color: var(--system-secondary-fill);
+        }
+        
+        .toggle-switch input:checked:hover + .toggle-slider {
+            background-color: #30d158; /* Slightly lighter green on hover */
+        }
+        
+        .toggle-switch:active .toggle-slider:before {
+            width: 33px; /* Slightly wider thumb when pressed */
+        }
+        
+        /* Toggle switch container with label */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-sm) 0;
+            gap: var(--spacing-md);
+        }
+        
+        .toggle-container label:first-child {
+            flex: 1;
+            font-size: var(--font-size-body);
+            font-weight: 400;
+            color: var(--system-label);
+            margin: 0;
         }
         .phase-header {
             display: flex;
@@ -847,13 +887,15 @@
             <div class="status-card">
                 <h2><i class="fas fa-cog"></i> Settings</h2>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                    <div style="padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
-                        <h3 style="margin-bottom: 10px;"><i class="fas fa-toggle-on"></i> Lever Mode</h3>
-                        <label class="toggle-switch" style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" id="lever-mode-toggle" onchange="toggleLeverMode(this.checked)">
-                            <span class="toggle-slider"></span>
-                            <span id="lever-mode-status">Disabled</span>
-                        </label>
+                    <div style="padding: var(--spacing-md); background: var(--system-grouped-background); border-radius: var(--radius-lg); border: 0.5px solid var(--system-separator);">
+                        <h3 style="margin-bottom: var(--spacing-sm); font-size: var(--font-size-headline); font-weight: 600;"><i class="fas fa-toggle-on"></i> Lever Mode</h3>
+                        <div class="toggle-container">
+                            <label id="lever-mode-status" style="margin: 0;">Lever Mode</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="lever-mode-toggle" onchange="toggleLeverMode(this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2434,7 +2476,7 @@
                             
                             <div class="form-section">
                                 <div class="form-section-title"><i class="fas fa-sliders-h"></i> Ramp Settings</div>
-                                <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                                <div class="toggle-container">
                                     <label>Use Ramp</label>
                                     <label class="toggle-switch">
                                         <input type="checkbox" name="useRamp_${index}" ${phase && phase.useRamp ? 'checked' : ''} onchange="updatePhaseGraph(${index})">
@@ -2449,21 +2491,19 @@
                             
                             <div class="form-section">
                                 <div class="form-section-title"><i class="fas fa-cog"></i> Phase Options</div>
-                                <div class="input-group">
-                                    <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
-                                        <label>Allow Manual Stop</label>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" name="allowManualStop_${index}" ${phase && phase.allowManualStop !== false ? 'checked' : ''}>
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                    </div>
-                                    <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
-                                        <label>Publish Events</label>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" name="publishEvents_${index}" ${phase && phase.publishEvents !== false ? 'checked' : ''}>
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                    </div>
+                                <div class="toggle-container">
+                                    <label>Allow Manual Stop</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" name="allowManualStop_${index}" ${phase && phase.allowManualStop !== false ? 'checked' : ''}>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="toggle-container">
+                                    <label>Publish Events</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" name="publishEvents_${index}" ${phase && phase.publishEvents !== false ? 'checked' : ''}>
+                                        <span class="toggle-slider"></span>
+                                    </label>
                                 </div>
                             </div>
                             </div>
@@ -3262,7 +3302,7 @@
         async function toggleLeverMode(enabled) {
             try {
                 await postAPI('settings/lever', { enabled: enabled });
-                document.getElementById('lever-mode-status').textContent = enabled ? 'Enabled' : 'Disabled';
+                // Status is now just "Lever Mode" - the toggle itself shows the state
                 showMessage(`Lever mode ${enabled ? 'enabled' : 'disabled'}`, 'success');
             } catch (error) {
                 showMessage('Error toggling lever mode: ' + error.message, 'error');
