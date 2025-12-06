@@ -2014,7 +2014,7 @@
                                         <h3><i class="fas fa-coffee"></i> ${p.name || 'Unnamed Profile'}</h3>
                                         <p style="opacity: 0.8; margin-bottom: 5px;"><i class="fas fa-hashtag"></i> ID: ${p.id}</p>
                                         ${p.technique ? `<p style="opacity: 0.7; font-size: 0.9em;">${techniqueIcon} ${p.technique}</p>` : ''}
-                                        ${p.phaseCount ? `<p style="opacity: 0.7; font-size: 0.9em;"><i class="fas fa-layer-group"></i> ${p.phaseCount} phases</p>` : ''}
+                                        ${(p.phaseCount || p.phase_count) ? `<p style="opacity: 0.7; font-size: 0.9em;"><i class="fas fa-layer-group"></i> ${p.phaseCount || p.phase_count} phases</p>` : ''}
                                     </div>
                                     ${p.id === activeProfileId ? '<span style="background: #44ff44; color: #000; padding: 5px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold;"><i class="fas fa-check-circle"></i> Active</span>' : ''}
                                 </div>

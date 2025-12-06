@@ -382,21 +382,48 @@ def on_message(client, userdata, msg):
                     return
                 
                 data = json.loads(payload)
-                logger.info(f"✅ Received profile list response with {len(data.get('profiles', []))} profiles")
+                logger.info(f"✅ Received profile list response")
+                logger.info(f"Full payload keys: {list(data.keys())}")
+                logger.info(f"Payload length: {len(payload)} bytes")
+                
                 if 'profiles' in data:
-                    device_data['profiles'] = data['profiles']
-                    logger.info(f"✅ Updated profiles: {len(data['profiles'])} profiles found")
-                    # Log profile names for debugging
-                    for p in data['profiles']:
-                        logger.info(f"  - Profile {p.get('id')}: {p.get('name', 'unnamed')} ({p.get('phase_count', 0)} phases)")
+                    profiles = data['profiles']
+                    logger.info(f"✅ Found {len(profiles)} profiles in response")
+                    
+                    # Normalize field names for frontend compatibility
+                    # ESP32 sends snake_case (phase_count), frontend expects camelCase (phaseCount)
+                    normalized_profiles = []
+                    for p in profiles:
+                        normalized = dict(p)  # Copy the profile
+                        # Convert phase_count to phaseCount for frontend
+                        if 'phase_count' in normalized:
+                            normalized['phaseCount'] = normalized.pop('phase_count')
+                        # Ensure all expected fields exist
+                        if 'id' not in normalized:
+                            logger.warning(f"Profile missing 'id' field: {normalized}")
+                        if 'name' not in normalized:
+                            normalized['name'] = normalized.get('profileName', 'Unnamed Profile')
+                        normalized_profiles.append(normalized)
+                        logger.info(f"  - Profile {normalized.get('id')}: {normalized.get('name', 'unnamed')} ({normalized.get('phaseCount', 0)} phases)")
+                    
+                    device_data['profiles'] = normalized_profiles
+                    logger.info(f"✅ Updated profiles: {len(normalized_profiles)} profiles stored")
+                    
                     if 'active_profile' in data:
                         device_data['active_profile'] = data['active_profile']
                         logger.info(f"Active profile: {data['active_profile']}")
                 else:
-                    logger.warning(f"Profile list response missing 'profiles' key: {data}")
+                    logger.warning(f"Profile list response missing 'profiles' key")
+                    logger.warning(f"Available keys: {list(data.keys())}")
+                    logger.warning(f"Full data: {json.dumps(data, indent=2)[:1000]}")
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON decode error parsing profile list: {e}")
+                logger.error(f"Payload (first 500 chars): {payload[:500]}")
             except Exception as e:
                 logger.error(f"Error parsing profile list: {e}")
                 logger.error(f"Payload (first 500 chars): {payload[:500]}")
+                import traceback
+                logger.error(traceback.format_exc())
         else:
             logger.debug(f"⚠️ Unhandled topic: {topic}")
     except json.JSONDecodeError as e:
