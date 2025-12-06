@@ -2045,6 +2045,17 @@
             // Update selected profile indicator
             updateSelectedProfileIndicator(activeProfileId, profiles);
             
+            // Update live brew profile name if brewing
+            if (activeProfileId !== null) {
+                const activeProfile = profiles.find(p => p.id === activeProfileId);
+                if (activeProfile) {
+                    const profileNameEl = document.getElementById('live-profile-name');
+                    if (profileNameEl) {
+                        profileNameEl.textContent = activeProfile.name || activeProfile.profileName || 'Unnamed';
+                    }
+                }
+            }
+            
             if (profiles && Array.isArray(profiles) && profiles.length > 0) {
                 document.getElementById('profiles-list').innerHTML = `
                     <div class="profile-list">
