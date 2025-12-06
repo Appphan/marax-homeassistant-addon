@@ -1246,6 +1246,16 @@
                 initLiveChart();
             } else if (tabName === 'profiles') {
                 // Request profiles when profiles tab is clicked
+                updateProfiles(true).catch(err => {
+                    console.error('Error loading profiles:', err);
+                    document.getElementById('profiles-list').innerHTML = `
+                        <div style="text-align: center; padding: 40px;">
+                            <p style="opacity: 0.7; margin-bottom: 20px;">❌ Failed to load profiles</p>
+                            <p style="opacity: 0.6; font-size: 0.9em; margin-bottom: 20px;">${err.message || 'Unknown error'}</p>
+                            <button class="button" onclick="updateProfiles(true)">🔄 Retry</button>
+                        </div>
+                    `;
+                });
             } else if (tabName === 'dashboard') {
                 // Update PID/Learning status when dashboard is shown
                 updateControlSystemStatus();
