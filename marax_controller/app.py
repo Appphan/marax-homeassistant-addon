@@ -238,9 +238,15 @@ def on_message(client, userdata, msg):
         topic = msg.topic
         payload = msg.payload.decode()
         
-        # Log received messages for debugging (truncate long payloads)
-        payload_preview = payload[:100] + "..." if len(payload) > 100 else payload
-        logger.debug(f"📨 MQTT message received: {topic} = {payload_preview}")
+        # Only log profile-related topics in detail to reduce noise
+        is_profile_topic = "profile" in topic.lower()
+        
+        if is_profile_topic:
+            payload_preview = payload[:200] + "..." if len(payload) > 200 else payload
+            logger.info(f"📨 PROFILE MQTT: {topic} = {payload_preview}")
+        else:
+            # Other topics: only log at debug level
+            logger.debug(f"📨 MQTT: {topic}")
         
         if topic == TOPIC_DEVICE_STATUS:
             device_data['status'] = payload
@@ -268,15 +274,15 @@ def on_message(client, userdata, msg):
             device_data['current_phase'] = json.loads(payload)
             logger.debug(f"Updated current phase: {device_data['current_phase']}")
         elif topic == "marax/debug/profile" or topic == "marax/debug/mqtt":
-            # Log debug messages for troubleshooting
+            # Log profile debug messages
             try:
                 debug_data = json.loads(payload)
-                logger.info(f"🔍 ESP32 Debug [{topic}]: {debug_data.get('message', payload)}")
+                logger.info(f"🔍 PROFILE DEBUG [{topic}]: {debug_data.get('message', payload)}")
             except:
-                logger.info(f"🔍 ESP32 Debug [{topic}]: {payload}")
+                logger.info(f"🔍 PROFILE DEBUG [{topic}]: {payload}")
         elif topic == TOPIC_LEARNING_STATUS:
             device_data['learning']['status'] = payload
-            logger.debug(f"Updated learning status: {payload}")
+            # Only log at debug level (not profile-related)
         elif topic == TOPIC_LEARNING_KP:
             try:
                 device_data['learning']['kp'] = float(payload)
@@ -375,25 +381,29 @@ def on_message(client, userdata, msg):
             except:
                 pass
         elif topic == TOPIC_PROFILE_LIST:
-            logger.info(f"🔔 PROFILE LIST MESSAGE RECEIVED on topic: {topic}")
-            logger.info(f"Payload type: {type(payload)}, length: {len(payload)} bytes")
-            logger.info(f"Payload preview (first 200 chars): {payload[:200]}")
+            logger.info(f"\n{'='*60}")
+            logger.info(f"🔔 PROFILE LIST MESSAGE RECEIVED")
+            logger.info(f"{'='*60}")
+            logger.info(f"Topic: {topic}")
+            logger.info(f"Payload length: {len(payload)} bytes")
             
             try:
                 # Ignore our own "get" request message
                 if payload == "get" or payload.strip() == "get":
-                    logger.debug("Ignoring our own profile list request")
+                    logger.info("⚠️ Ignoring our own profile list request")
+                    logger.info(f"{'='*60}\n")
                     return
                 
                 # Check if payload is JSON
                 if not payload.strip().startswith('{') and not payload.strip().startswith('['):
-                    logger.warning(f"⚠️ Profile list payload doesn't look like JSON: {payload[:100]}")
+                    logger.warning(f"⚠️ Profile list payload doesn't look like JSON")
+                    logger.warning(f"Payload preview: {payload[:100]}")
+                    logger.info(f"{'='*60}\n")
                     return
                 
                 data = json.loads(payload)
-                logger.info(f"✅ Successfully parsed profile list JSON")
-                logger.info(f"Full payload keys: {list(data.keys())}")
-                logger.info(f"Payload length: {len(payload)} bytes")
+                logger.info(f"✅ JSON parsed successfully")
+                logger.info(f"JSON keys: {list(data.keys())}")
                 
                 if 'profiles' in data:
                     profiles = data['profiles']
@@ -409,38 +419,42 @@ def on_message(client, userdata, msg):
                             normalized['phaseCount'] = normalized.pop('phase_count')
                         # Ensure all expected fields exist
                         if 'id' not in normalized:
-                            logger.warning(f"Profile missing 'id' field: {normalized}")
+                            logger.warning(f"⚠️ Profile missing 'id' field: {normalized}")
                         if 'name' not in normalized:
                             normalized['name'] = normalized.get('profileName', 'Unnamed Profile')
                         normalized_profiles.append(normalized)
-                        logger.info(f"  - Profile {normalized.get('id')}: {normalized.get('name', 'unnamed')} ({normalized.get('phaseCount', 0)} phases)")
+                        logger.info(f"  ✅ Profile {normalized.get('id')}: '{normalized.get('name', 'unnamed')}' ({normalized.get('phaseCount', 0)} phases)")
                     
                     device_data['profiles'] = normalized_profiles
-                    logger.info(f"✅ Updated profiles: {len(normalized_profiles)} profiles stored")
+                    logger.info(f"✅ Stored {len(normalized_profiles)} profiles in device_data")
                     
                     if 'active_profile' in data:
                         device_data['active_profile'] = data['active_profile']
-                        logger.info(f"Active profile: {data['active_profile']}")
+                        logger.info(f"✅ Active profile: {data['active_profile']}")
+                    
+                    logger.info(f"{'='*60}\n")
                 else:
-                    logger.warning(f"Profile list response missing 'profiles' key")
+                    logger.warning(f"⚠️ Profile list response missing 'profiles' key")
                     logger.warning(f"Available keys: {list(data.keys())}")
-                    logger.warning(f"Full data: {json.dumps(data, indent=2)[:1000]}")
+                    logger.warning(f"Full data preview: {json.dumps(data, indent=2)[:500]}")
+                    logger.info(f"{'='*60}\n")
             except json.JSONDecodeError as e:
-                logger.error(f"JSON decode error parsing profile list: {e}")
-                logger.error(f"Payload (first 500 chars): {payload[:500]}")
+                logger.error(f"❌ JSON decode error: {e}")
+                logger.error(f"Payload preview (first 500 chars): {payload[:500]}")
+                logger.info(f"{'='*60}\n")
             except Exception as e:
-                logger.error(f"Error parsing profile list: {e}")
-                logger.error(f"Payload (first 500 chars): {payload[:500]}")
+                logger.error(f"❌ Error parsing profile list: {e}")
+                logger.error(f"Payload preview (first 500 chars): {payload[:500]}")
                 import traceback
                 logger.error(traceback.format_exc())
+                logger.info(f"{'='*60}\n")
         else:
-            # Check if it's a profile list topic but with different casing or format
-            if "profile" in topic.lower() and "list" in topic.lower():
-                logger.warning(f"⚠️ Profile list topic received but didn't match handler: {topic}")
-                logger.warning(f"Expected topic: {TOPIC_PROFILE_LIST}")
+            # Check if it's a profile-related topic but didn't match handler
+            if "profile" in topic.lower():
+                logger.warning(f"⚠️ PROFILE topic received but didn't match handler: {topic}")
+                logger.warning(f"Expected topics: {TOPIC_PROFILE_LIST}, {TOPIC_PROFILE_SELECT}, {TOPIC_PROFILE_SET}")
                 logger.warning(f"Payload preview: {payload[:200]}")
-            else:
-                logger.debug(f"⚠️ Unhandled topic: {topic}")
+            # Other topics: only log at debug level
     except json.JSONDecodeError as e:
         logger.warning(f"⚠️ Failed to parse JSON from {topic}: {e}")
         logger.debug(f"Payload (first 200 chars): {payload[:200]}")
@@ -541,12 +555,17 @@ def init_mqtt():
 def request_profile_list():
     """Request profile list from device"""
     if mqtt_client and mqtt_connected:
-        logger.info(f"📤 Publishing profile list request to: {TOPIC_PROFILE_LIST}")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"📤 REQUESTING PROFILE LIST")
+        logger.info(f"{'='*60}")
+        logger.info(f"Topic: {TOPIC_PROFILE_LIST}")
         result = mqtt_client.publish(TOPIC_PROFILE_LIST, "get", qos=0)
         if result.rc == 0:
-            logger.info("✅ Profile list request published successfully")
+            logger.info("✅ Request published successfully")
+            logger.info(f"{'='*60}\n")
         else:
-            logger.error(f"❌ Failed to publish profile list request: MQTT error code {result.rc}")
+            logger.error(f"❌ Failed to publish request: MQTT error code {result.rc}")
+            logger.info(f"{'='*60}\n")
     else:
         logger.error("❌ Cannot request profile list: MQTT not connected")
 
