@@ -236,7 +236,16 @@ def on_message(client, userdata, msg):
     """MQTT message callback"""
     try:
         topic = msg.topic
-        payload = msg.payload.decode()
+        # Decode payload with error handling for invalid UTF-8
+        try:
+            payload = msg.payload.decode('utf-8', errors='replace')
+        except UnicodeDecodeError as e:
+            logger.error(f"❌ Failed to decode payload from {topic}: {e}")
+            logger.error(f"Payload length: {len(msg.payload)} bytes")
+            logger.error(f"First 100 bytes (hex): {msg.payload[:100].hex()}")
+            # Try to decode with error replacement to see what we can salvage
+            payload = msg.payload.decode('utf-8', errors='replace')
+            logger.warning(f"Decoded with error replacement, length: {len(payload)}")
         
         # Only log profile-related topics in detail to reduce noise
         is_profile_topic = "profile" in topic.lower()
@@ -395,14 +404,23 @@ def on_message(client, userdata, msg):
                     logger.info(f"{'='*60}\n")
                     return
                 
+                # Clean payload: remove any null bytes or invalid UTF-8 characters
+                # Replace invalid characters with spaces to preserve structure
+                payload_clean = payload.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
+                # Remove null bytes
+                payload_clean = payload_clean.replace('\x00', '')
+                # Strip whitespace
+                payload_clean = payload_clean.strip()
+                
                 # Check if payload is JSON
-                if not payload.strip().startswith('{') and not payload.strip().startswith('['):
+                if not payload_clean.startswith('{') and not payload_clean.startswith('['):
                     logger.warning(f"⚠️ Profile list payload doesn't look like JSON")
-                    logger.warning(f"Payload preview: {payload[:100]}")
+                    logger.warning(f"Payload preview (first 200 chars): {payload_clean[:200]}")
+                    logger.warning(f"Payload hex (first 100 bytes): {payload[:100].encode('utf-8', errors='replace').hex()}")
                     logger.info(f"{'='*60}\n")
                     return
                 
-                data = json.loads(payload)
+                data = json.loads(payload_clean)
                 logger.info(f"✅ JSON parsed successfully")
                 logger.info(f"JSON keys: {list(data.keys())}")
                 
