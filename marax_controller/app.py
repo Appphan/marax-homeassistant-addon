@@ -375,14 +375,23 @@ def on_message(client, userdata, msg):
             except:
                 pass
         elif topic == TOPIC_PROFILE_LIST:
+            logger.info(f"🔔 PROFILE LIST MESSAGE RECEIVED on topic: {topic}")
+            logger.info(f"Payload type: {type(payload)}, length: {len(payload)} bytes")
+            logger.info(f"Payload preview (first 200 chars): {payload[:200]}")
+            
             try:
                 # Ignore our own "get" request message
-                if payload == "get":
+                if payload == "get" or payload.strip() == "get":
                     logger.debug("Ignoring our own profile list request")
                     return
                 
+                # Check if payload is JSON
+                if not payload.strip().startswith('{') and not payload.strip().startswith('['):
+                    logger.warning(f"⚠️ Profile list payload doesn't look like JSON: {payload[:100]}")
+                    return
+                
                 data = json.loads(payload)
-                logger.info(f"✅ Received profile list response")
+                logger.info(f"✅ Successfully parsed profile list JSON")
                 logger.info(f"Full payload keys: {list(data.keys())}")
                 logger.info(f"Payload length: {len(payload)} bytes")
                 
@@ -425,7 +434,13 @@ def on_message(client, userdata, msg):
                 import traceback
                 logger.error(traceback.format_exc())
         else:
-            logger.debug(f"⚠️ Unhandled topic: {topic}")
+            # Check if it's a profile list topic but with different casing or format
+            if "profile" in topic.lower() and "list" in topic.lower():
+                logger.warning(f"⚠️ Profile list topic received but didn't match handler: {topic}")
+                logger.warning(f"Expected topic: {TOPIC_PROFILE_LIST}")
+                logger.warning(f"Payload preview: {payload[:200]}")
+            else:
+                logger.debug(f"⚠️ Unhandled topic: {topic}")
     except json.JSONDecodeError as e:
         logger.warning(f"⚠️ Failed to parse JSON from {topic}: {e}")
         logger.debug(f"Payload (first 200 chars): {payload[:200]}")
@@ -526,8 +541,14 @@ def init_mqtt():
 def request_profile_list():
     """Request profile list from device"""
     if mqtt_client and mqtt_connected:
-        mqtt_client.publish(TOPIC_PROFILE_LIST, "get", qos=0)
-        logger.info("Requested profile list")
+        logger.info(f"📤 Publishing profile list request to: {TOPIC_PROFILE_LIST}")
+        result = mqtt_client.publish(TOPIC_PROFILE_LIST, "get", qos=0)
+        if result.rc == 0:
+            logger.info("✅ Profile list request published successfully")
+        else:
+            logger.error(f"❌ Failed to publish profile list request: MQTT error code {result.rc}")
+    else:
+        logger.error("❌ Cannot request profile list: MQTT not connected")
 
 # Flask Routes
 @app.before_request
