@@ -258,10 +258,7 @@ def on_message(client, userdata, msg):
             try:
                 brew_state_data = json.loads(payload)
                 device_data['brew_state'] = brew_state_data
-                is_active = brew_state_data.get('isActive', False)
-                pressure = brew_state_data.get('pressure', 0)
-                flow = brew_state_data.get('flow', 0)
-                logger.info(f"✅ Updated brew state: isActive={is_active}, pressure={pressure:.2f}, flow={flow:.2f}")
+                # Only log at debug level (not profile-related)
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse brew state JSON: {e}, payload: {payload[:100]}")
         elif topic == TOPIC_MACHINE_STATE:
@@ -456,17 +453,24 @@ def on_message(client, userdata, msg):
                 logger.warning(f"Payload preview: {payload[:200]}")
             # Other topics: only log at debug level
     except json.JSONDecodeError as e:
-        logger.warning(f"⚠️ Failed to parse JSON from {topic}: {e}")
-        logger.debug(f"Payload (first 200 chars): {payload[:200]}")
+        # Only log JSON errors for profile topics in detail
+        if "profile" in topic.lower():
+            logger.warning(f"⚠️ Failed to parse JSON from profile topic {topic}: {e}")
+            logger.warning(f"Payload (first 200 chars): {payload[:200]}")
+        else:
+            logger.debug(f"Failed to parse JSON from {topic}: {e}")
     except Exception as e:
-        logger.error("=" * 60)
-        logger.error(f"❌ ERROR processing MQTT message from {topic}")
-        logger.error(f"Error type: {type(e).__name__}")
-        logger.error(f"Error message: {str(e)}")
-        import traceback
-        logger.error("Full traceback:")
-        logger.error(traceback.format_exc())
-        logger.error("=" * 60)
+        # Only log errors for profile topics in detail
+        if "profile" in topic.lower():
+            logger.error("=" * 60)
+            logger.error(f"❌ ERROR processing PROFILE MQTT message from {topic}")
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Error message: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            logger.error("=" * 60)
+        else:
+            logger.debug(f"Error processing {topic}: {e}")
 
 def init_mqtt():
     """Initialize MQTT client with retry logic"""
@@ -670,35 +674,43 @@ def api_machine_state():
 @app.route('/api/profiles')
 def api_profiles():
     """Get profiles list"""
-    logger.info("API /profiles endpoint called")
-    
     # Only request fresh profile list if 'refresh' parameter is set
     refresh = request.args.get('refresh', 'false').lower() == 'true'
     if refresh:
-        logger.info("Refresh requested, requesting profile list from device")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"🔄 API /profiles - REFRESH REQUESTED")
+        logger.info(f"{'='*60}")
         request_profile_list()
         # Wait longer for response (ESP32 needs time to process and publish)
         time.sleep(2.0)
     else:
-        logger.info("Using cached profile data (no refresh requested)")
+        logger.info("📋 API /profiles - Using cached data (no refresh)")
     
     profiles = device_data.get('profiles', [])
     active_profile = device_data.get('active_profile', None)
     
-    logger.info(f"API /profiles returning {len(profiles)} profiles")
+    logger.info(f"\n{'='*60}")
+    logger.info(f"📋 API /profiles RESPONSE")
+    logger.info(f"{'='*60}")
+    logger.info(f"Returning {len(profiles)} profiles")
+    
     if profiles:
         logger.info(f"Profile names: {[p.get('name', 'unnamed') for p in profiles]}")
         # Log first profile structure for debugging
         if len(profiles) > 0:
-            logger.info(f"First profile keys: {list(profiles[0].keys())}")
-            logger.info(f"First profile phaseCount: {profiles[0].get('phaseCount', 'NOT FOUND')}")
-            logger.info(f"First profile phase_count: {profiles[0].get('phase_count', 'NOT FOUND')}")
+            first_profile = profiles[0]
+            logger.info(f"First profile structure:")
+            logger.info(f"  Keys: {list(first_profile.keys())}")
+            logger.info(f"  ID: {first_profile.get('id', 'N/A')}")
+            logger.info(f"  Name: {first_profile.get('name', 'N/A')}")
+            logger.info(f"  phaseCount: {first_profile.get('phaseCount', 'NOT FOUND')}")
+            logger.info(f"  phase_count: {first_profile.get('phase_count', 'NOT FOUND')}")
     else:
-        logger.warning("No profiles in device_data - ESP32 may not have responded yet")
-        logger.warning("This could mean:")
+        logger.warning("⚠️ No profiles in device_data")
+        logger.warning("Possible reasons:")
         logger.warning("  1. ESP32 hasn't responded to profile list request yet")
-        logger.warning("  2. MQTT message wasn't received")
-        logger.warning("  3. Profile list was empty")
+        logger.warning("  2. MQTT message wasn't received by add-on")
+        logger.warning("  3. Profile list was empty on ESP32")
     
     # Add active_profile to response if available
     response = {
@@ -707,7 +719,8 @@ def api_profiles():
         'count': len(profiles)
     }
     
-    logger.info(f"API response structure: {list(response.keys())}")
+    logger.info(f"Response structure: {list(response.keys())}")
+    logger.info(f"{'='*60}\n")
     return jsonify(response)
 
 @app.route('/api/profiles/select', methods=['POST'])
