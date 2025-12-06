@@ -1957,26 +1957,47 @@
         }
         
         async function updateProfiles(refresh = false) {
-            const endpoint = refresh ? 'profiles?refresh=true' : 'profiles';
-            const response = await fetchAPI(endpoint);
-            console.log('Profiles response:', response);
-            
-            // Handle both old format (array) and new format (object with profiles array)
-            let profiles = [];
-            if (Array.isArray(response)) {
-                profiles = response;
-            } else if (response && response.profiles) {
-                profiles = response.profiles;
-                if (response.active_profile !== undefined) {
-                    activeProfileId = response.active_profile;
-                }
-            } else if (response && typeof response === 'object') {
-                // Try to extract profiles from any object structure
-                profiles = Object.values(response).find(v => Array.isArray(v)) || [];
+            // Show loading state
+            const profilesListEl = document.getElementById('profiles-list');
+            if (profilesListEl) {
+                profilesListEl.innerHTML = '<div style="text-align: center; padding: 40px;"><p>Loading profiles...</p></div>';
             }
             
-            currentProfiles = profiles;
-            console.log(`Found ${profiles.length} profiles:`, profiles);
+            try {
+                const endpoint = refresh ? 'profiles?refresh=true' : 'profiles';
+                const response = await fetchAPI(endpoint);
+                console.log('Profiles response:', response);
+                
+                if (!response) {
+                    console.error('No response from profiles API');
+                    if (profilesListEl) {
+                        profilesListEl.innerHTML = `
+                            <div style="text-align: center; padding: 40px;">
+                                <p style="opacity: 0.7; margin-bottom: 20px;">❌ Failed to fetch profiles</p>
+                                <p style="opacity: 0.6; font-size: 0.9em; margin-bottom: 20px;">No response from server. Check MQTT connection.</p>
+                                <button class="button" onclick="updateProfiles(true)">🔄 Retry</button>
+                            </div>
+                        `;
+                    }
+                    return;
+                }
+                
+                // Handle both old format (array) and new format (object with profiles array)
+                let profiles = [];
+                if (Array.isArray(response)) {
+                    profiles = response;
+                } else if (response && response.profiles) {
+                    profiles = response.profiles;
+                    if (response.active_profile !== undefined) {
+                        activeProfileId = response.active_profile;
+                    }
+                } else if (response && typeof response === 'object') {
+                    // Try to extract profiles from any object structure
+                    profiles = Object.values(response).find(v => Array.isArray(v)) || [];
+                }
+                
+                currentProfiles = profiles;
+                console.log(`Found ${profiles.length} profiles:`, profiles);
             
             // Update selected profile indicator
             updateSelectedProfileIndicator(activeProfileId, profiles);
@@ -2027,6 +2048,18 @@
                         <button class="button primary" onclick="openProfileEditor()" style="margin-left: 10px;">+ Create New Profile</button>
                     </div>
                 `;
+            }
+            } catch (error) {
+                console.error('Error in updateProfiles:', error);
+                if (profilesListEl) {
+                    profilesListEl.innerHTML = `
+                        <div style="text-align: center; padding: 40px;">
+                            <p style="opacity: 0.7; margin-bottom: 20px;">❌ Failed to load profiles</p>
+                            <p style="opacity: 0.6; font-size: 0.9em; margin-bottom: 20px;">${error.message || 'Unknown error'}</p>
+                            <button class="button" onclick="updateProfiles(true)">🔄 Retry</button>
+                        </div>
+                    `;
+                }
             }
         }
         
