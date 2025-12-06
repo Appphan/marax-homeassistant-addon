@@ -1853,6 +1853,33 @@
                     
                     const liveBrewStatusEl = document.getElementById('live-brew-status');
                     if (liveBrewStatusEl) {
+                        // Get phase information from brew state
+                        const phaseName = brewState.phase || 'N/A';
+                        const phaseIndex = brewState.phaseIndex !== undefined ? brewState.phaseIndex : -1;
+                        const phaseTime = brewState.phaseTime !== undefined ? brewState.phaseTime : 0;
+                        const totalPhases = brewState.totalPhases !== undefined ? brewState.totalPhases : 0;
+                        
+                        // Create phase indicator
+                        let phaseIndicator = '';
+                        if (phaseIndex >= 0 && totalPhases > 0) {
+                            const phaseNumber = phaseIndex + 1;
+                            phaseIndicator = `<div class="stat-item phase-marker" style="grid-column: 1 / -1; background: rgba(0, 122, 255, 0.2); border-radius: 8px; padding: 10px; margin-top: 10px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <div>
+                                        <div class="stat-label" style="font-size: 0.9em; opacity: 0.8;">Current Phase</div>
+                                        <div class="stat-value" style="font-size: 1.3em; font-weight: bold; color: #007AFF;">
+                                            ${phaseName.charAt(0).toUpperCase() + phaseName.slice(1)}
+                                            <span style="font-size: 0.8em; opacity: 0.7; margin-left: 8px;">(${phaseNumber}/${totalPhases})</span>
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div class="stat-label" style="font-size: 0.9em; opacity: 0.8;">Phase Time</div>
+                                        <div class="stat-value" style="font-size: 1.1em;">${phaseTime.toFixed(1)}s</div>
+                                    </div>
+                                </div>
+                            </div>`;
+                        }
+                        
                         liveBrewStatusEl.innerHTML = `
                             <div class="status-grid">
                                 <div class="stat-item">
@@ -1876,6 +1903,7 @@
                                     <div class="stat-value">${flow} ml/s</div>
                                 </div>
                             </div>
+                            ${phaseIndicator}
                         `;
                         
                         // Update profile name asynchronously if it's being fetched
@@ -1894,23 +1922,36 @@
                         }
                     }
                     
-                    // Update phase information (non-blocking)
-                    fetchAPI('phase').then(phaseData => {
-                        if (phaseData && phaseData.phase) {
-                            updatePhaseInfo(phaseData);
-                        } else {
-                            const phaseInfoCard = document.getElementById('phase-info-card');
+                    // Update phase information from brew state (primary) or API (fallback)
+                    const phaseInfoCard = document.getElementById('phase-info-card');
+                    if (brewState.phase && brewState.phaseIndex !== undefined) {
+                        // Use phase data from brew state
+                        const phaseDataFromState = {
+                            phase: brewState.phase,
+                            phase_index: brewState.phaseIndex,
+                            phase_time: brewState.phaseTime || 0,
+                            profile_name: brewState.profileName || activeProfileName,
+                            target_pressure: brewState.targetPressure || 0,
+                            current_pressure: brewState.pressure || 0
+                        };
+                        updatePhaseInfo(phaseDataFromState);
+                    } else {
+                        // Fallback to API if brew state doesn't have phase info
+                        fetchAPI('phase').then(phaseData => {
+                            if (phaseData && phaseData.phase) {
+                                updatePhaseInfo(phaseData);
+                            } else {
+                                if (phaseInfoCard) {
+                                    phaseInfoCard.style.display = 'none';
+                                }
+                            }
+                        }).catch(e => {
+                            console.error('Error fetching phase data:', e);
                             if (phaseInfoCard) {
                                 phaseInfoCard.style.display = 'none';
                             }
-                        }
-                    }).catch(e => {
-                        console.error('Error fetching phase data:', e);
-                        const phaseInfoCard = document.getElementById('phase-info-card');
-                        if (phaseInfoCard) {
-                            phaseInfoCard.style.display = 'none';
-                        }
-                    });
+                        });
+                    }
                 } else {
                     // If brew just ended, update chart one more time to show final state
                     if (brewStartTime !== null && brewEndTime === null) {
