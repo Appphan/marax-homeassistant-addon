@@ -384,6 +384,8 @@ def on_message(client, userdata, msg):
             logger.info(f"🔔 PROFILE LIST MESSAGE RECEIVED")
             logger.info(f"{'='*60}")
             logger.info(f"Topic: {topic}")
+            logger.info(f"Expected topic: {TOPIC_PROFILE_LIST}")
+            logger.info(f"Topics match: {topic == TOPIC_PROFILE_LIST}")
             logger.info(f"Payload length: {len(payload)} bytes")
             
             try:
@@ -449,10 +451,18 @@ def on_message(client, userdata, msg):
                 logger.info(f"{'='*60}\n")
         else:
             # Check if it's a profile-related topic but didn't match handler
-            if "profile" in topic.lower():
-                logger.warning(f"⚠️ PROFILE topic received but didn't match handler: {topic}")
-                logger.warning(f"Expected topics: {TOPIC_PROFILE_LIST}, {TOPIC_PROFILE_SELECT}, {TOPIC_PROFILE_SET}")
+            if "profile" in topic.lower() or "list" in topic.lower():
+                logger.warning(f"\n{'='*60}")
+                logger.warning(f"⚠️ PROFILE-RELATED TOPIC RECEIVED BUT DIDN'T MATCH HANDLER")
+                logger.warning(f"{'='*60}")
+                logger.warning(f"Received topic: '{topic}'")
+                logger.warning(f"Expected TOPIC_PROFILE_LIST: '{TOPIC_PROFILE_LIST}'")
+                logger.warning(f"Topic comparison: {topic == TOPIC_PROFILE_LIST}")
+                logger.warning(f"Topic contains 'profile': {'profile' in topic.lower()}")
+                logger.warning(f"Topic contains 'list': {'list' in topic.lower()}")
+                logger.warning(f"Payload length: {len(payload)} bytes")
                 logger.warning(f"Payload preview: {payload[:200]}")
+                logger.warning(f"{'='*60}\n")
             # Other topics: only log at debug level
     except json.JSONDecodeError as e:
         # Only log JSON errors for profile topics in detail
