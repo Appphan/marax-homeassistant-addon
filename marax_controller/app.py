@@ -243,7 +243,9 @@ def on_message(client, userdata, msg):
         
         if is_profile_topic:
             payload_preview = payload[:200] + "..." if len(payload) > 200 else payload
-            logger.info(f"📨 PROFILE MQTT: {topic} = {payload_preview}")
+            logger.info(f"📨 PROFILE MQTT: {topic}")
+            logger.info(f"   Payload length: {len(payload)} bytes")
+            logger.info(f"   Preview: {payload_preview}")
         else:
             # Other topics: only log at debug level
             logger.debug(f"📨 MQTT: {topic}")
@@ -680,9 +682,13 @@ def api_profiles():
         logger.info(f"\n{'='*60}")
         logger.info(f"🔄 API /profiles - REFRESH REQUESTED")
         logger.info(f"{'='*60}")
+        logger.info(f"Current profiles in cache: {len(device_data.get('profiles', []))}")
         request_profile_list()
         # Wait longer for response (ESP32 needs time to process and publish)
+        logger.info(f"⏳ Waiting 2 seconds for ESP32 response...")
         time.sleep(2.0)
+        logger.info(f"✅ Wait complete, checking for new profiles...")
+        logger.info(f"Profiles in cache after wait: {len(device_data.get('profiles', []))}")
     else:
         logger.info("📋 API /profiles - Using cached data (no refresh)")
     
