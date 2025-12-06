@@ -686,12 +686,17 @@ def api_profiles():
     """Get profiles list"""
     # Only request fresh profile list if 'refresh' parameter is set
     refresh = request.args.get('refresh', 'false').lower() == 'true'
+    logger.info(f"🔍 API /profiles called - refresh parameter: '{refresh}' (raw: '{request.args.get('refresh', 'NONE')}')")
+    
     if refresh:
         logger.info(f"\n{'='*60}")
         logger.info(f"🔄 API /profiles - REFRESH REQUESTED")
         logger.info(f"{'='*60}")
         logger.info(f"Current profiles in cache: {len(device_data.get('profiles', []))}")
+        logger.info(f"MQTT connected: {mqtt_connected}, MQTT client exists: {mqtt_client is not None}")
+        logger.info(f"About to call request_profile_list()...")
         request_profile_list()
+        logger.info(f"request_profile_list() returned")
         # Wait longer for response (ESP32 needs time to process and publish)
         logger.info(f"⏳ Waiting 2 seconds for ESP32 response...")
         time.sleep(2.0)
