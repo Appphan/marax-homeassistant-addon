@@ -560,12 +560,18 @@ def init_mqtt():
 
 def request_profile_list():
     """Request profile list from device"""
+    logger.info(f"🔍 request_profile_list() called")
+    logger.info(f"   mqtt_client exists: {mqtt_client is not None}")
+    logger.info(f"   mqtt_connected: {mqtt_connected}")
+    
     if mqtt_client and mqtt_connected:
         logger.info(f"\n{'='*60}")
         logger.info(f"📤 REQUESTING PROFILE LIST")
         logger.info(f"{'='*60}")
         logger.info(f"Topic: {TOPIC_PROFILE_LIST}")
+        logger.info(f"Message: 'get'")
         result = mqtt_client.publish(TOPIC_PROFILE_LIST, "get", qos=0)
+        logger.info(f"Publish result: rc={result.rc}, mid={result.mid if hasattr(result, 'mid') else 'N/A'}")
         if result.rc == 0:
             logger.info("✅ Request published successfully")
             logger.info(f"{'='*60}\n")
@@ -574,6 +580,8 @@ def request_profile_list():
             logger.info(f"{'='*60}\n")
     else:
         logger.error("❌ Cannot request profile list: MQTT not connected")
+        logger.error(f"   mqtt_client: {mqtt_client}")
+        logger.error(f"   mqtt_connected: {mqtt_connected}")
 
 # Flask Routes
 @app.before_request
