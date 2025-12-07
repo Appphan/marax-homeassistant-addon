@@ -3687,6 +3687,233 @@
         }).catch(err => {
             console.error('Health check failed:', err);
         });
+        
+        // Diagnostic functions
+        let diagnosticData = null;
+        
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        function formatUptime(seconds) {
+            if (!seconds) return '0s';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hours}h ${minutes}m ${secs}s`;
+        }
+        
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return 'Never';
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        }
+        
+        async function loadDiagnosticData(showLoading = true) {
+            try {
+                if (showLoading) {
+                    document.getElementById('diagnostic-system').textContent = 'Loading...';
+                    document.getElementById('diagnostic-network').textContent = 'Loading...';
+                    document.getElementById('diagnostic-sensors').textContent = 'Loading...';
+                    document.getElementById('diagnostic-brew').textContent = 'Loading...';
+                    document.getElementById('diagnostic-learning').textContent = 'Loading...';
+                    document.getElementById('diagnostic-errors').textContent = 'Loading...';
+                }
+                
+                const response = await fetch('/api/diagnostic?refresh=true');
+                if (!response.ok) {
+                    throw new Error('Failed to load diagnostic data');
+                }
+                const data = await response.json();
+                diagnosticData = data;
+                updateDiagnosticDisplay(data);
+            } catch (error) {
+                console.error('Error loading diagnostic:', error);
+                const errorMsg = `<p style="color: var(--system-red);">Error: ${error.message}</p>`;
+                document.getElementById('diagnostic-system').innerHTML = errorMsg;
+                document.getElementById('diagnostic-network').innerHTML = errorMsg;
+                document.getElementById('diagnostic-sensors').innerHTML = errorMsg;
+                document.getElementById('diagnostic-brew').innerHTML = errorMsg;
+                document.getElementById('diagnostic-learning').innerHTML = errorMsg;
+                document.getElementById('diagnostic-errors').innerHTML = errorMsg;
+            }
+        }
+        
+        function updateDiagnosticDisplay(data) {
+            if (!data) return;
+            
+            // Health Score
+            const health = data.health || {};
+            const score = health.overall_score || 0;
+            const healthScoreCircle = document.getElementById('healthScoreCircle');
+            const healthMessage = document.getElementById('healthMessage');
+            const healthCard = document.getElementById('healthCard');
+            
+            if (healthScoreCircle) healthScoreCircle.textContent = score;
+            if (healthMessage) healthMessage.textContent = health.message || 'Unknown';
+            
+            // Update health score color
+            if (healthScoreCircle) {
+                if (score >= 90) {
+                    healthScoreCircle.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                } else if (score >= 70) {
+                    healthScoreCircle.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+                } else if (score >= 50) {
+                    healthScoreCircle.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                } else {
+                    healthScoreCircle.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                }
+            }
+            
+            // System Information
+            const system = data.system || {};
+            const systemEl = document.getElementById('diagnostic-system');
+            if (systemEl) {
+                systemEl.innerHTML = `
+                    <div style="display: grid; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between;"><span>Uptime:</span><strong>${system.uptime_formatted || formatUptime(system.uptime_seconds)}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Firmware:</span><strong>${system.firmware_version || '-'}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Chip:</span><strong>${system.chip_model || '-'}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>CPU:</span><strong>${system.cpu_freq_mhz || 0} MHz</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Free Heap:</span><strong>${formatBytes(system.free_heap)}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Min Heap:</span><strong>${formatBytes(system.min_free_heap)}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Fragmentation:</span><strong style="color: ${(system.heap_fragmentation || 0) > 30 ? 'var(--system-orange)' : 'var(--system-green)'}">${(system.heap_fragmentation || 0).toFixed(1)}%</strong></div>
+                    </div>
+                `;
+            }
+            
+            // Network Status
+            const network = data.network || {};
+            const wifiConnected = network.wifi_connected || false;
+            const mqttConnected = network.mqtt_connected || false;
+            const networkEl = document.getElementById('diagnostic-network');
+            if (networkEl) {
+                networkEl.innerHTML = `
+                    <div style="display: grid; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between;"><span>WiFi:</span><strong style="color: ${wifiConnected ? 'var(--system-green)' : 'var(--system-red)'}">${wifiConnected ? 'Connected' : 'Disconnected'}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>SSID:</span><strong>${network.wifi_ssid || '-'}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>RSSI:</span><strong>${network.wifi_rssi_dbm || '-'}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>IP:</span><strong>${network.wifi_ip || '-'}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>MQTT:</span><strong style="color: ${mqttConnected ? 'var(--system-green)' : 'var(--system-red)'}">${mqttConnected ? 'Connected' : 'Disconnected'}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Broker:</span><strong>${network.mqtt_broker || '-'}</strong></div>
+                    </div>
+                `;
+            }
+            
+            // Sensor Status
+            const sensors = data.sensors || {};
+            const pressure = sensors.pressure || {};
+            const temp = sensors.temperature || {};
+            const scale = sensors.scale || {};
+            const sensorsEl = document.getElementById('diagnostic-sensors');
+            if (sensorsEl) {
+                sensorsEl.innerHTML = `
+                    <div style="display: grid; gap: 8px;">
+                        <div><strong>Pressure:</strong></div>
+                        <div style="display: flex; justify-content: space-between; margin-left: 10px;"><span>Current:</span><strong>${(pressure.pressure_bar || 0).toFixed(2)} bar</strong></div>
+                        <div style="display: flex; justify-content: space-between; margin-left: 10px;"><span>Target:</span><strong>${(pressure.target_pressure || 0).toFixed(2)} bar</strong></div>
+                        <div style="display: flex; justify-content: space-between; margin-left: 10px;"><span>Status:</span><strong style="color: ${pressure.status === 'ok' ? 'var(--system-green)' : 'var(--system-red)'}">${pressure.status || 'unknown'}</strong></div>
+                        <div style="margin-top: 8px;"><strong>Temperature:</strong></div>
+                        <div style="display: flex; justify-content: space-between; margin-left: 10px;"><span>Coffee:</span><strong>${temp.coffee_temp || 0}°C</strong></div>
+                        <div style="display: flex; justify-content: space-between; margin-left: 10px;"><span>Steam:</span><strong>${temp.steam_temp || 0}°C</strong></div>
+                        <div style="margin-top: 8px;"><strong>Scale:</strong></div>
+                        <div style="display: flex; justify-content: space-between; margin-left: 10px;"><span>Connected:</span><strong style="color: ${scale.connected ? 'var(--system-green)' : 'var(--system-red)'}">${scale.connected ? 'Yes' : 'No'}</strong></div>
+                        <div style="display: flex; justify-content: space-between; margin-left: 10px;"><span>Weight:</span><strong>${(scale.weight || 0).toFixed(1)} g</strong></div>
+                        <div style="display: flex; justify-content: space-between; margin-left: 10px;"><span>Battery:</span><strong>${scale.battery || 0}%</strong></div>
+                    </div>
+                `;
+            }
+            
+            // Brew System
+            const brew = data.brew || {};
+            const brewEl = document.getElementById('diagnostic-brew');
+            if (brewEl) {
+                brewEl.innerHTML = `
+                    <div style="display: grid; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between;"><span>Active:</span><strong style="color: ${brew.active ? 'var(--system-green)' : 'var(--system-secondary-label)'}">${brew.active ? 'Yes' : 'No'}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Pressure:</span><strong>${(brew.pressure || 0).toFixed(2)} bar</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Flow:</span><strong>${(brew.flow || 0).toFixed(2)} ml/s</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Weight:</span><strong>${(brew.weight || 0).toFixed(1)} g</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Pump Power:</span><strong>${(brew.pump_power_percent || 0).toFixed(1)}%</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Control:</span><strong>${(brew.control_system || 'unknown').toUpperCase()}</strong></div>
+                    </div>
+                `;
+            }
+            
+            // Learning System
+            const learning = data.learning || {};
+            const learningEl = document.getElementById('diagnostic-learning');
+            if (learningEl) {
+                learningEl.innerHTML = `
+                    <div style="display: grid; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between;"><span>Enabled:</span><strong style="color: ${learning.enabled ? 'var(--system-green)' : 'var(--system-secondary-label)'}">${learning.enabled ? 'Yes' : 'No'}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Shot Count:</span><strong>${learning.shot_count || 0}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Kp:</span><strong>${(learning.Kp || 0).toFixed(3)}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Ki:</span><strong>${(learning.Ki || 0).toFixed(4)}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Kd:</span><strong>${(learning.Kd || 0).toFixed(3)}</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Avg Overshoot:</span><strong>${(learning.avg_overshoot || 0).toFixed(3)} bar</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Avg Settling:</span><strong>${(learning.avg_settling_time || 0).toFixed(2)} s</strong></div>
+                    </div>
+                `;
+            }
+            
+            // Error History
+            const errors = data.errors || {};
+            const errorList = errors.history || [];
+            const errorsEl = document.getElementById('diagnostic-errors');
+            if (errorsEl) {
+                if (errorList.length > 0) {
+                    errorsEl.innerHTML = `
+                        <div style="max-height: 200px; overflow-y: auto;">
+                            ${errorList.map(err => `
+                                <div style="padding: 8px; margin-bottom: 8px; border-radius: 6px; background: ${err.severity >= 2 ? '#fef2f2' : err.severity === 1 ? '#fffbeb' : '#eff6ff'}; border-left: 4px solid ${err.severity >= 2 ? '#ef4444' : err.severity === 1 ? '#f59e0b' : '#3b82f6'};">
+                                    <div style="font-weight: 600; font-size: 0.9em;">Code: ${err.code} (Severity: ${err.severity})</div>
+                                    <div style="font-size: 0.85em; color: var(--system-secondary-label); margin-top: 4px;">${err.message || 'No message'}</div>
+                                    <div style="font-size: 0.75em; color: var(--system-tertiary-label); margin-top: 4px;">${formatTimestamp(err.timestamp)}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    errorsEl.innerHTML = `<p style="text-align: center; color: var(--system-secondary-label);">No errors recorded</p>`;
+                }
+            }
+            
+            // Timestamp
+            const timestampEl = document.getElementById('diagnostic-timestamp');
+            if (timestampEl) {
+                timestampEl.textContent = 'Last updated: ' + formatTimestamp(data.timestamp);
+            }
+        }
+        
+        async function refreshDiagnostic() {
+            const btn = document.getElementById('diagnosticRefreshBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+            }
+            
+            try {
+                await loadDiagnosticData(true);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+                }
+            }
+        }
+        
+        // Auto-refresh diagnostics when tab is active
+        setInterval(() => {
+            const diagnosticsEl = document.getElementById('diagnostics');
+            if (diagnosticsEl && diagnosticsEl.classList.contains('active')) {
+                loadDiagnosticData(false); // Silent refresh
+            }
+        }, 30000); // Every 30 seconds
     </script>
 </body>
 </html>
