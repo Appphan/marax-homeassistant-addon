@@ -1004,11 +1004,16 @@ def api_diagnostic():
     refresh = request.args.get('refresh', 'false').lower() == 'true'
     
     if refresh and mqtt_client and mqtt_connected:
-        logger.info("Requesting fresh diagnostic data from ESP32")
-        mqtt_client.publish(TOPIC_DIAGNOSTIC_REQUEST, "get", qos=0)
+        logger.info(f"Requesting fresh diagnostic data from ESP32")
+        logger.info(f"Publishing to topic: {TOPIC_DIAGNOSTIC_REQUEST}")
+        result = mqtt_client.publish(TOPIC_DIAGNOSTIC_REQUEST, "get", qos=0)
+        if result.rc == 0:
+            logger.info("✅ Diagnostic request published successfully")
+        else:
+            logger.error(f"❌ Failed to publish diagnostic request: MQTT error code {result.rc}")
         # Wait a moment for response
         import time
-        time.sleep(0.5)
+        time.sleep(1.0)  # Increased wait time to 1 second for ESP32 to process and publish
     
     diagnostic = device_data.get('diagnostic', {})
     if not diagnostic:
