@@ -3716,15 +3716,37 @@
         
         async function loadDiagnosticData(showLoading = true) {
             console.log('📥 loadDiagnosticData() called, showLoading:', showLoading);
+            
+            // Check if diagnostic elements exist
+            const systemEl = document.getElementById('diagnostic-system');
+            const networkEl = document.getElementById('diagnostic-network');
+            const sensorsEl = document.getElementById('diagnostic-sensors');
+            const brewEl = document.getElementById('diagnostic-brew');
+            const learningEl = document.getElementById('diagnostic-learning');
+            const errorsEl = document.getElementById('diagnostic-errors');
+            
+            if (!systemEl || !networkEl || !sensorsEl || !brewEl || !learningEl || !errorsEl) {
+                console.error('❌ Diagnostic elements not found!');
+                console.error('Missing elements:', {
+                    system: !systemEl,
+                    network: !networkEl,
+                    sensors: !sensorsEl,
+                    brew: !brewEl,
+                    learning: !learningEl,
+                    errors: !errorsEl
+                });
+                return;
+            }
+            
             try {
                 if (showLoading) {
                     console.log('⏳ Setting loading state...');
-                    document.getElementById('diagnostic-system').textContent = 'Loading...';
-                    document.getElementById('diagnostic-network').textContent = 'Loading...';
-                    document.getElementById('diagnostic-sensors').textContent = 'Loading...';
-                    document.getElementById('diagnostic-brew').textContent = 'Loading...';
-                    document.getElementById('diagnostic-learning').textContent = 'Loading...';
-                    document.getElementById('diagnostic-errors').textContent = 'Loading...';
+                    systemEl.textContent = 'Loading...';
+                    networkEl.textContent = 'Loading...';
+                    sensorsEl.textContent = 'Loading...';
+                    brewEl.textContent = 'Loading...';
+                    learningEl.textContent = 'Loading...';
+                    errorsEl.textContent = 'Loading...';
                 }
                 
                 console.log('🌐 Fetching /api/diagnostic?refresh=true...');
@@ -3742,12 +3764,12 @@
                     console.warn('Response status:', response.status);
                     console.warn('Response data:', data);
                     const errorHtml = `<p style="color: var(--system-orange);">⚠️ ${errorMsg}</p>`;
-                    document.getElementById('diagnostic-system').innerHTML = errorHtml;
-                    document.getElementById('diagnostic-network').innerHTML = errorHtml;
-                    document.getElementById('diagnostic-sensors').innerHTML = errorHtml;
-                    document.getElementById('diagnostic-brew').innerHTML = errorHtml;
-                    document.getElementById('diagnostic-learning').innerHTML = errorHtml;
-                    document.getElementById('diagnostic-errors').innerHTML = errorHtml;
+                    systemEl.innerHTML = errorHtml;
+                    networkEl.innerHTML = errorHtml;
+                    sensorsEl.innerHTML = errorHtml;
+                    brewEl.innerHTML = errorHtml;
+                    learningEl.innerHTML = errorHtml;
+                    errorsEl.innerHTML = errorHtml;
                     return;
                 }
                 
@@ -3767,12 +3789,12 @@
                 console.error('❌ Error loading diagnostic:', error);
                 console.error('Error stack:', error.stack);
                 const errorMsg = `<p style="color: var(--system-red);">Error: ${error.message || 'Failed to load diagnostic data'}</p>`;
-                document.getElementById('diagnostic-system').innerHTML = errorMsg;
-                document.getElementById('diagnostic-network').innerHTML = errorMsg;
-                document.getElementById('diagnostic-sensors').innerHTML = errorMsg;
-                document.getElementById('diagnostic-brew').innerHTML = errorMsg;
-                document.getElementById('diagnostic-learning').innerHTML = errorMsg;
-                document.getElementById('diagnostic-errors').innerHTML = errorMsg;
+                if (systemEl) systemEl.innerHTML = errorMsg;
+                if (networkEl) networkEl.innerHTML = errorMsg;
+                if (sensorsEl) sensorsEl.innerHTML = errorMsg;
+                if (brewEl) brewEl.innerHTML = errorMsg;
+                if (learningEl) learningEl.innerHTML = errorMsg;
+                if (errorsEl) errorsEl.innerHTML = errorMsg;
             }
         }
         
