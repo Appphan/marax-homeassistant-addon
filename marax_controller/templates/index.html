@@ -1337,6 +1337,7 @@
                 updateProfiles(true);  // Request fresh profiles on page load
             } else if (tabName === 'diagnostics') {
                 // Load diagnostic data when diagnostics tab is clicked
+                console.log('🔍 Diagnostics tab clicked, calling loadDiagnosticData()');
                 loadDiagnosticData();
             }
         }
@@ -3714,8 +3715,10 @@
         }
         
         async function loadDiagnosticData(showLoading = true) {
+            console.log('📥 loadDiagnosticData() called, showLoading:', showLoading);
             try {
                 if (showLoading) {
+                    console.log('⏳ Setting loading state...');
                     document.getElementById('diagnostic-system').textContent = 'Loading...';
                     document.getElementById('diagnostic-network').textContent = 'Loading...';
                     document.getElementById('diagnostic-sensors').textContent = 'Loading...';
@@ -3724,13 +3727,20 @@
                     document.getElementById('diagnostic-errors').textContent = 'Loading...';
                 }
                 
+                console.log('🌐 Fetching /api/diagnostic?refresh=true...');
                 const response = await fetch('/api/diagnostic?refresh=true');
+                console.log('📥 Response received:', response.status, response.statusText);
+                console.log('📥 Response ok:', response.ok);
+                
                 const data = await response.json();
+                console.log('📊 Diagnostic data received:', data);
                 
                 // Check if response contains an error
                 if (!response.ok || data.error) {
                     const errorMsg = data.message || data.error || 'Failed to load diagnostic data';
-                    console.warn('Diagnostic API returned error:', errorMsg);
+                    console.warn('⚠️ Diagnostic API returned error:', errorMsg);
+                    console.warn('Response status:', response.status);
+                    console.warn('Response data:', data);
                     const errorHtml = `<p style="color: var(--system-orange);">⚠️ ${errorMsg}</p>`;
                     document.getElementById('diagnostic-system').innerHTML = errorHtml;
                     document.getElementById('diagnostic-network').innerHTML = errorHtml;
@@ -3743,14 +3753,19 @@
                 
                 // Check if data is valid
                 if (!data || Object.keys(data).length === 0) {
+                    console.error('❌ Received empty diagnostic data');
                     throw new Error('Received empty diagnostic data');
                 }
                 
-                console.log('✅ Diagnostic data loaded:', data);
+                console.log('✅ Diagnostic data loaded successfully, updating display...');
+                console.log('Data keys:', Object.keys(data));
+                console.log('Health score:', data.health?.overall_score);
                 diagnosticData = data;
                 updateDiagnosticDisplay(data);
+                console.log('✅ Diagnostic display updated');
             } catch (error) {
-                console.error('Error loading diagnostic:', error);
+                console.error('❌ Error loading diagnostic:', error);
+                console.error('Error stack:', error.stack);
                 const errorMsg = `<p style="color: var(--system-red);">Error: ${error.message || 'Failed to load diagnostic data'}</p>`;
                 document.getElementById('diagnostic-system').innerHTML = errorMsg;
                 document.getElementById('diagnostic-network').innerHTML = errorMsg;
@@ -3762,7 +3777,11 @@
         }
         
         function updateDiagnosticDisplay(data) {
-            if (!data) return;
+            console.log('🔄 updateDiagnosticDisplay() called with data:', data);
+            if (!data) {
+                console.error('❌ updateDiagnosticDisplay() called with no data!');
+                return;
+            }
             
             // Health Score
             const health = data.health || {};
