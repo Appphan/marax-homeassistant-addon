@@ -137,6 +137,8 @@ TOPIC_SET_LEVER = f"{MQTT_BASE_TOPIC}/setlever"
 TOPIC_SET_TARGET_WEIGHT = f"{MQTT_BASE_TOPIC}/settargetweight"
 TOPIC_TIMER_RESET = f"{MQTT_BASE_TOPIC}/timer/reset"
 TOPIC_DEVICE_TELEMETRY = f"{MQTT_BASE_TOPIC}/device/telemetry"
+TOPIC_DIAGNOSTIC = f"{MQTT_BASE_TOPIC}/diagnostic"
+TOPIC_DIAGNOSTIC_REQUEST = f"{MQTT_BASE_TOPIC}/diagnostic/request"
 
 # Data storage
 device_data = {
@@ -179,7 +181,8 @@ device_data = {
         'wifi_rssi': 0,
         'free_heap': 0,
         'min_free_heap': 0
-    }
+    },
+    'diagnostic': {}
 }
 
 # MQTT Client
@@ -203,7 +206,8 @@ def on_connect(client, userdata, flags, rc):
             (TOPIC_BREW_PHASE, 0),
             (TOPIC_BREW_PHASE_STATUS, 0),
             (TOPIC_PROFILE_STATUS, 0),
-            (TOPIC_PROFILE_LIST, 0)  # Subscribe to profile list responses
+            (TOPIC_PROFILE_LIST, 0),  # Subscribe to profile list responses
+            (TOPIC_DIAGNOSTIC, 0)  # Subscribe to diagnostic data
         ]
         
         # Also subscribe to wildcard to catch any messages we might have missed
@@ -388,6 +392,14 @@ def on_message(client, userdata, msg):
                 device_data['telemetry'].update(telemetry_data)
             except:
                 pass
+        elif topic == TOPIC_DIAGNOSTIC:
+            try:
+                diagnostic_data = json.loads(payload)
+                device_data['diagnostic'] = diagnostic_data
+                logger.debug(f"Updated diagnostic data: {len(str(diagnostic_data))} bytes")
+            except Exception as e:
+                logger.error(f"Failed to parse diagnostic data: {e}")
+                logger.error(f"Payload preview: {payload[:200]}")
         elif topic == TOPIC_PROFILE_LIST:
             logger.info(f"\n{'='*60}")
             logger.info(f"🔔 PROFILE LIST MESSAGE RECEIVED")
@@ -984,6 +996,37 @@ def api_timer_reset():
 def api_telemetry():
     """Get device telemetry"""
     return jsonify(device_data.get('telemetry', {}))
+
+@app.route('/api/diagnostic', methods=['GET'])
+def api_diagnostic():
+    """Get comprehensive diagnostic data"""
+    # Request fresh diagnostic data if requested
+    refresh = request.args.get('refresh', 'false').lower() == 'true'
+    
+    if refresh and mqtt_client and mqtt_connected:
+        logger.info("Requesting fresh diagnostic data from ESP32")
+        mqtt_client.publish(TOPIC_DIAGNOSTIC_REQUEST, "get", qos=0)
+        # Wait a moment for response
+        import time
+        time.sleep(0.5)
+    
+    diagnostic = device_data.get('diagnostic', {})
+    if not diagnostic:
+        return jsonify({
+            'error': 'No diagnostic data available',
+            'message': 'Diagnostic data will be available after ESP32 publishes it'
+        }), 503
+    
+    return jsonify(diagnostic)
+
+@app.route('/diagnostic')
+def diagnostic_page():
+    """Diagnostic dashboard page"""
+    try:
+        return render_template('diagnostic.html')
+    except Exception as e:
+        logger.error(f"Failed to render diagnostic page: {e}")
+        return f"<h1>Diagnostic Dashboard</h1><p>Error: {str(e)}</p>", 500
 
 # Static files
 @app.route('/static/<path:filename>')
