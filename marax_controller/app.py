@@ -1015,13 +1015,16 @@ def api_telemetry():
 @app.route('/api/diagnostic', methods=['GET'])
 def api_diagnostic():
     """Get comprehensive diagnostic data"""
+    logger.info(f"\n{'='*60}")
+    logger.info(f"📥 API REQUEST: /api/diagnostic")
+    logger.info(f"{'='*60}")
+    
     # Request fresh diagnostic data if requested
     refresh = request.args.get('refresh', 'false').lower() == 'true'
+    logger.info(f"Refresh requested: {refresh}")
     
     if refresh and mqtt_client and mqtt_connected:
-        logger.info(f"\n{'='*60}")
         logger.info(f"🔄 REQUESTING FRESH DIAGNOSTIC DATA")
-        logger.info(f"{'='*60}")
         logger.info(f"Publishing to topic: {TOPIC_DIAGNOSTIC_REQUEST}")
         logger.info(f"Payload: 'get'")
         result = mqtt_client.publish(TOPIC_DIAGNOSTIC_REQUEST, "get", qos=0)
@@ -1034,15 +1037,27 @@ def api_diagnostic():
         import time
         time.sleep(2.0)  # Increased wait time to 2 seconds for ESP32 to process and publish
         logger.info(f"Wait complete, checking for diagnostic data...")
-        logger.info(f"{'='*60}\n")
     
     diagnostic = device_data.get('diagnostic', {})
+    logger.info(f"Diagnostic data in device_data: {bool(diagnostic)}")
+    logger.info(f"Diagnostic data type: {type(diagnostic)}")
+    logger.info(f"Diagnostic data keys: {list(diagnostic.keys()) if isinstance(diagnostic, dict) else 'N/A'}")
+    logger.info(f"Diagnostic data empty check: {not diagnostic}")
+    
     if not diagnostic:
+        logger.warning("⚠️ No diagnostic data available in device_data")
+        logger.warning(f"device_data keys: {list(device_data.keys())}")
+        logger.warning(f"{'='*60}\n")
         return jsonify({
             'error': 'No diagnostic data available',
-            'message': 'Diagnostic data will be available after ESP32 publishes it'
+            'message': 'Diagnostic data will be available after ESP32 publishes it. Try refreshing in a few seconds.'
         }), 503
     
+    logger.info(f"✅ Returning diagnostic data")
+    logger.info(f"   Health score: {diagnostic.get('health', {}).get('overall_score', 'N/A')}")
+    logger.info(f"   System uptime: {diagnostic.get('system', {}).get('uptime_formatted', 'N/A')}")
+    logger.info(f"   Data size: {len(json.dumps(diagnostic))} bytes")
+    logger.info(f"{'='*60}\n")
     return jsonify(diagnostic)
 
 @app.route('/diagnostic')

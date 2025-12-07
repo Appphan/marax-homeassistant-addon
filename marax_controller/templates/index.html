@@ -3725,15 +3725,33 @@
                 }
                 
                 const response = await fetch('/api/diagnostic?refresh=true');
-                if (!response.ok) {
-                    throw new Error('Failed to load diagnostic data');
-                }
                 const data = await response.json();
+                
+                // Check if response contains an error
+                if (!response.ok || data.error) {
+                    const errorMsg = data.message || data.error || 'Failed to load diagnostic data';
+                    console.warn('Diagnostic API returned error:', errorMsg);
+                    const errorHtml = `<p style="color: var(--system-orange);">⚠️ ${errorMsg}</p>`;
+                    document.getElementById('diagnostic-system').innerHTML = errorHtml;
+                    document.getElementById('diagnostic-network').innerHTML = errorHtml;
+                    document.getElementById('diagnostic-sensors').innerHTML = errorHtml;
+                    document.getElementById('diagnostic-brew').innerHTML = errorHtml;
+                    document.getElementById('diagnostic-learning').innerHTML = errorHtml;
+                    document.getElementById('diagnostic-errors').innerHTML = errorHtml;
+                    return;
+                }
+                
+                // Check if data is valid
+                if (!data || Object.keys(data).length === 0) {
+                    throw new Error('Received empty diagnostic data');
+                }
+                
+                console.log('✅ Diagnostic data loaded:', data);
                 diagnosticData = data;
                 updateDiagnosticDisplay(data);
             } catch (error) {
                 console.error('Error loading diagnostic:', error);
-                const errorMsg = `<p style="color: var(--system-red);">Error: ${error.message}</p>`;
+                const errorMsg = `<p style="color: var(--system-red);">Error: ${error.message || 'Failed to load diagnostic data'}</p>`;
                 document.getElementById('diagnostic-system').innerHTML = errorMsg;
                 document.getElementById('diagnostic-network').innerHTML = errorMsg;
                 document.getElementById('diagnostic-sensors').innerHTML = errorMsg;
