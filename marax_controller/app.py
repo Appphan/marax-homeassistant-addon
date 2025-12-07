@@ -393,13 +393,28 @@ def on_message(client, userdata, msg):
             except:
                 pass
         elif topic == TOPIC_DIAGNOSTIC:
+            logger.info(f"\n{'='*60}")
+            logger.info(f"📊 DIAGNOSTIC DATA RECEIVED")
+            logger.info(f"{'='*60}")
+            logger.info(f"Topic: {topic}")
+            logger.info(f"Payload length: {len(payload)} bytes")
             try:
                 diagnostic_data = json.loads(payload)
                 device_data['diagnostic'] = diagnostic_data
-                logger.debug(f"Updated diagnostic data: {len(str(diagnostic_data))} bytes")
+                logger.info(f"✅ Successfully parsed diagnostic data")
+                logger.info(f"Health score: {diagnostic_data.get('health', {}).get('overall_score', 'N/A')}")
+                logger.info(f"System uptime: {diagnostic_data.get('system', {}).get('uptime_formatted', 'N/A')}")
+                logger.info(f"WiFi connected: {diagnostic_data.get('network', {}).get('wifi_connected', 'N/A')}")
+                logger.info(f"MQTT connected: {diagnostic_data.get('network', {}).get('mqtt_connected', 'N/A')}")
+                logger.info(f"{'='*60}\n")
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ JSON decode error: {e}")
+                logger.error(f"Payload preview (first 500 chars): {payload[:500]}")
             except Exception as e:
-                logger.error(f"Failed to parse diagnostic data: {e}")
+                logger.error(f"❌ Failed to parse diagnostic data: {e}")
                 logger.error(f"Payload preview: {payload[:200]}")
+                import traceback
+                logger.error(traceback.format_exc())
         elif topic == TOPIC_PROFILE_LIST:
             logger.info(f"\n{'='*60}")
             logger.info(f"🔔 PROFILE LIST MESSAGE RECEIVED")
@@ -1004,16 +1019,22 @@ def api_diagnostic():
     refresh = request.args.get('refresh', 'false').lower() == 'true'
     
     if refresh and mqtt_client and mqtt_connected:
-        logger.info(f"Requesting fresh diagnostic data from ESP32")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"🔄 REQUESTING FRESH DIAGNOSTIC DATA")
+        logger.info(f"{'='*60}")
         logger.info(f"Publishing to topic: {TOPIC_DIAGNOSTIC_REQUEST}")
+        logger.info(f"Payload: 'get'")
         result = mqtt_client.publish(TOPIC_DIAGNOSTIC_REQUEST, "get", qos=0)
         if result.rc == 0:
             logger.info("✅ Diagnostic request published successfully")
+            logger.info(f"Waiting 2 seconds for ESP32 response...")
         else:
             logger.error(f"❌ Failed to publish diagnostic request: MQTT error code {result.rc}")
         # Wait a moment for response
         import time
-        time.sleep(1.0)  # Increased wait time to 1 second for ESP32 to process and publish
+        time.sleep(2.0)  # Increased wait time to 2 seconds for ESP32 to process and publish
+        logger.info(f"Wait complete, checking for diagnostic data...")
+        logger.info(f"{'='*60}\n")
     
     diagnostic = device_data.get('diagnostic', {})
     if not diagnostic:
