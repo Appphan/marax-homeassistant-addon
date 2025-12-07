@@ -1,0 +1,86 @@
+{
+  "profile_id": 3,
+  "name": "My Custom Profile",
+  "technique": "custom",
+  "default_dose": 18.0,
+  "default_yield": 36.0,
+  "default_ratio": 2.0,
+  "phases": [
+    {
+      "name": "preinfusion",
+      "phase_index": 0,
+      "control_mode": 0,
+      "target_pressure_start": 2.5,
+      "target_pressure_end": 2.5,
+      "target_flow_start": 0.0,
+      "target_flow_end": 0.0,
+      "max_duration": 15.0,
+      "min_duration": 0.0,
+      "ramp_duration": 0.0,
+      "use_ramp": false,
+      "allow_manual_stop": true,
+      "publish_events": true,
+      "criteria_count": 1,
+      "criteria_logic": 0,
+      "breakout_criteria": [
+        {
+          "type": 1,
+          "threshold": 15.0,
+          "enabled": true,
+          "min_duration": 0.0
+        }
+      ]
+    },
+    {
+      "name": "ramp_up",
+      "phase_index": 1,
+      "control_mode": 5,
+      "target_pressure_start": 2.5,
+      "target_pressure_end": 9.0,
+      "target_flow_start": 0.0,
+      "target_flow_end": 0.0,
+      "max_duration": 5.0,
+      "min_duration": 0.0,
+      "ramp_duration": 5.0,
+      "use_ramp": true,
+      "allow_manual_stop": false,
+      "publish_events": true,
+      "criteria_count": 1,
+      "criteria_logic": 0,
+      "breakout_criteria": [
+        {
+          "type": 1,
+          "threshold": 5.0,
+          "enabled": true,
+          "min_duration": 0.0
+        }
+      ]
+    },
+    {
+      "name": "extraction",
+      "phase_index": 2,
+      "control_mode": 0,
+      "target_pressure_start": 9.0,
+      "target_pressure_end": 9.0,
+      "target_flow_start": 0.0,
+      "target_flow_end": 0.0,
+      "max_duration": 30.0,
+      "min_duration": 0.0,
+      "ramp_duration": 0.0,
+      "use_ramp": false,
+      "allow_manual_stop": true,
+      "publish_events": true,
+      "criteria_count": 1,
+      "criteria_logic": 0,
+      "breakout_criteria": [
+        {
+          "type": 2,
+          "threshold": 36.0,
+          "enabled": true,
+          "min_duration": 0.0
+        }
+      ]
+    }
+  ]
+}
+

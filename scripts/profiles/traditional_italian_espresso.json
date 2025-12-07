@@ -1,0 +1,70 @@
+{
+  "profileName": "Traditional Italian Espresso",
+  "technique": "traditional",
+  "defaultDose": 18.0,
+  "defaultYield": 36.0,
+  "defaultRatio": 2.0,
+  "phases": [
+    {
+      "name": "Pre-Infusion",
+      "phaseIndex": 0,
+      "controlMode": 0,
+      "targetPressureStart": 2.0,
+      "targetPressureEnd": 2.0,
+      "targetFlowStart": 0.0,
+      "targetFlowEnd": 0.0,
+      "minDuration": 0.0,
+      "maxDuration": 5.0,
+      "useRamp": false,
+      "rampDuration": 0.0,
+      "allowManualStop": true,
+      "publishEvents": true,
+      "criteriaLogic": 8,
+      "breakoutCriteria": [
+        {
+          "type": 2,
+          "threshold": 2.0,
+          "enabled": true,
+          "minDuration": 1.0
+        },
+        {
+          "type": 1,
+          "threshold": 5.0,
+          "enabled": true,
+          "minDuration": 0.0
+        }
+      ]
+    },
+    {
+      "name": "Extraction",
+      "phaseIndex": 1,
+      "controlMode": 0,
+      "targetPressureStart": 9.0,
+      "targetPressureEnd": 9.0,
+      "targetFlowStart": 0.0,
+      "targetFlowEnd": 0.0,
+      "minDuration": 5.0,
+      "maxDuration": 0.0,
+      "useRamp": false,
+      "rampDuration": 0.0,
+      "allowManualStop": true,
+      "publishEvents": true,
+      "criteriaLogic": 8,
+      "breakoutCriteria": [
+        {
+          "type": 2,
+          "threshold": 36.0,
+          "enabled": true,
+          "minDuration": 0.0
+        },
+        {
+          "type": 1,
+          "threshold": 30.0,
+          "enabled": true,
+          "minDuration": 0.0
+        }
+      ]
+    }
+  ]
+}
+

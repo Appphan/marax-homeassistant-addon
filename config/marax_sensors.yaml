@@ -1,0 +1,226 @@
+# MaraX ESP32 Controller - MQTT Sensors Configuration
+# Add this to your Home Assistant configuration.yaml or use UI configuration
+
+mqtt:
+  sensor:
+    # ============================================
+    # Device Information
+    # ============================================
+    - name: "MaraX Device Status"
+      state_topic: "marax/device/status"
+      unique_id: "marax_device_status"
+      icon: "mdi:coffee"
+      
+    - name: "MaraX Firmware Version"
+      state_topic: "marax/device/info"
+      value_template: "{{ value_json.version }}"
+      unique_id: "marax_firmware_version"
+      icon: "mdi:information"
+      
+    - name: "MaraX Uptime"
+      state_topic: "marax/device/info"
+      value_template: "{{ value_json.uptime }}"
+      unit_of_measurement: "s"
+      unique_id: "marax_uptime"
+      icon: "mdi:timer"
+      
+    - name: "MaraX Build Date"
+      state_topic: "marax/device/info"
+      value_template: "{{ value_json.build_date }}"
+      unique_id: "marax_build_date"
+      
+    # ============================================
+    # Machine State
+    # ============================================
+    - name: "MaraX Coffee Temperature"
+      state_topic: "marax/machine/state"
+      value_template: "{{ value_json.coffee_temp }}"
+      unit_of_measurement: "°C"
+      device_class: "temperature"
+      unique_id: "marax_coffee_temp"
+      icon: "mdi:thermometer"
+      
+    - name: "MaraX Steam Temperature"
+      state_topic: "marax/machine/state"
+      value_template: "{{ value_json.steam_temp }}"
+      unit_of_measurement: "°C"
+      device_class: "temperature"
+      unique_id: "marax_steam_temp"
+      icon: "mdi:thermometer"
+      
+    - name: "MaraX Target Steam Temperature"
+      state_topic: "marax/machine/state"
+      value_template: "{{ value_json.target_temp }}"
+      unit_of_measurement: "°C"
+      device_class: "temperature"
+      unique_id: "marax_target_steam_temp"
+      
+    - name: "MaraX Machine Mode"
+      state_topic: "marax/machine/state"
+      value_template: "{{ value_json.mode }}"
+      unique_id: "marax_machine_mode"
+      icon: "mdi:coffee-maker"
+      
+    - name: "MaraX Heating Element"
+      state_topic: "marax/machine/state"
+      value_template: "{{ value_json.heating }}"
+      unique_id: "marax_heating"
+      icon: "mdi:radiator"
+    
+    # ============================================
+    # Brew State
+    # ============================================
+    - name: "MaraX Brew Active"
+      state_topic: "marax/brew/state"
+      value_template: "{{ value_json.isActive }}"
+      unique_id: "marax_brew_active"
+      icon: "mdi:coffee"
+      
+    - name: "MaraX Pressure"
+      state_topic: "marax/brew/state"
+      value_template: "{{ value_json.pressure }}"
+      unit_of_measurement: "bar"
+      device_class: "pressure"
+      unique_id: "marax_pressure"
+      icon: "mdi:gauge"
+      
+    - name: "MaraX Target Pressure"
+      state_topic: "marax/brew/state"
+      value_template: "{{ value_json.targetPressure }}"
+      unit_of_measurement: "bar"
+      device_class: "pressure"
+      unique_id: "marax_target_pressure"
+      icon: "mdi:gauge"
+      
+    - name: "MaraX Flow Rate"
+      state_topic: "marax/brew/state"
+      value_template: "{{ value_json.flow }}"
+      unit_of_measurement: "ml/s"
+      unique_id: "marax_flow"
+      icon: "mdi:water"
+      
+    - name: "MaraX Pump Power"
+      state_topic: "marax/brew/state"
+      value_template: "{{ value_json.pumpPower }}"
+      unit_of_measurement: "%"
+      unique_id: "marax_pump_power"
+      icon: "mdi:flash"
+    
+    # ============================================
+    # Scale
+    # ============================================
+    - name: "MaraX Weight"
+      state_topic: "marax/scale/weight"
+      unit_of_measurement: "g"
+      device_class: "weight"
+      unique_id: "marax_weight"
+      icon: "mdi:scale"
+      
+    - name: "MaraX Target Weight"
+      state_topic: "marax/scale/weight/target"
+      unit_of_measurement: "g"
+      unique_id: "marax_target_weight"
+      icon: "mdi:target"
+      
+    - name: "MaraX Scale Connected"
+      state_topic: "marax/scale/state"
+      value_template: "{{ value_json.connected }}"
+      unique_id: "marax_scale_connected"
+      icon: "mdi:bluetooth"
+      
+    - name: "MaraX Scale Battery"
+      state_topic: "marax/scale/battery"
+      unit_of_measurement: "%"
+      device_class: "battery"
+      unique_id: "marax_scale_battery"
+      icon: "mdi:battery"
+    
+    # ============================================
+    # Shot Data
+    # ============================================
+    - name: "MaraX Shot Number"
+      state_topic: "marax/shot/shotnumber"
+      unique_id: "marax_shot_number"
+      icon: "mdi:counter"
+      
+    - name: "MaraX Shot Time"
+      state_topic: "marax/shot/time"
+      unit_of_measurement: "s"
+      unique_id: "marax_shot_time"
+      icon: "mdi:timer"
+      
+    - name: "MaraX Shot Weight"
+      state_topic: "marax/shot/shotweight"
+      unit_of_measurement: "g"
+      unique_id: "marax_shot_weight"
+      icon: "mdi:scale-bathroom"
+    
+    # ============================================
+    # Phase Data
+    # ============================================
+    - name: "MaraX Current Phase"
+      state_topic: "marax/brew/phase_status"
+      value_template: "{{ value_json.phase }}"
+      unique_id: "marax_current_phase"
+      icon: "mdi:chart-timeline-variant"
+      
+    - name: "MaraX Phase Time"
+      state_topic: "marax/brew/phase_status"
+      value_template: "{{ value_json.phase_time }}"
+      unit_of_measurement: "s"
+      unique_id: "marax_phase_time"
+      
+    - name: "MaraX Phase Weight"
+      state_topic: "marax/brew/phase_status"
+      value_template: "{{ value_json.phase_weight }}"
+      unit_of_measurement: "g"
+      unique_id: "marax_phase_weight"
+
+  # ============================================
+  # Switches and Controls
+  # ============================================
+  switch:
+    - name: "MaraX Brew Control"
+      state_topic: "marax/brew/state"
+      value_template: "{{ value_json.isActive }}"
+      command_topic: "marax/remotestate"
+      payload_on: "0"
+      payload_off: "1"
+      state_on: "true"
+      state_off: "false"
+      unique_id: "marax_brew_control"
+      icon: "mdi:coffee"
+      
+  # ============================================
+  # Number Inputs
+  # ============================================
+  number:
+    - name: "MaraX Target Weight"
+      state_topic: "marax/scale/weight/target"
+      command_topic: "marax/settargetweight"
+      min: 0
+      max: 500
+      step: 1
+      unit_of_measurement: "g"
+      unique_id: "marax_target_weight_set"
+      icon: "mdi:target"
+      
+    - name: "MaraX Pre-infusion Time"
+      state_topic: "marax/sensor/preInfusion"
+      command_topic: "marax/setpreinfusiontime"
+      min: 0
+      max: 255
+      step: 1
+      unit_of_measurement: "s"
+      unique_id: "marax_preinfusion_time"
+      icon: "mdi:timer"
+      
+    - name: "MaraX Pre-infusion Pressure"
+      state_topic: "marax/sensor/preInfusionPressure"
+      command_topic: "marax/setpreinfusionpressure"
+      min: 0
+      max: 255
+      step: 1
+      unique_id: "marax_preinfusion_pressure"
+      icon: "mdi:gauge"
+

@@ -1,0 +1,70 @@
+{
+  "profileName": "Turbo Shot",
+  "technique": "turbo",
+  "defaultDose": 20.0,
+  "defaultYield": 60.0,
+  "defaultRatio": 3.0,
+  "phases": [
+    {
+      "name": "Quick Pre-Infusion",
+      "phaseIndex": 0,
+      "controlMode": 0,
+      "targetPressureStart": 1.5,
+      "targetPressureEnd": 1.5,
+      "targetFlowStart": 0.0,
+      "targetFlowEnd": 0.0,
+      "minDuration": 0.0,
+      "maxDuration": 3.0,
+      "useRamp": false,
+      "rampDuration": 0.0,
+      "allowManualStop": true,
+      "publishEvents": true,
+      "criteriaLogic": 8,
+      "breakoutCriteria": [
+        {
+          "type": 2,
+          "threshold": 1.5,
+          "enabled": true,
+          "minDuration": 0.5
+        },
+        {
+          "type": 1,
+          "threshold": 3.0,
+          "enabled": true,
+          "minDuration": 0.0
+        }
+      ]
+    },
+    {
+      "name": "High Flow Extraction",
+      "phaseIndex": 1,
+      "controlMode": 0,
+      "targetPressureStart": 6.0,
+      "targetPressureEnd": 6.0,
+      "targetFlowStart": 0.0,
+      "targetFlowEnd": 0.0,
+      "minDuration": 3.0,
+      "maxDuration": 0.0,
+      "useRamp": false,
+      "rampDuration": 0.0,
+      "allowManualStop": true,
+      "publishEvents": true,
+      "criteriaLogic": 8,
+      "breakoutCriteria": [
+        {
+          "type": 2,
+          "threshold": 60.0,
+          "enabled": true,
+          "minDuration": 0.0
+        },
+        {
+          "type": 1,
+          "threshold": 20.0,
+          "enabled": true,
+          "minDuration": 0.0
+        }
+      ]
+    }
+  ]
+}
+

@@ -1,0 +1,190 @@
+# MaraX Controller - Beautiful Lovelace Dashboard
+# Add this as a new dashboard in Home Assistant
+# Go to: Overview → Edit Dashboard → Add Dashboard → Import from YAML
+
+title: MaraX Espresso Controller
+path: marax
+icon: mdi:coffee
+cards:
+  # ============================================
+  # Header Card with Status
+  # ============================================
+  - type: vertical-stack
+    cards:
+      - type: markdown
+        content: |
+          # ☕ MaraX Espresso Controller
+          
+          **Status:** {{ states('sensor.marax_device_status') }}  
+          **Firmware:** {{ states('sensor.marax_firmware_version') }}  
+          **Uptime:** {{ (states('sensor.marax_uptime') | int / 3600) | round(1) }} hours  
+          **Shot Count:** {{ states('sensor.marax_shot_number') }}
+        card_mod:
+          style: |
+            ha-card {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 20px;
+            }
+  
+  # ============================================
+  # Real-time Metrics - Gauges
+  # ============================================
+  - type: horizontal-stack
+    cards:
+      - type: gauge
+        entity: sensor.marax_pressure
+        name: Pressure
+        min: 0
+        max: 12
+        unit: bar
+        severity:
+          green: 0
+          yellow: 6
+          red: 10
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(255, 255, 255, 0.1);
+              backdrop-filter: blur(10px);
+            }
+            
+      - type: gauge
+        entity: sensor.marax_flow
+        name: Flow Rate
+        min: 0
+        max: 10
+        unit: ml/s
+        severity:
+          green: 0
+          yellow: 3
+          red: 6
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(255, 255, 255, 0.1);
+              backdrop-filter: blur(10px);
+            }
+            
+      - type: gauge
+        entity: sensor.marax_coffee_temp
+        name: Coffee Temp
+        min: 80
+        max: 130
+        unit: °C
+        severity:
+          green: 90
+          yellow: 95
+          red: 100
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(255, 255, 255, 0.1);
+              backdrop-filter: blur(10px);
+            }
+  
+  # ============================================
+  # Brew Control Panel
+  # ============================================
+  - type: entities
+    title: 🎛️ Brew Control
+    card_mod:
+      style: |
+        ha-card {
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
+        }
+    entities:
+      - entity: switch.marax_brew_control
+        name: Start/Stop Brew
+        icon: mdi:coffee
+      - entity: sensor.marax_shot_time
+        name: Shot Time
+        icon: mdi:timer
+      - entity: sensor.marax_weight
+        name: Current Weight
+        icon: mdi:scale
+      - entity: number.marax_target_weight_set
+        name: Target Weight
+        icon: mdi:target
+  
+  # ============================================
+  # Real-time Graphs
+  # ============================================
+  - type: history-graph
+    title: 📊 Brew Metrics (Last Hour)
+    hours_to_show: 1
+    refresh_interval: 1
+    card_mod:
+      style: |
+        ha-card {
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
+        }
+    entities:
+      - entity: sensor.marax_pressure
+        name: Pressure (bar)
+      - entity: sensor.marax_flow
+        name: Flow (ml/s)
+      - entity: sensor.marax_weight
+        name: Weight (g)
+  
+  # ============================================
+  # Machine Status
+  # ============================================
+  - type: entities
+    title: 🔧 Machine Status
+    card_mod:
+      style: |
+        ha-card {
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
+        }
+    entities:
+      - entity: sensor.marax_machine_mode
+        name: Mode
+        icon: mdi:coffee-maker
+      - entity: sensor.marax_coffee_temp
+        name: Coffee Temperature
+        icon: mdi:thermometer
+      - entity: sensor.marax_steam_temp
+        name: Steam Temperature
+        icon: mdi:thermometer
+      - entity: sensor.marax_heating
+        name: Heating Element
+        icon: mdi:radiator
+      - entity: sensor.marax_scale_connected
+        name: Scale Connected
+        icon: mdi:bluetooth
+      - entity: sensor.marax_scale_battery
+        name: Scale Battery
+        icon: mdi:battery
+  
+  # ============================================
+  # Phase Information
+  # ============================================
+  - type: entities
+    title: 📈 Current Phase
+    card_mod:
+      style: |
+        ha-card {
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
+        }
+    entities:
+      - entity: sensor.marax_current_phase
+        name: Phase Name
+        icon: mdi:chart-timeline-variant
+      - entity: sensor.marax_phase_time
+        name: Phase Time
+        icon: mdi:timer
+      - entity: sensor.marax_phase_weight
+        name: Phase Weight
+        icon: mdi:scale
+      - entity: sensor.marax_target_pressure
+        name: Target Pressure
+        icon: mdi:gauge
+      - entity: sensor.marax_pump_power
+        name: Pump Power
+        icon: mdi:flash
+

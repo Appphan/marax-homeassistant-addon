@@ -1,0 +1,124 @@
+{
+  "profileName": "Blooming Espresso",
+  "technique": "blooming",
+  "defaultDose": 18.0,
+  "defaultYield": 40.0,
+  "defaultRatio": 2.2,
+  "phases": [
+    {
+      "name": "Pre-Infusion",
+      "phaseIndex": 0,
+      "controlMode": 0,
+      "targetPressureStart": 2.0,
+      "targetPressureEnd": 2.0,
+      "targetFlowStart": 0.0,
+      "targetFlowEnd": 0.0,
+      "minDuration": 0.0,
+      "maxDuration": 8.0,
+      "useRamp": false,
+      "rampDuration": 0.0,
+      "allowManualStop": true,
+      "publishEvents": true,
+      "criteriaLogic": 8,
+      "breakoutCriteria": [
+        {
+          "type": 2,
+          "threshold": 3.0,
+          "enabled": true,
+          "minDuration": 2.0
+        },
+        {
+          "type": 1,
+          "threshold": 8.0,
+          "enabled": true,
+          "minDuration": 0.0
+        }
+      ]
+    },
+    {
+      "name": "Bloom",
+      "phaseIndex": 1,
+      "controlMode": 3,
+      "targetPressureStart": 0.0,
+      "targetPressureEnd": 0.0,
+      "targetFlowStart": 0.0,
+      "targetFlowEnd": 0.0,
+      "minDuration": 0.0,
+      "maxDuration": 30.0,
+      "useRamp": false,
+      "rampDuration": 0.0,
+      "allowManualStop": true,
+      "publishEvents": true,
+      "criteriaLogic": 8,
+      "breakoutCriteria": [
+        {
+          "type": 1,
+          "threshold": 25.0,
+          "enabled": true,
+          "minDuration": 0.0
+        }
+      ]
+    },
+    {
+      "name": "Ramp Up",
+      "phaseIndex": 2,
+      "controlMode": 4,
+      "targetPressureStart": 2.0,
+      "targetPressureEnd": 9.0,
+      "targetFlowStart": 0.0,
+      "targetFlowEnd": 0.0,
+      "minDuration": 0.0,
+      "maxDuration": 5.0,
+      "useRamp": true,
+      "rampDuration": 4.0,
+      "allowManualStop": false,
+      "publishEvents": true,
+      "criteriaLogic": 8,
+      "breakoutCriteria": [
+        {
+          "type": 4,
+          "threshold": 0.95,
+          "enabled": true,
+          "minDuration": 0.0
+        },
+        {
+          "type": 1,
+          "threshold": 5.0,
+          "enabled": true,
+          "minDuration": 0.0
+        }
+      ]
+    },
+    {
+      "name": "Extraction",
+      "phaseIndex": 3,
+      "controlMode": 0,
+      "targetPressureStart": 9.0,
+      "targetPressureEnd": 9.0,
+      "targetFlowStart": 0.0,
+      "targetFlowEnd": 0.0,
+      "minDuration": 5.0,
+      "maxDuration": 0.0,
+      "useRamp": false,
+      "rampDuration": 0.0,
+      "allowManualStop": true,
+      "publishEvents": true,
+      "criteriaLogic": 8,
+      "breakoutCriteria": [
+        {
+          "type": 2,
+          "threshold": 40.0,
+          "enabled": true,
+          "minDuration": 0.0
+        },
+        {
+          "type": 1,
+          "threshold": 35.0,
+          "enabled": true,
+          "minDuration": 0.0
+        }
+      ]
+    }
+  ]
+}
+
