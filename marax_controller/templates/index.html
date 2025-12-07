@@ -3749,10 +3749,18 @@
                     errorsEl.textContent = 'Loading...';
                 }
                 
-                console.log('🌐 Fetching /api/diagnostic?refresh=true...');
-                const response = await fetch('/api/diagnostic?refresh=true');
+                console.log('🌐 Fetching diagnostic data...');
+                const url = basePath ? `${basePath}/api/diagnostic?refresh=true` : '/api/diagnostic?refresh=true';
+                console.log('🌐 Full URL:', url);
+                const response = await fetch(url);
                 console.log('📥 Response received:', response.status, response.statusText);
                 console.log('📥 Response ok:', response.ok);
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('❌ Response not OK, body:', text.substring(0, 200));
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
                 const data = await response.json();
                 console.log('📊 Diagnostic data received:', data);
