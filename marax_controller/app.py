@@ -13,6 +13,7 @@ from flask_cors import CORS
 from datetime import datetime
 import threading
 import time
+from shot_database import init_database, save_shot, get_shots, get_shot, get_shot_stats, delete_shot
 
 # Configure logging
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'info').upper()
@@ -207,7 +208,8 @@ def on_connect(client, userdata, flags, rc):
             (TOPIC_BREW_PHASE_STATUS, 0),
             (TOPIC_PROFILE_STATUS, 0),
             (TOPIC_PROFILE_LIST, 0),  # Subscribe to profile list responses
-            (TOPIC_DIAGNOSTIC, 0)  # Subscribe to diagnostic data
+            (TOPIC_DIAGNOSTIC, 0),  # Subscribe to diagnostic data
+            (TOPIC_SHOT_DATA, 0)  # Subscribe to shot data
         ]
         
         # Also subscribe to wildcard to catch any messages we might have missed
@@ -374,9 +376,21 @@ def on_message(client, userdata, msg):
                 pass
         elif topic == TOPIC_SHOT_DATA:
             try:
-                device_data['shot']['data'] = json.loads(payload)
-            except:
-                pass
+                shot_data = json.loads(payload)
+                # Store in device_data for backward compatibility
+                device_data['shot']['data'] = shot_data
+                # Save to database
+                try:
+                    shot_id = save_shot(shot_data)
+                    logger.info(f"✅ Saved shot {shot_data.get('shot_number')} to database (ID: {shot_id})")
+                except Exception as e:
+                    logger.error(f"❌ Error saving shot to database: {e}")
+                    import traceback
+                    logger.error(traceback.format_exc())
+            except Exception as e:
+                logger.error(f"❌ Error parsing shot data: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
         elif topic == TOPIC_SHOT_EVENT:
             try:
                 event_data = json.loads(payload)
@@ -1069,6 +1083,116 @@ def diagnostic_page():
         logger.error(f"Failed to render diagnostic page: {e}")
         return f"<h1>Diagnostic Dashboard</h1><p>Error: {str(e)}</p>", 500
 
+# Shot History API Endpoints
+@app.route('/api/shots', methods=['GET'])
+def api_shots():
+    """Get list of shots with optional filters"""
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        profile_id = request.args.get('profile_id', type=int)
+        
+        # Date filters (optional)
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
+        
+        # Convert date strings to datetime if provided
+        from_datetime = None
+        to_datetime = None
+        if date_from:
+            try:
+                from_datetime = datetime.fromtimestamp(int(date_from))
+            except:
+                pass
+        if date_to:
+            try:
+                to_datetime = datetime.fromtimestamp(int(date_to))
+            except:
+                pass
+        
+        shots = get_shots(limit=limit, offset=offset, profile_id=profile_id,
+                         date_from=from_datetime, date_to=to_datetime)
+        return jsonify(shots)
+    except Exception as e:
+        logger.error(f"Error retrieving shots: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shots/<int:shot_id>', methods=['GET'])
+def api_shot_detail(shot_id):
+    """Get detailed shot information"""
+    try:
+        shot = get_shot(shot_id)
+        if not shot:
+            return jsonify({'error': 'Shot not found'}), 404
+        return jsonify(shot)
+    except Exception as e:
+        logger.error(f"Error retrieving shot {shot_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shots/compare', methods=['GET'])
+def api_compare_shots():
+    """Compare multiple shots"""
+    try:
+        ids = request.args.get('ids', '').split(',')
+        shot_ids = [int(id.strip()) for id in ids if id.strip().isdigit()]
+        
+        if len(shot_ids) < 2:
+            return jsonify({'error': 'Need at least 2 shot IDs'}), 400
+        
+        shots = []
+        for shot_id in shot_ids:
+            shot = get_shot(shot_id)
+            if shot:
+                shots.append(shot)
+        
+        if len(shots) < 2:
+            return jsonify({'error': 'Could not find enough shots to compare'}), 404
+        
+        return jsonify(shots)
+    except Exception as e:
+        logger.error(f"Error comparing shots: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shots/stats', methods=['GET'])
+def api_shot_stats():
+    """Get aggregate statistics"""
+    try:
+        profile_id = request.args.get('profile_id', type=int)
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
+        
+        from_datetime = None
+        to_datetime = None
+        if date_from:
+            try:
+                from_datetime = datetime.fromtimestamp(int(date_from))
+            except:
+                pass
+        if date_to:
+            try:
+                to_datetime = datetime.fromtimestamp(int(date_to))
+            except:
+                pass
+        
+        stats = get_shot_stats(profile_id=profile_id, date_from=from_datetime, date_to=to_datetime)
+        return jsonify(stats)
+    except Exception as e:
+        logger.error(f"Error getting shot stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shots/<int:shot_id>', methods=['DELETE'])
+def api_delete_shot(shot_id):
+    """Delete a shot"""
+    try:
+        if delete_shot(shot_id):
+            return jsonify({'success': True})
+        return jsonify({'error': 'Shot not found'}), 404
+    except Exception as e:
+        logger.error(f"Error deleting shot {shot_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # Static files
 @app.route('/static/<path:filename>')
 def static_files(filename):
@@ -1081,20 +1205,25 @@ if __name__ == '__main__':
     logger.info("=" * 60)
     
     try:
+        # Initialize shot database
+        logger.info("Step 1/5: Initializing shot database...")
+        init_database()
+        logger.info("✓ Shot database initialized")
+        
         # Initialize MQTT
-        logger.info("Step 1/4: Initializing MQTT connection...")
+        logger.info("Step 2/5: Initializing MQTT connection...")
         init_mqtt()
         logger.info("✓ MQTT initialization complete")
         
         # Request initial data
-        logger.info("Step 2/4: Waiting for MQTT connection to stabilize...")
+        logger.info("Step 3/5: Waiting for MQTT connection to stabilize...")
         time.sleep(2)
-        logger.info("Step 3/4: Requesting initial profile list...")
+        logger.info("Step 4/5: Requesting initial profile list...")
         request_profile_list()
         logger.info("✓ Initial data request sent")
         
         # Start Flask app
-        logger.info("Step 4/4: Starting Flask web server...")
+        logger.info("Step 5/5: Starting Flask web server...")
         logger.info("=" * 60)
         logger.info("Flask server will start on: http://0.0.0.0:8080")
         logger.info("Ingress URL will be available via Home Assistant")
