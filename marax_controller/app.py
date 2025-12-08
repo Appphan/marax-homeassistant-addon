@@ -111,6 +111,7 @@ TOPIC_BREW_PHASE = f"{MQTT_BASE_TOPIC}/brew/phase"
 TOPIC_BREW_PHASE_STATUS = f"{MQTT_BASE_TOPIC}/brew/phase_status"
 TOPIC_PROFILE_LIST = f"{MQTT_BASE_TOPIC}/brew/profile/list"
 TOPIC_PROFILE_SELECT = f"{MQTT_BASE_TOPIC}/brew/profile/select"
+TOPIC_PROFILE_SELECTED = f"{MQTT_BASE_TOPIC}/brew/profile/selected"
 TOPIC_PROFILE_SET = f"{MQTT_BASE_TOPIC}/brew/profile/set"
 TOPIC_PROFILE_STATUS = f"{MQTT_BASE_TOPIC}/profile/status"
 TOPIC_LEARNING_CONTROL = f"{MQTT_BASE_TOPIC}/learning/control"
@@ -208,6 +209,7 @@ def on_connect(client, userdata, flags, rc):
             (TOPIC_BREW_PHASE_STATUS, 0),
             (TOPIC_PROFILE_STATUS, 0),
             (TOPIC_PROFILE_LIST, 0),  # Subscribe to profile list responses
+            (TOPIC_PROFILE_SELECTED, 0),  # Subscribe to profile selection confirmations
             (TOPIC_DIAGNOSTIC, 0),  # Subscribe to diagnostic data
             (TOPIC_SHOT_DATA, 0)  # Subscribe to shot data
         ]
@@ -508,6 +510,55 @@ def on_message(client, userdata, msg):
                 import traceback
                 logger.error(traceback.format_exc())
                 logger.info(f"{'='*60}\n")
+        elif topic == TOPIC_PROFILE_SELECTED:
+            # Handle profile selection confirmation
+            logger.info(f"🔔 PROFILE SELECTION CONFIRMATION RECEIVED")
+            try:
+                # Clean payload
+                payload_clean = payload.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
+                payload_clean = payload_clean.replace('\x00', '').strip()
+                
+                # Check if it's JSON or just an error message
+                if payload_clean.startswith('{'):
+                    data = json.loads(payload_clean)
+                    profile_id = data.get('profile_id')
+                    profile_name = data.get('profile_name')
+                    status = data.get('status')
+                    
+                    if profile_id is not None and profile_name:
+                        logger.info(f"✅ Profile {profile_id} selected: '{profile_name}'")
+                        
+                        # Update active profile ID
+                        device_data['active_profile'] = profile_id
+                        
+                        # Update profile name in cached profile list
+                        profiles = device_data.get('profiles', [])
+                        for p in profiles:
+                            if p.get('id') == profile_id:
+                                p['name'] = profile_name
+                                logger.info(f"✅ Updated profile {profile_id} name to '{profile_name}' in cache")
+                                break
+                        else:
+                            # Profile not in list, add it
+                            logger.warning(f"⚠️ Profile {profile_id} not in cached list, adding it")
+                            profiles.append({
+                                'id': profile_id,
+                                'name': profile_name,
+                                'phaseCount': 0
+                            })
+                            device_data['profiles'] = profiles
+                    elif status == 'error':
+                        logger.warning(f"⚠️ Profile selection error: {payload_clean}")
+                else:
+                    # Might be an error message string
+                    logger.warning(f"⚠️ Profile selection response (not JSON): {payload_clean}")
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ Failed to parse profile selection confirmation: {e}")
+                logger.error(f"Payload: {payload[:200]}")
+            except Exception as e:
+                logger.error(f"❌ Error handling profile selection: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
         else:
             # Check if it's a profile-related topic but didn't match handler
             if "profile" in topic.lower() or "list" in topic.lower():
@@ -824,6 +875,16 @@ def api_profile_select():
         mqtt_client.publish(TOPIC_PROFILE_SELECT, str(profile_id), qos=1)
         # Update active profile in device_data
         device_data['active_profile'] = profile_id
+        
+        # Also update profile name in cached list if we have it
+        # (The MQTT confirmation will update it with the correct name from ESP32)
+        profiles = device_data.get('profiles', [])
+        for p in profiles:
+            if p.get('id') == profile_id:
+                # Keep existing name until MQTT confirmation updates it
+                logger.info(f"Profile {profile_id} selected, waiting for MQTT confirmation with name")
+                break
+        
         return jsonify({'success': True, 'profile_id': profile_id})
     else:
         return jsonify({'error': 'MQTT not connected'}), 503
