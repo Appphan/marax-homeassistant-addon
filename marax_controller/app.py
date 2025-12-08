@@ -113,6 +113,8 @@ TOPIC_PROFILE_LIST = f"{MQTT_BASE_TOPIC}/brew/profile/list"
 TOPIC_PROFILE_SELECT = f"{MQTT_BASE_TOPIC}/brew/profile/select"
 TOPIC_PROFILE_SELECTED = f"{MQTT_BASE_TOPIC}/brew/profile/selected"
 TOPIC_PROFILE_SET = f"{MQTT_BASE_TOPIC}/brew/profile/set"
+TOPIC_PROFILE_DELETE = f"{MQTT_BASE_TOPIC}/brew/profile/delete"
+TOPIC_PROFILE_DELETED = f"{MQTT_BASE_TOPIC}/brew/profile/deleted"
 TOPIC_PROFILE_STATUS = f"{MQTT_BASE_TOPIC}/profile/status"
 TOPIC_LEARNING_CONTROL = f"{MQTT_BASE_TOPIC}/learning/control"
 TOPIC_LEARNING_STATUS = f"{MQTT_BASE_TOPIC}/learning/status"
@@ -210,6 +212,7 @@ def on_connect(client, userdata, flags, rc):
             (TOPIC_PROFILE_STATUS, 0),
             (TOPIC_PROFILE_LIST, 0),  # Subscribe to profile list responses
             (TOPIC_PROFILE_SELECTED, 0),  # Subscribe to profile selection confirmations
+            (TOPIC_PROFILE_DELETED, 0),  # Subscribe to profile deletion confirmations
             (TOPIC_DIAGNOSTIC, 0),  # Subscribe to diagnostic data
             (TOPIC_SHOT_DATA, 0)  # Subscribe to shot data
         ]
@@ -559,6 +562,40 @@ def on_message(client, userdata, msg):
                 logger.error(f"❌ Error handling profile selection: {e}")
                 import traceback
                 logger.error(traceback.format_exc())
+        elif topic == TOPIC_PROFILE_DELETED:
+            # Handle profile deletion confirmation
+            logger.info(f"🔔 PROFILE DELETION CONFIRMATION RECEIVED")
+            try:
+                # Clean payload
+                payload_clean = payload.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
+                payload_clean = payload_clean.replace('\x00', '').strip()
+                
+                # Check if it's JSON or just an error message
+                if payload_clean.startswith('{'):
+                    data = json.loads(payload_clean)
+                    profile_id = data.get('profile_id')
+                    status = data.get('status')
+                    error = data.get('error')
+                    
+                    if status == 'deleted' and profile_id is not None:
+                        # Remove from cached profiles list
+                        profiles = device_data.get('profiles', [])
+                        device_data['profiles'] = [p for p in profiles if p.get('id') != profile_id]
+                        
+                        # If this was the active profile, clear it
+                        if device_data.get('active_profile') == profile_id:
+                            device_data['active_profile'] = None
+                        
+                        logger.info(f"✅ Profile {profile_id} deleted successfully (confirmed by ESP32)")
+                    elif status == 'error':
+                        logger.warning(f"⚠️ Profile deletion failed: {error}")
+                    else:
+                        logger.warning(f"⚠️ Profile deletion confirmation received but status is '{status}'")
+                else:
+                    logger.warning(f"⚠️ Profile deletion confirmation received but payload is not JSON: {payload_clean[:100]}")
+            except Exception as e:
+                logger.error(f"❌ Error parsing profile deletion confirmation: {e}")
+                logger.info(f"{'='*60}\n")
         else:
             # Check if it's a profile-related topic but didn't match handler
             if "profile" in topic.lower() or "list" in topic.lower():
@@ -885,6 +922,31 @@ def api_profile_select():
                 logger.info(f"Profile {profile_id} selected, waiting for MQTT confirmation with name")
                 break
         
+        return jsonify({'success': True, 'profile_id': profile_id})
+    else:
+        return jsonify({'error': 'MQTT not connected'}), 503
+
+@app.route('/api/profiles/delete', methods=['POST'])
+def api_profile_delete():
+    """Delete a profile"""
+    data = request.json
+    profile_id = data.get('profile_id')
+    
+    if profile_id is None:
+        return jsonify({'error': 'profile_id required'}), 400
+    
+    if mqtt_client and mqtt_connected:
+        mqtt_client.publish("marax/brew/profile/delete", str(profile_id), qos=1)
+        
+        # Remove from cached profiles list
+        profiles = device_data.get('profiles', [])
+        device_data['profiles'] = [p for p in profiles if p.get('id') != profile_id]
+        
+        # If this was the active profile, clear it
+        if device_data.get('active_profile') == profile_id:
+            device_data['active_profile'] = None
+        
+        logger.info(f"Profile {profile_id} deletion requested")
         return jsonify({'success': True, 'profile_id': profile_id})
     else:
         return jsonify({'error': 'MQTT not connected'}), 503

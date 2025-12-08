@@ -2196,6 +2196,7 @@
                                     <button class="button" onclick="selectProfile(${p.id})"><i class="fas fa-check"></i> Select</button>
                                     <button class="button" onclick="viewProfile(${p.id})"><i class="fas fa-eye"></i> View</button>
                                     <button class="button" onclick="editProfile(${p.id})"><i class="fas fa-edit"></i> Edit</button>
+                                    <button class="button" onclick="deleteProfile(${p.id})" style="background: #ff4444; color: white;"><i class="fas fa-trash"></i> Delete</button>
                                 </div>
                             </div>
                         `;
@@ -2243,6 +2244,31 @@
                 updateSelectedProfileIndicator(id, currentProfiles);
             } catch (error) {
                 showMessage('Failed to select profile: ' + error.message, 'error');
+            }
+        }
+        
+        async function deleteProfile(id) {
+            const profile = currentProfiles.find(p => p.id === id);
+            const profileName = profile ? profile.name || `Profile ${id}` : `Profile ${id}`;
+            
+            if (!confirm(`Are you sure you want to delete "${profileName}"?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                await postAPI('profiles/delete', { profile_id: id });
+                showMessage(`Profile "${profileName}" deleted successfully`, 'success');
+                
+                // If this was the active profile, clear it
+                if (activeProfileId === id) {
+                    activeProfileId = null;
+                    updateSelectedProfileIndicator(null, []);
+                }
+                
+                // Refresh the profile list
+                await updateProfiles(true);
+            } catch (error) {
+                showMessage('Failed to delete profile: ' + error.message, 'error');
             }
         }
         
