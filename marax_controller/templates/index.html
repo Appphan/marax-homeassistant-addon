@@ -1259,7 +1259,7 @@
             }
         }
 
-        function showMessage(message, type = 'info') {
+        function showMessage(message, type = 'info', subtle = false) {
             const errorDiv = document.getElementById('error-message');
             const successDiv = document.getElementById('success-message');
             
@@ -1280,13 +1280,31 @@
                     successDiv.style.display = 'none';
                 }, 3000);
             } else {
-                successDiv.textContent = message;
                 successDiv.style.display = 'block';
-                successDiv.style.background = 'rgba(76, 175, 80, 0.8)';
+                
+                if (subtle) {
+                    // Subtle styling for less prominent messages with icon (Apple Design Tips)
+                    successDiv.innerHTML = `<i class="fas fa-check-circle" style="margin-right: 6px; font-size: 0.9em;"></i>${message}`;
+                    successDiv.style.background = 'rgba(52, 199, 89, 0.15)';
+                    successDiv.style.padding = 'var(--spacing-sm) var(--spacing-md)';
+                    successDiv.style.fontSize = 'var(--font-size-subheadline)';
+                    successDiv.style.opacity = '0.9';
+                    successDiv.style.display = 'flex';
+                    successDiv.style.alignItems = 'center';
+                } else {
+                    successDiv.textContent = message;
+                    successDiv.style.background = 'rgba(76, 175, 80, 0.8)';
+                    successDiv.style.padding = 'var(--spacing-md)';
+                    successDiv.style.fontSize = 'var(--font-size-body)';
+                    successDiv.style.opacity = '1';
+                    successDiv.style.display = 'block';
+                }
+                
                 errorDiv.style.display = 'none';
+                const duration = subtle ? 2000 : 5000;
                 setTimeout(() => {
                     successDiv.style.display = 'none';
-                }, 5000);
+                }, duration);
             }
         }
         
@@ -2240,7 +2258,7 @@
                 showMessage('Syncing profile to ESP32...', 'info');
                 await postAPI('profiles/select', { profile_id: id });
                 activeProfileId = id;
-                showMessage('Profile synced to ESP32 and selected successfully', 'success');
+                showMessage('Profile synced', 'success', true);
                 await updateProfiles(false);
                 updateSelectedProfileIndicator(id, currentProfiles);
             } catch (error) {
