@@ -614,7 +614,7 @@
         .criteria-item.main-criteria {
             border-left-width: 5px;
             background: rgba(76, 175, 80, 0.15);
-            border-left-color: #4caf50 !important;
+            border-left-color: var(--system-green) !important;
         }
         .add-criteria-btn {
             background: rgba(255, 255, 255, 0.1);
@@ -644,7 +644,7 @@
             max-height: 2000px;
         }
         .main-criteria-badge {
-            background: #4caf50;
+            background: var(--system-green);
             color: white;
             padding: 4px 8px;
             border-radius: 12px;
@@ -782,6 +782,137 @@
             font-size: 1.1em;
             opacity: 0.8;
         }
+        
+        /* Apple Design Tips - Utility Classes */
+        .flex-row {
+            display: flex;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .flex-col {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .subsection {
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .subsection-title {
+            font-size: var(--font-size-title-3);
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            color: var(--system-label);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+        
+        .info-box {
+            padding: var(--spacing-md);
+            background: var(--system-grouped-background);
+            border-radius: var(--radius-lg);
+            border: 0.5px solid var(--system-separator);
+            font-size: var(--font-size-subheadline);
+        }
+        
+        .info-box-accent {
+            padding: var(--spacing-md);
+            background: rgba(0, 122, 255, 0.1);
+            border-radius: var(--radius-lg);
+            border: 0.5px solid rgba(0, 122, 255, 0.3);
+        }
+        
+        /* Profile Active Indicator - Apple Design */
+        .profile-active-indicator {
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: rgba(52, 199, 89, 0.15);
+            border: 0.5px solid var(--system-green);
+            border-radius: var(--radius-lg);
+            font-size: var(--font-size-subheadline);
+            color: var(--system-green);
+            position: relative;
+        }
+        
+        .profile-active-badge {
+            background: var(--system-green);
+            color: var(--system-label);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-xl);
+            font-size: var(--font-size-caption-1);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+        
+        /* Form Input Styling - Apple Design */
+        .input-inline {
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-md);
+            border: 0.5px solid var(--system-separator);
+            background: var(--system-grouped-background);
+            color: var(--system-label);
+            font-size: var(--font-size-body);
+            font-family: inherit;
+            transition: all var(--transition-base);
+            width: 120px;
+        }
+        
+        .input-inline:focus {
+            outline: none;
+            border-color: var(--system-blue);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+        
+        .input-inline::placeholder {
+            color: var(--system-tertiary-label);
+        }
+        
+        /* Button Group - Apple Design */
+        .button-group {
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        /* Status Grid Variants */
+        .status-grid-compact {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            margin-bottom: var(--spacing-md);
+        }
+        
+        /* Progress Bar - Apple Design */
+        .progress-container {
+            background: var(--system-fill);
+            border-radius: var(--radius-sm);
+            height: 8px;
+            overflow: hidden;
+            margin: var(--spacing-xs) 0;
+        }
+        
+        .progress-bar {
+            background: var(--system-blue);
+            height: 100%;
+            transition: width var(--transition-base);
+            border-radius: var(--radius-sm);
+        }
+        
+        .progress-bar-success {
+            background: var(--system-green);
+        }
     </style>
 </head>
 <body>
@@ -822,7 +953,7 @@
             <!-- Scale Control Section -->
             <div class="status-card">
                 <h2><i class="fas fa-balance-scale"></i> Scale Control</h2>
-                <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 15px;">
+                <div class="status-grid status-grid-compact">
                     <div class="stat-item">
                         <div class="stat-label">Current Weight</div>
                         <div class="stat-value" id="scale-weight">-</div>
@@ -840,14 +971,12 @@
                         <div class="stat-value" id="scale-status">-</div>
                     </div>
                 </div>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <div class="button-group">
                     <button class="button" onclick="tareScale()">
                         <i class="fas fa-balance-scale"></i> Tare Scale
                     </button>
-                    <div style="display: flex; gap: 5px; align-items: center;">
-                        <input type="number" id="target-weight-input" placeholder="Target (g)" 
-                               style="padding: 8px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.3); 
-                                      background: rgba(255,255,255,0.1); color: white; width: 120px;" 
+                    <div class="flex-row" style="gap: var(--spacing-xs);">
+                        <input type="number" id="target-weight-input" class="input-inline" placeholder="Target (g)" 
                                min="10" max="500" step="0.1">
                         <button class="button" onclick="setTargetWeight()">
                             <i class="fas fa-bullseye"></i> Set Target
@@ -859,7 +988,7 @@
             <!-- Shot Management Section -->
             <div class="status-card">
                 <h2><i class="fas fa-coffee"></i> Shot Management</h2>
-                <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 15px;">
+                <div class="status-grid status-grid-compact">
                     <div class="stat-item">
                         <div class="stat-label">Shot Number</div>
                         <div class="stat-value" id="shot-number">-</div>
@@ -911,8 +1040,8 @@
                 <h2><i class="fas fa-sliders-h"></i> PID Control & Learning System</h2>
                 
                 <!-- Control System Selection -->
-                <div style="margin-bottom: 20px;">
-                    <h3 style="margin-bottom: 10px;"><i class="fas fa-cog"></i> Control System</h3>
+                <div class="subsection">
+                    <h3 class="subsection-title"><i class="fas fa-cog"></i> Control System</h3>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="button" id="btn-control-pid" onclick="setControlSystem('pid')">
                             <i class="fas fa-chart-line"></i> PID
@@ -924,13 +1053,13 @@
                             <i class="fas fa-brain"></i> Adaptive
                         </button>
                     </div>
-                    <div style="margin-top: 10px; padding: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+                    <div class="info-box-accent" style="margin-top: var(--spacing-md);">
                         <strong>Current:</strong> <span id="current-control-system">Loading...</span>
                     </div>
                 </div>
                 
                 <!-- PID Parameters -->
-                <div style="margin-bottom: 20px;">
+                <div class="subsection">
                     <h3 style="margin-bottom: 10px;"><i class="fas fa-tachometer-alt"></i> PID Parameters</h3>
                     <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
                         <div class="stat-item">
@@ -949,9 +1078,9 @@
                 </div>
                 
                 <!-- Learning System Controls -->
-                <div style="margin-bottom: 20px;">
+                <div class="subsection">
                     <h3 style="margin-bottom: 10px;"><i class="fas fa-graduation-cap"></i> Learning System</h3>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
+                    <div class="button-group" style="margin-bottom: var(--spacing-md);">
                         <button class="button" id="btn-learning-enable" onclick="learningControl('enable')">
                             <i class="fas fa-play"></i> Enable
                         </button>
@@ -968,13 +1097,13 @@
                             <i class="fas fa-info-circle"></i> Refresh Info
                         </button>
                     </div>
-                    <div style="padding: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 8px; margin-bottom: 15px;">
+                    <div class="info-box-accent" style="margin-bottom: var(--spacing-md);">
                         <strong>Status:</strong> <span id="learning-status">Loading...</span>
                     </div>
                 </div>
                 
                 <!-- Learning Metrics -->
-                <div style="margin-bottom: 20px;">
+                <div class="subsection">
                     <h3 style="margin-bottom: 10px;"><i class="fas fa-chart-bar"></i> Learning Metrics</h3>
                     <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
                         <div class="stat-item">
@@ -1035,14 +1164,14 @@
         <!-- Profiles Tab -->
         <div id="profiles" class="tab-content">
             <div class="status-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div class="section-header">
                     <div>
                         <h2>Brewing Profiles</h2>
-                        <div id="selected-profile-indicator" style="margin-top: 10px; padding: 10px; background: rgba(0, 255, 0, 0.2); border: 2px solid #44ff44; border-radius: 8px; display: none;">
-                            <strong>✓ Active Profile:</strong> <span id="selected-profile-name">-</span>
-                        </div>
-                        <div id="sync-status-indicator" style="margin-top: 8px; padding: 8px 12px; background: rgba(0, 122, 255, 0.1); border: 0.5px solid rgba(0, 122, 255, 0.3); border-radius: var(--radius-md); display: none; font-size: var(--font-size-subheadline); color: var(--system-blue);">
-                            <i class="fas fa-sync-alt" style="margin-right: 6px; animation: spin 1s linear infinite;"></i><span id="sync-status-text">Syncing...</span>
+                        <div id="selected-profile-indicator" class="profile-active-indicator" style="display: none;">
+                            <strong id="indicator-label">✓ Active Profile:</strong> <span id="selected-profile-name">-</span>
+                            <span id="sync-status-badge" style="display: none; margin-left: var(--spacing-sm); font-size: 0.9em; opacity: 0.9;">
+                                <i class="fas fa-sync-alt" style="margin-right: var(--spacing-xs); animation: spin 1s linear infinite;"></i><span id="sync-status-text">Syncing...</span>
+                            </span>
                         </div>
                     </div>
                     <button class="button primary" onclick="openProfileEditor()">+ New Profile</button>
@@ -2205,7 +2334,7 @@
                         ${profiles.map(p => {
                             const techniqueIcon = getTechniqueIcon(p.technique);
                             return `
-                            <div class="profile-card ${p.id === activeProfileId ? 'active' : ''}" style="border-left: ${p.id === activeProfileId ? '5px solid #44ff44' : '5px solid transparent'};">
+                            <div class="profile-card ${p.id === activeProfileId ? 'active' : ''}" style="border-left: ${p.id === activeProfileId ? '5px solid var(--system-green)' : '5px solid transparent'};">
                                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
                                     <div>
                                         <h3><i class="fas fa-coffee"></i> ${p.name || 'Unnamed Profile'}</h3>
@@ -2213,7 +2342,7 @@
                                         ${p.technique ? `<p style="opacity: 0.7; font-size: 0.9em;">${techniqueIcon} ${p.technique}</p>` : ''}
                                         ${(p.phaseCount || p.phase_count) ? `<p style="opacity: 0.7; font-size: 0.9em;"><i class="fas fa-layer-group"></i> ${p.phaseCount || p.phase_count} phases</p>` : ''}
                                     </div>
-                                    ${p.id === activeProfileId ? '<span style="background: #44ff44; color: #000; padding: 5px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold;"><i class="fas fa-check-circle"></i> Active</span>' : ''}
+                                    ${p.id === activeProfileId ? '<span class="profile-active-badge"><i class="fas fa-check-circle"></i> Active</span>' : ''}
                                 </div>
                                 <div class="chart-container" style="height: 200px; margin: 15px 0;">
                                     <canvas id="profile-chart-${p.id}"></canvas>
@@ -2262,19 +2391,24 @@
         }
         
         async function selectProfile(id) {
-            const syncIndicator = document.getElementById('sync-status-indicator');
+            const indicator = document.getElementById('selected-profile-indicator');
+            const syncBadge = document.getElementById('sync-status-badge');
             const syncText = document.getElementById('sync-status-text');
-            const syncIcon = syncIndicator.querySelector('i');
+            const syncIcon = syncBadge.querySelector('i');
             
             try {
-                // Show syncing status
-                syncIndicator.style.display = 'block';
+                // Show syncing status in the active profile indicator
+                if (indicator.style.display === 'none' || indicator.style.display === '') {
+                    indicator.style.display = 'block';
+                    indicator.style.background = 'rgba(0, 122, 255, 0.15)';
+                    indicator.style.borderColor = 'rgba(0, 122, 255, 0.4)';
+                    document.getElementById('indicator-label').textContent = 'Syncing profile...';
+                    document.getElementById('selected-profile-name').textContent = '';
+                }
+                syncBadge.style.display = 'inline';
                 syncText.textContent = 'Syncing...';
                 syncIcon.className = 'fas fa-sync-alt';
                 syncIcon.style.animation = 'spin 1s linear infinite';
-                syncIndicator.style.background = 'rgba(0, 122, 255, 0.1)';
-                syncIndicator.style.borderColor = 'rgba(0, 122, 255, 0.3)';
-                syncIndicator.style.color = 'var(--system-blue)';
                 
                 await postAPI('profiles/select', { profile_id: id });
                 activeProfileId = id;
@@ -2283,32 +2417,35 @@
                 syncText.textContent = 'Synced';
                 syncIcon.className = 'fas fa-check-circle';
                 syncIcon.style.animation = 'none';
-                syncIndicator.style.background = 'rgba(52, 199, 89, 0.1)';
-                syncIndicator.style.borderColor = 'rgba(52, 199, 89, 0.3)';
-                syncIndicator.style.color = 'var(--system-green)';
+                indicator.style.background = 'rgba(52, 199, 89, 0.2)';
+                indicator.style.borderColor = 'var(--system-green)';
+                document.getElementById('indicator-label').textContent = '✓ Active Profile:';
                 
                 await updateProfiles(false);
                 updateSelectedProfileIndicator(id, currentProfiles);
                 
-                // Hide after 2 seconds
+                // Hide sync badge after 1.5 seconds
                 setTimeout(() => {
-                    syncIndicator.style.display = 'none';
-                }, 2000);
+                    syncBadge.style.display = 'none';
+                }, 1500);
             } catch (error) {
                 // Show error status
-                syncText.textContent = 'Sync failed';
+                syncText.textContent = 'Failed';
                 syncIcon.className = 'fas fa-exclamation-circle';
                 syncIcon.style.animation = 'none';
-                syncIndicator.style.background = 'rgba(255, 59, 48, 0.1)';
-                syncIndicator.style.borderColor = 'rgba(255, 59, 48, 0.3)';
-                syncIndicator.style.color = 'var(--system-red)';
+                indicator.style.background = 'rgba(255, 59, 48, 0.15)';
+                indicator.style.borderColor = 'rgba(255, 59, 48, 0.4)';
                 
                 // Show error message for details
                 showMessage('Failed to sync/select profile: ' + error.message, 'error');
                 
-                // Hide after 3 seconds
+                // Hide sync badge after 3 seconds
                 setTimeout(() => {
-                    syncIndicator.style.display = 'none';
+                    syncBadge.style.display = 'none';
+                    // Restore normal state if profile wasn't set
+                    if (activeProfileId !== id) {
+                        indicator.style.display = 'none';
+                    }
                 }, 3000);
             }
         }
@@ -2341,11 +2478,15 @@
         function updateSelectedProfileIndicator(profileId, profiles) {
             const indicator = document.getElementById('selected-profile-indicator');
             const nameSpan = document.getElementById('selected-profile-name');
+            const label = document.getElementById('indicator-label');
             
             if (profileId !== null && profileId !== undefined && profiles) {
                 const profile = profiles.find(p => p.id === profileId);
                 if (profile) {
                     indicator.style.display = 'block';
+                indicator.style.background = 'rgba(52, 199, 89, 0.15)';
+                indicator.style.borderColor = 'var(--system-green)';
+                    label.textContent = '✓ Active Profile:';
                     nameSpan.textContent = profile.name || `Profile ${profileId}`;
                 } else {
                     indicator.style.display = 'none';
@@ -2396,11 +2537,11 @@
                     }
                     
                     const critDiv = document.createElement('div');
-                    critDiv.style.cssText = 'margin: 10px 0; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 8px; border: 2px solid ' + (met ? '#44ff44' : 'rgba(255, 255, 255, 0.3)') + ';';
+                    critDiv.style.cssText = 'margin: var(--spacing-md) 0; padding: var(--spacing-md); background: var(--system-grouped-background); border-radius: var(--radius-lg); border: 0.5px solid ' + (met ? 'var(--system-green)' : 'var(--system-separator)') + ';';
                     critDiv.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <strong>${getCriteriaIcon(crit.type)} ${typeName}</strong>
-                            <span style="color: ${met ? '#44ff44' : '#ffaa44'};">
+                            <span style="color: ${met ? 'var(--system-green)' : 'var(--system-orange)'};">
                                 ${met ? '<i class="fas fa-check-circle"></i> Met' : (canTrigger ? '<i class="fas fa-clock"></i> Waiting...' : '<i class="fas fa-hourglass-half"></i> Min duration not reached')}
                             </span>
                         </div>
@@ -2410,7 +2551,7 @@
                                 <span><i class="fas fa-bullseye"></i> Target: ${threshold.toFixed(2)}${getCriteriaUnit(crit.type)}</span>
                             </div>
                             <div style="background: rgba(0, 0, 0, 0.3); border-radius: 5px; height: 20px; overflow: hidden;">
-                                <div style="background: ${met ? '#44ff44' : '#667eea'}; height: 100%; width: ${progress}%; transition: width 0.3s;"></div>
+                                <div style="background: ${met ? 'var(--system-green)' : 'var(--system-blue)'}; height: 100%; width: ${progress}%; transition: width var(--transition-base);"></div>
                             </div>
                         </div>
                         ${crit.min_duration > 0 ? `<div style="font-size: 0.85em; opacity: 0.7; margin-top: 5px;"><i class="fas fa-hourglass-half"></i> Min duration: ${crit.min_duration.toFixed(1)}s</div>` : ''}
@@ -2431,7 +2572,7 @@
             
             document.getElementById('viewModalTitle').textContent = profile.name || 'Profile Details';
             document.getElementById('profile-view-content').innerHTML = `
-                <div style="margin-bottom: 20px;">
+                <div class="subsection">
                     <h3>Profile Information</h3>
                     <p><strong>ID:</strong> ${profile.id}</p>
                     <p><strong>Name:</strong> ${profile.name || 'N/A'}</p>
@@ -2475,7 +2616,7 @@
                                         <strong><i class="fas fa-flag-checkered"></i> Breakout Criteria (${activeCriteria.length}):</strong>
                                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
                                             ${activeCriteria.map(crit => `
-                                                <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 5px; border-left: 3px solid #44ff44;">
+                                                <div style="background: var(--system-grouped-background); padding: var(--spacing-sm); border-radius: var(--radius-md); border-left: 3px solid var(--system-green);">
                                                     ${getCriteriaIcon(crit.type)} <strong>${getCriteriaName(crit.type)}</strong><br>
                                                     <small>Threshold: ${crit.threshold || 0}${getCriteriaUnit(crit.type)}</small>
                                                     ${crit.minDuration > 0 ? `<br><small><i class="fas fa-hourglass-half"></i> Min: ${crit.minDuration}s</small>` : ''}
