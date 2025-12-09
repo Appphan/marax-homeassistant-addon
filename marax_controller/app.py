@@ -14,6 +14,11 @@ from datetime import datetime
 import threading
 import time
 from shot_database import init_database, save_shot, get_shots, get_shot, get_shot_stats, delete_shot
+from profile_database import (
+    init_database as init_profile_database,
+    save_profile, get_profile, get_all_profiles, delete_profile,
+    mark_synced, get_next_profile_id
+)
 
 # Configure logging
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'info').upper()
@@ -840,29 +845,34 @@ def api_machine_state():
 
 @app.route('/api/profiles')
 def api_profiles():
-    """Get profiles list"""
-    # Only request fresh profile list if 'refresh' parameter is set
+    """Get profiles list - merge local database with ESP32 profiles"""
     refresh = request.args.get('refresh', 'false').lower() == 'true'
-    logger.info(f"🔍 API /profiles called - refresh parameter: '{refresh}' (raw: '{request.args.get('refresh', 'NONE')}')")
+    logger.info(f"🔍 API /profiles called - refresh parameter: '{refresh}'")
     
-    if refresh:
-        logger.info(f"\n{'='*60}")
-        logger.info(f"🔄 API /profiles - REFRESH REQUESTED")
-        logger.info(f"{'='*60}")
-        logger.info(f"Current profiles in cache: {len(device_data.get('profiles', []))}")
-        logger.info(f"MQTT connected: {mqtt_connected}, MQTT client exists: {mqtt_client is not None}")
-        logger.info(f"About to call request_profile_list()...")
+    # Get profiles from local database (source of truth)
+    local_profiles = get_all_profiles()
+    logger.info(f"📋 Found {len(local_profiles)} profiles in local database")
+    
+    # If refresh requested, also get profiles from ESP32 to see what's synced
+    esp32_profiles = []
+    if refresh and mqtt_client and mqtt_connected:
+        logger.info("🔄 Requesting profile list from ESP32...")
         request_profile_list()
-        logger.info(f"request_profile_list() returned")
-        # Wait longer for response (ESP32 needs time to process and publish)
-        logger.info(f"⏳ Waiting 2 seconds for ESP32 response...")
         time.sleep(2.0)
-        logger.info(f"✅ Wait complete, checking for new profiles...")
-        logger.info(f"Profiles in cache after wait: {len(device_data.get('profiles', []))}")
-    else:
-        logger.info("📋 API /profiles - Using cached data (no refresh)")
+        esp32_profiles = device_data.get('profiles', [])
+        logger.info(f"📋 Found {len(esp32_profiles)} profiles on ESP32")
     
-    profiles = device_data.get('profiles', [])
+    # Merge: local profiles are primary, mark which ones are synced
+    merged_profiles = []
+    esp32_profile_ids = {p.get('id') for p in esp32_profiles}
+    
+    for local_profile in local_profiles:
+        profile = dict(local_profile)
+        # Check if this profile exists on ESP32
+        profile['synced_to_esp32'] = profile.get('id') in esp32_profile_ids
+        merged_profiles.append(profile)
+    
+    profiles = merged_profiles
     active_profile = device_data.get('active_profile', None)
     
     logger.info(f"\n{'='*60}")
@@ -901,42 +911,90 @@ def api_profiles():
 
 @app.route('/api/profiles/select', methods=['POST'])
 def api_profile_select():
-    """Select a profile"""
+    """Select a profile and sync it to ESP32"""
     data = request.json
     profile_id = data.get('profile_id')
     
     if profile_id is None:
         return jsonify({'error': 'profile_id required'}), 400
     
-    if mqtt_client and mqtt_connected:
+    if not mqtt_client or not mqtt_connected:
+        return jsonify({'error': 'MQTT not connected'}), 503
+    
+    try:
+        # Get profile from local database
+        profile = get_profile(profile_id)
+        if not profile:
+            return jsonify({'error': f'Profile {profile_id} not found in local database'}), 404
+        
+        logger.info(f"Syncing profile {profile_id} ({profile.get('name', 'unnamed')}) to ESP32...")
+        
+        # Prepare profile for ESP32 (convert to ESP32 format)
+        esp32_profile = {
+            'profile_id': profile['profile_id'],
+            'profileName': profile['profileName'],
+            'name': profile['name'],
+            'technique': profile.get('technique', ''),
+            'defaultDose': profile.get('defaultDose', 18.0),
+            'defaultYield': profile.get('defaultYield', 36.0),
+            'defaultRatio': profile.get('defaultRatio', 2.0),
+            'phaseCount': profile.get('phaseCount', 0),
+            'enabled': True,
+            'phases': profile.get('phases', [])
+        }
+        
+        # Send profile to ESP32
+        payload = json.dumps(esp32_profile)
+        result = mqtt_client.publish(TOPIC_PROFILE_SET, payload, qos=1)
+        
+        if result.rc != 0:
+            return jsonify({'error': f'Failed to send profile to ESP32 (MQTT error: {result.rc})'}), 500
+        
+        # Wait a moment for ESP32 to process
+        import time
+        time.sleep(0.5)
+        
+        # Now select the profile on ESP32
         mqtt_client.publish(TOPIC_PROFILE_SELECT, str(profile_id), qos=1)
+        
+        # Mark as synced in database
+        mark_synced(profile_id)
+        
         # Update active profile in device_data
         device_data['active_profile'] = profile_id
         
-        # Also update profile name in cached list if we have it
-        # (The MQTT confirmation will update it with the correct name from ESP32)
-        profiles = device_data.get('profiles', [])
-        for p in profiles:
-            if p.get('id') == profile_id:
-                # Keep existing name until MQTT confirmation updates it
-                logger.info(f"Profile {profile_id} selected, waiting for MQTT confirmation with name")
-                break
+        logger.info(f"✅ Profile {profile_id} synced to ESP32 and selected")
         
-        return jsonify({'success': True, 'profile_id': profile_id})
-    else:
-        return jsonify({'error': 'MQTT not connected'}), 503
+        return jsonify({
+            'success': True, 
+            'profile_id': profile_id,
+            'message': f'Profile "{profile.get("name", "unnamed")}" synced to ESP32 and selected'
+        })
+    except Exception as e:
+        logger.error(f"Error syncing profile: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/profiles/delete', methods=['POST'])
 def api_profile_delete():
-    """Delete a profile"""
+    """Delete a profile from local database and ESP32"""
     data = request.json
     profile_id = data.get('profile_id')
     
     if profile_id is None:
         return jsonify({'error': 'profile_id required'}), 400
     
-    if mqtt_client and mqtt_connected:
-        mqtt_client.publish("marax/brew/profile/delete", str(profile_id), qos=1)
+    try:
+        # Delete from local database
+        deleted = delete_profile(profile_id)
+        if not deleted:
+            return jsonify({'error': f'Profile {profile_id} not found in local database'}), 404
+        
+        # Also delete from ESP32 if MQTT is connected
+        if mqtt_client and mqtt_connected:
+            mqtt_client.publish("marax/brew/profile/delete", str(profile_id), qos=1)
+            logger.info(f"Profile {profile_id} deletion requested from ESP32")
         
         # Remove from cached profiles list
         profiles = device_data.get('profiles', [])
@@ -946,10 +1004,11 @@ def api_profile_delete():
         if device_data.get('active_profile') == profile_id:
             device_data['active_profile'] = None
         
-        logger.info(f"Profile {profile_id} deletion requested")
+        logger.info(f"✅ Profile {profile_id} deleted from local database")
         return jsonify({'success': True, 'profile_id': profile_id})
-    else:
-        return jsonify({'error': 'MQTT not connected'}), 503
+    except Exception as e:
+        logger.error(f"Error deleting profile: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/phase')
 def api_phase():
@@ -970,43 +1029,40 @@ def api_phase():
 
 @app.route('/api/profiles/send', methods=['POST'])
 def api_profile_send():
-    """Send a profile to device"""
+    """Save a profile locally (addon is source of truth)"""
     logger.info("API /profiles/send endpoint called")
     profile = request.json
     
     if not profile:
         return jsonify({'success': False, 'error': 'Profile data required'}), 400
     
-    profile_name = profile.get('profileName', 'Unknown')
-    phase_count = profile.get('phaseCount', 0)
-    logger.info(f"Received profile: {profile_name} with {phase_count} phases")
+    # Auto-assign profile ID if not provided
+    if 'profile_id' not in profile and 'id' not in profile:
+        profile['profile_id'] = get_next_profile_id()
+        logger.info(f"Auto-assigned profile ID: {profile['profile_id']}")
     
-    if not mqtt_client or not mqtt_connected:
-        logger.error("MQTT not connected - cannot send profile")
-        return jsonify({'success': False, 'error': 'MQTT not connected. Check add-on configuration and ensure MQTT broker is running.'}), 503
+    profile_id = profile.get('profile_id') or profile.get('id')
+    profile_name = profile.get('profileName') or profile.get('name', 'Unknown')
+    phase_count = len(profile.get('phases', []))
+    
+    logger.info(f"Saving profile locally: {profile_name} (ID: {profile_id}) with {phase_count} phases")
     
     try:
-        payload = json.dumps(profile)
-        result = mqtt_client.publish(TOPIC_PROFILE_SET, payload, qos=1)
+        # Save to local database (addon is source of truth)
+        save_profile(profile)
+        logger.info(f"✅ Profile saved locally: {profile_name}")
         
-        if result.rc == 0:
-            logger.info(f"✅ Successfully sent profile to device: {profile_name}")
-            # Wait a moment for ESP32 to process and save
-            import time
-            time.sleep(0.5)
-            return jsonify({
-                'success': True, 
-                'message': f'Profile "{profile_name}" sent to ESP32 and saved to EEPROM',
-                'profile_name': profile_name,
-                'phase_count': phase_count
-            })
-        else:
-            error_msg = f"MQTT publish failed with code {result.rc}"
-            logger.error(f"❌ {error_msg}")
-            return jsonify({'success': False, 'error': error_msg}), 500
+        return jsonify({
+            'success': True, 
+            'message': f'Profile "{profile_name}" saved locally',
+            'profile_id': profile_id,
+            'profile_name': profile_name,
+            'phase_count': phase_count,
+            'note': 'Profile will be synced to ESP32 when selected'
+        })
             
     except Exception as e:
-        error_msg = f"Error sending profile: {str(e)}"
+        error_msg = f"Error saving profile: {str(e)}"
         logger.error(f"❌ {error_msg}")
         import traceback
         logger.error(traceback.format_exc())
@@ -1329,17 +1385,22 @@ if __name__ == '__main__':
     
     try:
         # Initialize shot database
-        logger.info("Step 1/5: Initializing shot database...")
+        logger.info("Step 1/6: Initializing shot database...")
         init_database()
         logger.info("✓ Shot database initialized")
         
+        # Initialize profile database
+        logger.info("Step 2/6: Initializing profile database...")
+        init_profile_database()
+        logger.info("✓ Profile database initialized")
+        
         # Initialize MQTT
-        logger.info("Step 2/5: Initializing MQTT connection...")
+        logger.info("Step 3/6: Initializing MQTT connection...")
         init_mqtt()
         logger.info("✓ MQTT initialization complete")
         
         # Request initial data
-        logger.info("Step 3/5: Waiting for MQTT connection to stabilize...")
+        logger.info("Step 4/6: Waiting for MQTT connection to stabilize...")
         time.sleep(2)
         logger.info("Step 4/5: Requesting initial profile list...")
         request_profile_list()

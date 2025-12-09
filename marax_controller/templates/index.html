@@ -2237,13 +2237,14 @@
         
         async function selectProfile(id) {
             try {
+                showMessage('Syncing profile to ESP32...', 'info');
                 await postAPI('profiles/select', { profile_id: id });
                 activeProfileId = id;
-                showMessage('Profile selected successfully', 'success');
+                showMessage('Profile synced to ESP32 and selected successfully', 'success');
                 await updateProfiles(false);
                 updateSelectedProfileIndicator(id, currentProfiles);
             } catch (error) {
-                showMessage('Failed to select profile: ' + error.message, 'error');
+                showMessage('Failed to sync/select profile: ' + error.message, 'error');
             }
         }
         
@@ -3405,15 +3406,15 @@
                 
                 // Check if response indicates success
                 if (response && (response.success !== false)) {
-                    showMessage('✅ Profile saved successfully and persisted to EEPROM!', 'success');
+                    showMessage('✅ Profile saved locally! It will sync to ESP32 when selected.', 'success');
                     
                     // Close modal after short delay
                     setTimeout(() => {
                         closeProfileEditor();
                     }, 1500);
                     
-                    // Refresh profiles list
-                    await updateProfiles(true);
+                    // Refresh profiles list (from local database - instant)
+                    await updateProfiles(false);
                     
                     // Switch to profiles tab to see the new profile
                     setTimeout(() => {
