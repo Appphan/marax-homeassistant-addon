@@ -137,6 +137,7 @@
             font-weight: 600;
             color: var(--system-label);
             margin-bottom: var(--spacing-md);
+            letter-spacing: -0.3px;
         }
         
         h3 {
@@ -144,6 +145,7 @@
             font-weight: 600;
             color: var(--system-label);
             margin-bottom: var(--spacing-sm);
+            letter-spacing: -0.2px;
         }
         
         /* macOS-style Tabs */
@@ -160,7 +162,7 @@
         .tab {
             flex: 1;
             padding: var(--spacing-sm) var(--spacing-md);
-            border-radius: var(--radius-sm);
+            border-radius: var(--radius-md);
             cursor: pointer;
             font-size: var(--font-size-body);
             font-weight: 500;
@@ -169,6 +171,7 @@
             border: none;
             transition: all var(--transition-base);
             text-align: center;
+            position: relative;
         }
         
         .tab:hover {
@@ -179,7 +182,18 @@
         .tab.active {
             background: var(--system-secondary-background);
             color: var(--system-blue);
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+        }
+        
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--system-blue);
+            border-radius: 2px 2px 0 0;
         }
         
         .tab-content {
@@ -201,13 +215,13 @@
             to { transform: rotate(360deg); }
         }
         
-        /* macOS-style Cards */
+        /* Apple Design Cards */
         .status-card {
             background: var(--system-secondary-background);
-            border-radius: var(--radius-xl);
-            padding: var(--spacing-lg);
-            margin-bottom: var(--spacing-md);
-            box-shadow: var(--shadow-md);
+            border-radius: var(--radius-2xl);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
             border: 0.5px solid var(--system-separator);
         }
         
@@ -220,10 +234,15 @@
         
         .stat-item {
             background: var(--system-grouped-background);
-            padding: var(--spacing-md);
-            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-xl);
             text-align: center;
             border: 0.5px solid var(--system-separator);
+            transition: all var(--transition-base);
+        }
+        
+        .stat-item:hover {
+            background: var(--system-tertiary-background);
         }
         
         .stat-label {
@@ -231,41 +250,47 @@
             color: var(--system-secondary-label);
             margin-bottom: var(--spacing-xs);
             font-weight: 500;
+            letter-spacing: -0.1px;
         }
         
         .stat-value {
             font-size: var(--font-size-title-2);
             font-weight: 600;
             color: var(--system-label);
+            letter-spacing: -0.3px;
         }
         
-        /* macOS-style Buttons */
+        /* Apple Design Buttons */
         .button {
             background: var(--system-blue);
             color: white;
             border: none;
             padding: var(--spacing-sm) var(--spacing-lg);
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-lg);
             cursor: pointer;
             font-size: var(--font-size-body);
             font-weight: 500;
             transition: all var(--transition-base);
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: var(--spacing-xs);
             margin: var(--spacing-xs);
+            -webkit-font-smoothing: antialiased;
         }
         
         .button:hover {
-            background: #0051d5;
-            box-shadow: var(--shadow-md);
-            transform: translateY(-1px);
+            background: var(--system-blue);
+            opacity: 0.9;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transform: translateY(-0.5px);
         }
         
         .button:active {
             transform: translateY(0);
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            opacity: 0.85;
         }
         
         .button.primary {
@@ -277,16 +302,19 @@
         }
         
         .button.danger:hover {
-            background: #d70015;
+            background: var(--system-red);
+            opacity: 0.9;
         }
         
         .button.secondary {
             background: var(--system-fill);
             color: var(--system-label);
+            box-shadow: none;
         }
         
         .button.secondary:hover {
             background: var(--system-secondary-fill);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
         }
         
         /* macOS-style Messages */
@@ -313,45 +341,71 @@
             padding: var(--spacing-xl);
             color: var(--system-secondary-label);
         }
-        /* Profile Cards - macOS style */
+        /* Profile Cards - Apple Design */
         .profile-list {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: var(--spacing-md);
+            gap: var(--spacing-lg);
         }
         
         .profile-card {
             background: var(--system-secondary-background);
             border: 0.5px solid var(--system-separator);
-            border-radius: var(--radius-xl);
-            padding: var(--spacing-lg);
+            border-radius: var(--radius-2xl);
+            padding: var(--spacing-xl);
             cursor: pointer;
             transition: all var(--transition-base);
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .profile-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: transparent;
+            transition: background var(--transition-base);
         }
         
         .profile-card:hover {
             background: var(--system-tertiary-background);
-            box-shadow: var(--shadow-md);
-            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            transform: translateY(-1px);
+            border-color: var(--system-opaque-separator);
         }
         
         .profile-card.active {
             border-color: var(--system-blue);
-            background: rgba(0, 122, 255, 0.1);
-            box-shadow: var(--shadow-md);
+            background: var(--system-secondary-background);
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.15);
+        }
+        
+        .profile-card.active::before {
+            background: var(--system-blue);
         }
         
         .profile-card h3 {
-            margin-bottom: var(--spacing-sm);
+            margin-bottom: var(--spacing-xs);
             font-size: var(--font-size-title-3);
             font-weight: 600;
+            color: var(--system-label);
+            letter-spacing: -0.2px;
+        }
+        
+        .profile-card p {
+            color: var(--system-secondary-label);
+            font-size: var(--font-size-subheadline);
+            line-height: 1.4;
         }
         
         .profile-actions {
             display: flex;
-            gap: var(--spacing-sm);
-            margin-top: var(--spacing-md);
+            gap: var(--spacing-xs);
+            margin-top: var(--spacing-lg);
             justify-content: center;
             align-items: center;
         }
@@ -359,7 +413,9 @@
         .profile-actions .button {
             flex: 1;
             margin: 0;
-            min-width: 80px;
+            min-width: 70px;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: var(--font-size-subheadline);
         }
         
         /* macOS-style Modal */
@@ -836,18 +892,21 @@
         /* Profile Active Indicator - Apple Design */
         .profile-active-indicator {
             margin-top: var(--spacing-md);
-            padding: var(--spacing-md);
-            background: rgba(52, 199, 89, 0.15);
-            border: 0.5px solid var(--system-green);
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: rgba(52, 199, 89, 0.08);
+            border: 0.5px solid rgba(52, 199, 89, 0.2);
             border-radius: var(--radius-lg);
             font-size: var(--font-size-subheadline);
             color: var(--system-green);
             position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
         }
         
         .profile-active-badge {
-            background: var(--system-green);
-            color: var(--system-label);
+            background: rgba(52, 199, 89, 0.15);
+            color: var(--system-green);
             padding: var(--spacing-xs) var(--spacing-sm);
             border-radius: var(--radius-xl);
             font-size: var(--font-size-caption-1);
@@ -855,6 +914,7 @@
             display: inline-flex;
             align-items: center;
             gap: var(--spacing-xs);
+            border: 0.5px solid rgba(52, 199, 89, 0.3);
         }
         
         /* Form Input Styling - Apple Design */
@@ -2334,7 +2394,7 @@
                         ${profiles.map(p => {
                             const techniqueIcon = getTechniqueIcon(p.technique);
                             return `
-                            <div class="profile-card ${p.id === activeProfileId ? 'active' : ''}" style="border-left: ${p.id === activeProfileId ? '5px solid var(--system-green)' : '5px solid transparent'};">
+                            <div class="profile-card ${p.id === activeProfileId ? 'active' : ''}">
                                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
                                     <div>
                                         <h3><i class="fas fa-coffee"></i> ${p.name || 'Unnamed Profile'}</h3>
@@ -2417,8 +2477,8 @@
                 syncText.textContent = 'Synced';
                 syncIcon.className = 'fas fa-check-circle';
                 syncIcon.style.animation = 'none';
-                indicator.style.background = 'rgba(52, 199, 89, 0.2)';
-                indicator.style.borderColor = 'var(--system-green)';
+                indicator.style.background = 'rgba(52, 199, 89, 0.08)';
+                indicator.style.borderColor = 'rgba(52, 199, 89, 0.2)';
                 document.getElementById('indicator-label').textContent = '✓ Active Profile:';
                 
                 await updateProfiles(false);
@@ -2484,8 +2544,8 @@
                 const profile = profiles.find(p => p.id === profileId);
                 if (profile) {
                     indicator.style.display = 'block';
-                indicator.style.background = 'rgba(52, 199, 89, 0.15)';
-                indicator.style.borderColor = 'var(--system-green)';
+                indicator.style.background = 'rgba(52, 199, 89, 0.08)';
+                indicator.style.borderColor = 'rgba(52, 199, 89, 0.2)';
                     label.textContent = '✓ Active Profile:';
                     nameSpan.textContent = profile.name || `Profile ${profileId}`;
                 } else {
