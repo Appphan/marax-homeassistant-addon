@@ -196,6 +196,11 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
         /* macOS-style Cards */
         .status-card {
             background: var(--system-secondary-background);
@@ -1035,6 +1040,9 @@
                         <h2>Brewing Profiles</h2>
                         <div id="selected-profile-indicator" style="margin-top: 10px; padding: 10px; background: rgba(0, 255, 0, 0.2); border: 2px solid #44ff44; border-radius: 8px; display: none;">
                             <strong>✓ Active Profile:</strong> <span id="selected-profile-name">-</span>
+                        </div>
+                        <div id="sync-status-indicator" style="margin-top: 8px; padding: 8px 12px; background: rgba(0, 122, 255, 0.1); border: 0.5px solid rgba(0, 122, 255, 0.3); border-radius: var(--radius-md); display: none; font-size: var(--font-size-subheadline); color: var(--system-blue);">
+                            <i class="fas fa-sync-alt" style="margin-right: 6px; animation: spin 1s linear infinite;"></i><span id="sync-status-text">Syncing...</span>
                         </div>
                     </div>
                     <button class="button primary" onclick="openProfileEditor()">+ New Profile</button>
@@ -2254,15 +2262,54 @@
         }
         
         async function selectProfile(id) {
+            const syncIndicator = document.getElementById('sync-status-indicator');
+            const syncText = document.getElementById('sync-status-text');
+            const syncIcon = syncIndicator.querySelector('i');
+            
             try {
-                showMessage('Syncing profile to ESP32...', 'info');
+                // Show syncing status
+                syncIndicator.style.display = 'block';
+                syncText.textContent = 'Syncing...';
+                syncIcon.className = 'fas fa-sync-alt';
+                syncIcon.style.animation = 'spin 1s linear infinite';
+                syncIndicator.style.background = 'rgba(0, 122, 255, 0.1)';
+                syncIndicator.style.borderColor = 'rgba(0, 122, 255, 0.3)';
+                syncIndicator.style.color = 'var(--system-blue)';
+                
                 await postAPI('profiles/select', { profile_id: id });
                 activeProfileId = id;
-                showMessage('Profile synced', 'success', true);
+                
+                // Show synced status
+                syncText.textContent = 'Synced';
+                syncIcon.className = 'fas fa-check-circle';
+                syncIcon.style.animation = 'none';
+                syncIndicator.style.background = 'rgba(52, 199, 89, 0.1)';
+                syncIndicator.style.borderColor = 'rgba(52, 199, 89, 0.3)';
+                syncIndicator.style.color = 'var(--system-green)';
+                
                 await updateProfiles(false);
                 updateSelectedProfileIndicator(id, currentProfiles);
+                
+                // Hide after 2 seconds
+                setTimeout(() => {
+                    syncIndicator.style.display = 'none';
+                }, 2000);
             } catch (error) {
+                // Show error status
+                syncText.textContent = 'Sync failed';
+                syncIcon.className = 'fas fa-exclamation-circle';
+                syncIcon.style.animation = 'none';
+                syncIndicator.style.background = 'rgba(255, 59, 48, 0.1)';
+                syncIndicator.style.borderColor = 'rgba(255, 59, 48, 0.3)';
+                syncIndicator.style.color = 'var(--system-red)';
+                
+                // Show error message for details
                 showMessage('Failed to sync/select profile: ' + error.message, 'error');
+                
+                // Hide after 3 seconds
+                setTimeout(() => {
+                    syncIndicator.style.display = 'none';
+                }, 3000);
             }
         }
         
