@@ -1036,16 +1036,27 @@ def api_profile_send():
     if not profile:
         return jsonify({'success': False, 'error': 'Profile data required'}), 400
     
-    # Auto-assign profile ID if not provided
-    if 'profile_id' not in profile and 'id' not in profile:
-        profile['profile_id'] = get_next_profile_id()
-        logger.info(f"Auto-assigned profile ID: {profile['profile_id']}")
-    
+    # Auto-assign profile ID if not provided or if it's None/undefined/null
     profile_id = profile.get('profile_id') or profile.get('id')
+    if profile_id is None or profile_id == 'null' or profile_id == 'undefined':
+        profile_id = get_next_profile_id()
+        profile['profile_id'] = profile_id
+        logger.info(f"Auto-assigned profile ID: {profile_id}")
+    else:
+        try:
+            profile_id = int(profile_id)
+            profile['profile_id'] = profile_id
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid profile_id '{profile_id}', auto-assigning new ID")
+            profile_id = get_next_profile_id()
+            profile['profile_id'] = profile_id
+    
     profile_name = profile.get('profileName') or profile.get('name', 'Unknown')
     phase_count = len(profile.get('phases', []))
     
     logger.info(f"Saving profile locally: {profile_name} (ID: {profile_id}) with {phase_count} phases")
+    logger.info(f"Profile data keys: {list(profile.keys())}")
+    logger.info(f"Profile phases count: {phase_count}")
     
     try:
         # Save to local database (addon is source of truth)

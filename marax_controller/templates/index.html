@@ -3364,9 +3364,11 @@
                 profile.profileId = parseInt(profileId);
             }
             
-            // Convert to format expected by ESP32 (using snake_case for some fields)
+            // Convert to format expected by addon (profile will be saved locally)
+            // Don't include profile_id if it's null/undefined - let backend auto-assign
             const esp32Profile = {
-                profile_id: profile.profileId !== undefined ? profile.profileId : (profileId !== null ? parseInt(profileId) : undefined),
+                // Only include profile_id if it's a valid number (for updates)
+                ...(profileId !== null && profileId !== undefined && !isNaN(parseInt(profileId)) ? { profile_id: parseInt(profileId) } : {}),
                 profileName: profile.profileName,
                 name: profile.profileName,
                 technique: profile.technique,
@@ -3406,7 +3408,8 @@
                 
                 // Check if response indicates success
                 if (response && (response.success !== false)) {
-                    showMessage('✅ Profile saved locally! It will sync to ESP32 when selected.', 'success');
+                    const savedProfileId = response.profile_id;
+                    showMessage(`✅ Profile saved locally! (ID: ${savedProfileId}) It will sync to ESP32 when selected.`, 'success');
                     
                     // Close modal after short delay
                     setTimeout(() => {
@@ -3414,6 +3417,8 @@
                     }, 1500);
                     
                     // Refresh profiles list (from local database - instant)
+                    // Use a small delay to ensure database write is complete
+                    await new Promise(resolve => setTimeout(resolve, 100));
                     await updateProfiles(false);
                     
                     // Switch to profiles tab to see the new profile

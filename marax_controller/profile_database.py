@@ -62,6 +62,19 @@ def save_profile(profile_data: Dict[str, Any]) -> int:
         c = conn.cursor()
         
         profile_id = profile_data.get('profile_id') or profile_data.get('id')
+        
+        # If no profile_id provided, get next available ID
+        if profile_id is None:
+            profile_id = get_next_profile_id()
+            logger.info(f"Auto-assigned profile_id in database function: {profile_id}")
+        
+        # Ensure profile_id is an integer (should never be None at this point)
+        try:
+            profile_id = int(profile_id)
+        except (ValueError, TypeError):
+            logger.error(f"Invalid profile_id: {profile_id}, auto-assigning new ID")
+            profile_id = get_next_profile_id()
+        
         profile_name = profile_data.get('profileName') or profile_data.get('name', 'Unnamed Profile')
         technique = profile_data.get('technique', '')
         default_dose = profile_data.get('defaultDose', 18.0)
@@ -74,9 +87,11 @@ def save_profile(profile_data: Dict[str, Any]) -> int:
         # Store phases as JSON
         phases_json = json.dumps(phases)
         
-        # Check if profile with this ID already exists
-        c.execute('SELECT id FROM profiles WHERE profile_id = ?', (profile_id,))
-        existing = c.fetchone()
+        # Check if profile with this ID already exists (only if profile_id is not None)
+        existing = None
+        if profile_id is not None:
+            c.execute('SELECT id FROM profiles WHERE profile_id = ?', (profile_id,))
+            existing = c.fetchone()
         
         if existing:
             # Update existing profile
