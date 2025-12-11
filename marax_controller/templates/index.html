@@ -2680,33 +2680,21 @@
                         const currentTime = Date.now() / 1000;
                         updateLiveChart(brewState, currentTime);
                     
-                    // Use ESP32's brew time if available, otherwise calculate from frontend start time
+                    // Calculate brew time - always start from 0 when brew begins
                     let brewTime = 0;
-                    if (brewState.brewTime !== undefined && brewState.brewTime !== null && brewState.brewTime >= 0) {
-                        // Only sync if brew just started (brewTime < 5 seconds) or if we haven't set brewStartTime yet
-                        if (brewStartTime === null) {
-                            if (brewState.brewTime < 5) {
-                                // Brew just started - sync to ESP32's time
-                                brewStartTime = currentTime - brewState.brewTime;
+                    if (brewStartTime !== null) {
+                        // Calculate from frontend start time to ensure it starts from 0
+                        brewTime = currentTime - brewStartTime;
+                        // Sync with ESP32's time if it's very close (within 0.5 seconds) for accuracy
+                        if (brewState.brewTime !== undefined && brewState.brewTime !== null && brewState.brewTime >= 0 && brewState.brewTime < 300) {
+                            if (Math.abs(brewTime - brewState.brewTime) < 0.5) {
                                 brewTime = brewState.brewTime;
-                            } else {
-                                // ESP32's brewTime is already high - this means brew was already active when page loaded
-                                // Reset to current time
-                                brewStartTime = currentTime;
-                                brewTime = 0;
-                            }
-                        } else {
-                            // Use ESP32's brew time if it's reasonable (< 300 seconds), otherwise use frontend calculation
-                            if (brewState.brewTime < 300) {
-                                brewTime = brewState.brewTime;
-                            } else {
-                                // ESP32's time seems wrong - use frontend calculation
-                                brewTime = currentTime - brewStartTime;
                             }
                         }
                     } else {
-                        // Fallback to frontend calculation
-                        brewTime = brewStartTime !== null ? (currentTime - brewStartTime) : 0;
+                        // Brew just started - set start time to now so timer starts at 0
+                        brewStartTime = currentTime;
+                        brewTime = 0;
                     }
                     
                     // Get active profile name
