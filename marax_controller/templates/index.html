@@ -1465,7 +1465,7 @@
         <div id="live" class="tab-content">
             <h2 style="margin: 0 0 var(--spacing-lg) 0; color: var(--system-label); font-size: var(--font-size-title-1); font-weight: 600;">Dashboard</h2>
             
-            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: var(--spacing-lg); align-items: start;">
+            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: var(--spacing-lg); align-items: stretch;">
                 <!-- Left: Phase Control -->
             <div class="status-card">
                     <h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--system-label); font-size: var(--font-size-title-3); font-weight: 600;">Phase Control</h3>
@@ -1544,10 +1544,18 @@
                 </div>
                 
                 <!-- Right: Chart -->
-                <div class="status-card">
+                <div class="status-card" style="display: flex; flex-direction: column; height: 100%;">
                     <h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--system-label); font-size: var(--font-size-title-3); font-weight: 600;">Temperature & Pressure Chart</h3>
-                    <div class="chart-container" style="height: 500px;">
-                    <canvas id="liveChart"></canvas>
+                    <div class="chart-container" style="flex: 1; min-height: 400px; position: relative;">
+                        <canvas id="liveChart"></canvas>
+                    </div>
+                    <!-- Profile Preview (shown when no active brew) -->
+                    <div id="profile-preview-section" style="display: none; margin-top: var(--spacing-md); border-top: 1px solid var(--system-separator); padding-top: var(--spacing-md);">
+                        <div style="font-size: var(--font-size-body); color: var(--system-secondary-label); margin-bottom: var(--spacing-sm);">Active Profile Preview</div>
+                        <div id="profile-preview-name" style="font-size: var(--font-size-title-3); font-weight: 600; color: var(--system-label); margin-bottom: var(--spacing-sm);">-</div>
+                        <div class="chart-container" style="height: 300px; position: relative;">
+                            <canvas id="profilePreviewChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1919,6 +1927,7 @@
             }
         };
         
+        // Completely rewritten chart initialization from scratch
         function initLiveChart() {
             const canvas = document.getElementById('liveChart');
             if (!canvas) {
@@ -1926,27 +1935,17 @@
                 return;
             }
             
-            // Only destroy if chart exists and is different instance
+            // Destroy existing chart completely
             if (liveChart) {
                 try {
-                    // Check if chart is already using this canvas
-                    if (liveChart.canvas && liveChart.canvas === canvas) {
-                        console.log('Chart already initialized on this canvas, skipping re-initialization');
-                        // Just update the chart to ensure it's visible
-                        setTimeout(() => {
-                            if (liveChart) {
-                                liveChart.update('none');
-                            }
-                        }, 50);
-                        return;
-                    }
-                liveChart.destroy();
+                    liveChart.destroy();
                 } catch (e) {
                     console.warn('Error destroying existing chart:', e);
                 }
+                liveChart = null;
             }
             
-            console.log('Initializing live chart from scratch (Gaggimate style)...');
+            console.log('Initializing live chart from scratch...');
             
             // Get canvas context
             const ctx = canvas.getContext('2d');
@@ -1955,11 +1954,16 @@
                 return;
             }
             
-            // Gaggimate-style chart - completely rebuilt
+            // Ensure canvas is visible
+            canvas.style.display = 'block';
+            canvas.style.visibility = 'visible';
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            
+            // Create new chart instance
             liveChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: [],
                     datasets: [
                         {
                             label: 'Pressure',
@@ -1969,13 +1973,9 @@
                             borderWidth: 3,
                             pointRadius: 0,
                             pointHoverRadius: 6,
-                            pointHoverBorderWidth: 2,
                             fill: true,
                             tension: 0.5,
-                            yAxisID: 'y',
-                            cubicInterpolationMode: 'monotone',
-                            spanGaps: false,
-                            stepped: false
+                            yAxisID: 'y'
                         },
                         {
                             label: 'Flow',
@@ -1985,13 +1985,9 @@
                             borderWidth: 3,
                             pointRadius: 0,
                             pointHoverRadius: 6,
-                            pointHoverBorderWidth: 2,
                             fill: true,
                             tension: 0.5,
-                            yAxisID: 'y1',
-                            cubicInterpolationMode: 'monotone',
-                            spanGaps: false,
-                            stepped: false
+                            yAxisID: 'y1'
                         },
                         {
                             label: 'Weight',
@@ -2001,85 +1997,52 @@
                             borderWidth: 3,
                             pointRadius: 0,
                             pointHoverRadius: 6,
-                            pointHoverBorderWidth: 2,
                             fill: true,
                             tension: 0.5,
-                            yAxisID: 'y2',
-                            cubicInterpolationMode: 'monotone',
-                            spanGaps: false,
-                            stepped: false
+                            yAxisID: 'y2'
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
                     animation: {
                         duration: 200,
-                        easing: 'easeOutQuart',
-                        x: {
-                            type: 'number',
-                            easing: 'easeOutQuart',
-                            duration: 200,
-                            from: NaN
-                        },
-                        y: {
-                            type: 'number',
-                            easing: 'easeOutQuart',
-                            duration: 200,
-                            from: NaN
-                        }
+                        easing: 'easeOutQuart'
                     },
-                    transitions: {
-                        active: {
-                            animation: {
-                                duration: 200,
-                                easing: 'easeOutQuart'
-                            }
-                        }
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
                     },
                     plugins: {
-                        legend: { 
-                            display: true, 
+                        legend: {
+                            display: true,
                             position: 'top',
                             labels: {
                                 usePointStyle: true,
                                 padding: 15,
-                                font: {
-                                    size: 12,
-                                    weight: '500'
-                                },
+                                font: { size: 12, weight: '500' },
                                 color: 'var(--system-label)'
                             }
                         },
                         tooltip: {
                             backgroundColor: 'rgba(0, 0, 0, 0.8)',
                             padding: 12,
-                            titleFont: { size: 13, weight: '600' },
-                            bodyFont: { size: 12 },
-                            borderColor: 'rgba(255, 255, 255, 0.1)',
-                            borderWidth: 1,
-                            cornerRadius: 8,
-                            displayColors: true
-                        },
-                        annotation: {
-                            annotations: []
+                            cornerRadius: 8
                         }
                     },
                     scales: {
                         x: {
-                            title: { 
-                                display: true, 
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
                                 text: 'Time (s)',
                                 color: 'var(--system-secondary-label)',
                                 font: { size: 12, weight: '500' }
                             },
                             min: 0,
-                            max: 60, // Fixed axis - 60 seconds (Gaggimate style)
+                            max: 60,
                             grid: {
                                 color: 'var(--system-separator)',
                                 lineWidth: 0.5
@@ -2091,10 +2054,9 @@
                         },
                         y: {
                             type: 'linear',
-                            display: true,
                             position: 'left',
-                            title: { 
-                                display: true, 
+                            title: {
+                                display: true,
                                 text: 'Pressure (bar)',
                                 color: '#FF6B6B',
                                 font: { size: 12, weight: '600' }
@@ -2110,15 +2072,14 @@
                         },
                         y1: {
                             type: 'linear',
-                            display: true,
                             position: 'right',
-                            title: { 
-                                display: true, 
+                            title: {
+                                display: true,
                                 text: 'Flow (ml/s)',
                                 color: '#4ECDC4',
                                 font: { size: 12, weight: '600' }
                             },
-                            grid: { 
+                            grid: {
                                 drawOnChartArea: false,
                                 color: 'var(--system-separator)',
                                 lineWidth: 0.5
@@ -2130,15 +2091,14 @@
                         },
                         y2: {
                             type: 'linear',
-                            display: true,
                             position: 'right',
-                            title: { 
-                                display: true, 
+                            title: {
+                                display: true,
                                 text: 'Weight (g)',
                                 color: '#95E1D3',
                                 font: { size: 12, weight: '600' }
                             },
-                            grid: { 
+                            grid: {
                                 drawOnChartArea: false,
                                 color: 'var(--system-separator)',
                                 lineWidth: 0.5
@@ -2153,28 +2113,17 @@
                 plugins: [phaseMarkerPlugin]
             });
             
-            // Force chart to render and ensure visibility
+            // Force resize and update
             setTimeout(() => {
-                if (liveChart && liveChart.canvas) {
-                    liveChart.canvas.style.display = 'block';
-                    liveChart.canvas.style.visibility = 'visible';
-                    liveChart.canvas.style.width = '100%';
-                    liveChart.canvas.style.height = '100%';
+                if (liveChart) {
                     liveChart.resize();
                     liveChart.update('none');
-                    console.log('Chart forced to render and made visible');
+                    console.log('Chart initialized and rendered');
                 }
-                // Also ensure chart container is visible
-                const chartContainer = canvas.closest('.chart-container');
-                if (chartContainer) {
-                    chartContainer.style.display = 'block';
-                    chartContainer.style.visibility = 'visible';
-                }
-            }, 200);
-            
-            console.log('Live chart initialized successfully (Gaggimate style)');
+            }, 100);
         }
         
+        // Completely rewritten updateLiveChart function
         function updateLiveChart(brewState, time) {
             if (!liveChart) {
                 console.warn('Live chart not initialized');
@@ -2182,117 +2131,80 @@
             }
             
             if (!brewState) {
-                console.warn('No brew state provided');
                 return;
             }
             
-            // Track brew start time - always start from 0
+            // Track brew start time
             if (brewState.isActive && brewStartTime === null) {
-                // Brew just started - set start time to now so timer starts at 0
-                const now = Date.now() / 1000;
-                brewStartTime = now;
-                    brewEndTime = null;
-                    liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
+                brewStartTime = time;
+                brewEndTime = null;
+                liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
                 phaseTransitionTimes = [];
                 lastPhaseIndex = -1;
-                console.log('Brew started, resetting chart data and timer to 0. ESP32 brewTime:', brewState.brewTime);
             }
             
             // Reset if brew ended
             if (!brewState.isActive && brewStartTime !== null) {
                 brewStartTime = null;
-                    brewEndTime = null;
-            }
-            
-            // Reset brewStartTime if brew ended
-            if (!brewState.isActive && brewStartTime !== null) {
-                brewStartTime = null;
                 brewEndTime = null;
             }
             
-            // Track brew end time
-            if (!brewState.isActive && brewStartTime !== null && brewEndTime === null) {
-                brewEndTime = time;
-                console.log('Brew ended');
-            }
+            // Calculate relative time
+            const relativeTime = brewStartTime !== null ? (time - brewStartTime) : 0;
             
-            // Always update chart for smoothness, even when not brewing
-            // This ensures the chart stays responsive and smooth
-            
-            // Calculate time relative to brew start
-            const relativeTime = brewStartTime !== null ? (time - brewStartTime) : time;
-            
-            // Only add new data point if brew is active and time has advanced
+            // Add data points when brewing
             if (brewState.isActive) {
-            const lastLabel = liveChartData.labels.length > 0 ? parseFloat(liveChartData.labels[liveChartData.labels.length - 1]) : -1;
-                if (relativeTime > lastLabel + 0.05) { // Add point every 0.05 seconds for smoother animation
-                liveChartData.labels.push(relativeTime.toFixed(1));
-                liveChartData.pressure.push(brewState.pressure || 0);
-                liveChartData.flow.push(brewState.flow || 0);
-                liveChartData.weight.push(brewState.weight || 0);
-                
-                // Limit data points to last 300 seconds to prevent memory issues
-                if (liveChartData.labels.length > 3000) {
-                    liveChartData.labels.shift();
-                    liveChartData.pressure.shift();
-                    liveChartData.flow.shift();
-                    liveChartData.weight.shift();
-                }
-            } else {
-                // Update last point if time hasn't advanced much
-                if (liveChartData.labels.length > 0) {
-                    const lastIdx = liveChartData.labels.length - 1;
-                    liveChartData.pressure[lastIdx] = brewState.pressure || 0;
-                    liveChartData.flow[lastIdx] = brewState.flow || 0;
-                    liveChartData.weight[lastIdx] = brewState.weight || 0;
+                const lastTime = liveChartData.labels.length > 0 ? parseFloat(liveChartData.labels[liveChartData.labels.length - 1]) : -1;
+                if (relativeTime > lastTime + 0.05) {
+                    liveChartData.labels.push(relativeTime.toFixed(1));
+                    liveChartData.pressure.push(brewState.pressure || 0);
+                    liveChartData.flow.push(brewState.flow || 0);
+                    liveChartData.weight.push(brewState.weight || 0);
+                    
+                    // Limit to 3000 points
+                    if (liveChartData.labels.length > 3000) {
+                        liveChartData.labels.shift();
+                        liveChartData.pressure.shift();
+                        liveChartData.flow.shift();
+                        liveChartData.weight.shift();
                     }
                 }
             }
             
-            // Update chart data - convert to {x, y} format for Chart.js
-            liveChart.data.labels = liveChartData.labels;
-            liveChart.data.datasets[0].data = liveChartData.pressure.map((val, idx) => ({
-                x: parseFloat(liveChartData.labels[idx]) || 0,
-                y: val || 0
-            }));
-            liveChart.data.datasets[1].data = liveChartData.flow.map((val, idx) => ({
-                x: parseFloat(liveChartData.labels[idx]) || 0,
-                y: val || 0
-            }));
-            liveChart.data.datasets[2].data = liveChartData.weight.map((val, idx) => ({
-                x: parseFloat(liveChartData.labels[idx]) || 0,
-                y: val || 0
-            }));
-            
-            // Fixed axis - always 60 seconds (Gaggimate style)
-            if (liveChart.options.scales && liveChart.options.scales.x) {
-                liveChart.options.scales.x.max = 60;
-                liveChart.options.scales.x.min = 0;
+            // Update chart data
+            if (liveChartData.labels.length > 0) {
+                liveChart.data.datasets[0].data = liveChartData.pressure.map((val, idx) => ({
+                    x: parseFloat(liveChartData.labels[idx]),
+                    y: val
+                }));
+                liveChart.data.datasets[1].data = liveChartData.flow.map((val, idx) => ({
+                    x: parseFloat(liveChartData.labels[idx]),
+                    y: val
+                }));
+                liveChart.data.datasets[2].data = liveChartData.weight.map((val, idx) => ({
+                    x: parseFloat(liveChartData.labels[idx]),
+                    y: val
+                }));
+            } else {
+                liveChart.data.datasets[0].data = [];
+                liveChart.data.datasets[1].data = [];
+                liveChart.data.datasets[2].data = [];
             }
             
-            // Ensure chart is visible before updating
-            if (liveChart.canvas && liveChart.canvas.style.display === 'none') {
-                liveChart.canvas.style.display = 'block';
-            }
-            
-            // Track phase transitions for markers
+            // Track phase transitions
             const currentPhaseIndex = brewState.phaseIndex !== undefined ? brewState.phaseIndex : -1;
             if (currentPhaseIndex !== lastPhaseIndex && lastPhaseIndex >= 0 && relativeTime > 0) {
-                // Phase transition detected
                 phaseTransitionTimes.push({
                     time: relativeTime,
                     fromPhase: lastPhaseIndex,
                     toPhase: currentPhaseIndex,
                     phaseName: brewState.phase || `Phase ${currentPhaseIndex + 1}`
                 });
-                console.log(`Phase transition at ${relativeTime.toFixed(1)}s: Phase ${lastPhaseIndex + 1} → Phase ${currentPhaseIndex + 1}`);
             }
             lastPhaseIndex = currentPhaseIndex;
             
-            // Phase markers are drawn by custom plugin automatically
-            
-            // Update chart with smooth animation like Gaggimate
-            liveChart.update('active');
+            // Update chart
+            liveChart.update('none');
         }
         
         function resetLiveChart() {
