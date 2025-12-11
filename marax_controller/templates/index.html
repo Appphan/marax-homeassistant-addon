@@ -2224,6 +2224,160 @@
             }
         }
         
+        // Update profile preview chart (shown when no active brew)
+        function updateProfilePreview(profile) {
+            if (!profile || !profile.phases || profile.phases.length === 0) {
+                return;
+            }
+            
+            const canvas = document.getElementById('profilePreviewChart');
+            if (!canvas) return;
+            
+            const previewNameEl = document.getElementById('profile-preview-name');
+            if (previewNameEl) {
+                previewNameEl.textContent = profile.name || profile.profileName || 'Unnamed Profile';
+            }
+            
+            // Destroy existing chart
+            if (profilePreviewChart) {
+                try {
+                    profilePreviewChart.destroy();
+                } catch (e) {
+                    console.warn('Error destroying profile preview chart:', e);
+                }
+            }
+            
+            // Calculate time points for each phase
+            let timePoints = [];
+            let pressurePoints = [];
+            let flowPoints = [];
+            let currentTime = 0;
+            
+            profile.phases.forEach((phase) => {
+                const phaseStart = currentTime;
+                const phaseEnd = currentTime + (phase.maxDuration || phase.minDuration || 10);
+                
+                timePoints.push(phaseStart);
+                pressurePoints.push(phase.targetPressureStart || 0);
+                flowPoints.push(phase.targetFlowStart || 0);
+                
+                timePoints.push(phaseEnd);
+                pressurePoints.push(phase.targetPressureEnd || phase.targetPressureStart || 0);
+                flowPoints.push(phase.targetFlowEnd || phase.targetFlowStart || 0);
+                
+                currentTime = phaseEnd;
+            });
+            
+            // Create chart
+            profilePreviewChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Pressure',
+                            data: pressurePoints.map((val, idx) => ({ x: timePoints[idx], y: val })),
+                            borderColor: '#FF6B6B',
+                            backgroundColor: 'rgba(255, 107, 107, 0.12)',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            fill: true,
+                            tension: 0.5,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Flow',
+                            data: flowPoints.map((val, idx) => ({ x: timePoints[idx], y: val })),
+                            borderColor: '#4ECDC4',
+                            backgroundColor: 'rgba(78, 205, 196, 0.12)',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            fill: true,
+                            tension: 0.5,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 12,
+                                font: { size: 11, weight: '500' },
+                                color: 'var(--system-label)'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            cornerRadius: 8
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'Time (s)',
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 11, weight: '500' }
+                            },
+                            grid: {
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
+                            ticks: {
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 10 }
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Pressure (bar)',
+                                color: '#FF6B6B',
+                                font: { size: 11, weight: '600' }
+                            },
+                            grid: {
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
+                            ticks: {
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 10 }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Flow (ml/s)',
+                                color: '#4ECDC4',
+                                font: { size: 11, weight: '600' }
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
+                            ticks: {
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
         function renderProfileGraph(profile) {
             if (!profile || !profile.phases || profile.phases.length === 0) {
                 return;
@@ -2671,12 +2825,35 @@
                                         const activeProfile = profilesResponse.profiles.find(p => p.id === activeProfileId);
                                         if (activeProfile && profileNameEl) {
                                             profileNameEl.textContent = activeProfile.name || activeProfile.profileName || 'Unnamed';
+                                            // Show profile preview when no active brew
+                                            if (!brewState.isActive) {
+                                                updateProfilePreview(activeProfile);
+                                            }
                                         }
                                     }
                                 }).catch(e => console.error('Error fetching profiles:', e));
                             } else {
                                 profileNameEl.textContent = '-';
                             }
+                        }
+                    }
+                    
+                    // Show/hide profile preview based on brew state
+                    const profilePreviewSection = document.getElementById('profile-preview-section');
+                    if (profilePreviewSection) {
+                        if (!brewState.isActive && activeProfileId !== null) {
+                            profilePreviewSection.style.display = 'block';
+                            // Load and render profile preview
+                            fetchAPI('profiles').then(profilesResponse => {
+                                if (profilesResponse && profilesResponse.profiles && Array.isArray(profilesResponse.profiles)) {
+                                    const activeProfile = profilesResponse.profiles.find(p => p.id === activeProfileId);
+                                    if (activeProfile) {
+                                        updateProfilePreview(activeProfile);
+                                    }
+                                }
+                            }).catch(e => console.error('Error loading profile for preview:', e));
+                        } else {
+                            profilePreviewSection.style.display = 'none';
                         }
                     }
                     
