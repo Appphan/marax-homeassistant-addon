@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MaraX Controller</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Apple Human Interface Guidelines - macOS Design System */
@@ -1628,6 +1629,8 @@
         let brewStartTime = null;
         let brewEndTime = null;
         let brewPhases = [];
+        let phaseTransitionTimes = []; // Track phase transition times for markers
+        let lastPhaseIndex = -1;
         let currentProfiles = [];
         let activeProfileId = null;
         let profileCharts = {};
@@ -1823,7 +1826,13 @@
                             fill: true,
                             tension: 0.4,
                             yAxisID: 'y',
-                            cubicInterpolationMode: 'monotone'
+                            cubicInterpolationMode: 'monotone',
+                            segment: {
+                                borderColor: ctx => {
+                                    // Smooth color transitions
+                                    return '#FF6B6B';
+                                }
+                            }
                         },
                         {
                             label: 'Flow (ml/s)',
@@ -1836,7 +1845,12 @@
                             fill: true,
                             tension: 0.4,
                             yAxisID: 'y1',
-                            cubicInterpolationMode: 'monotone'
+                            cubicInterpolationMode: 'monotone',
+                            segment: {
+                                borderColor: ctx => {
+                                    return '#4ECDC4';
+                                }
+                            }
                         },
                         {
                             label: 'Weight (g)',
@@ -1849,7 +1863,12 @@
                             fill: true,
                             tension: 0.4,
                             yAxisID: 'y2',
-                            cubicInterpolationMode: 'monotone'
+                            cubicInterpolationMode: 'monotone',
+                            segment: {
+                                borderColor: ctx => {
+                                    return '#95E1D3';
+                                }
+                            }
                         }
                     ]
                 },
@@ -1861,7 +1880,30 @@
                         intersect: false,
                     },
                     animation: {
-                        duration: 0 // Disable animation for real-time updates
+                        duration: 250, // Smooth animation like Gaggimate
+                        easing: 'easeOutCubic',
+                        x: {
+                            type: 'number',
+                            easing: 'easeOutCubic',
+                            duration: 250,
+                            from: NaN // Animate from previous value
+                        },
+                        y: {
+                            type: 'number',
+                            easing: 'easeOutCubic',
+                            duration: 250,
+                            from: NaN // Animate from previous value
+                        }
+                    },
+                    animations: {
+                        x: {
+                            duration: 250,
+                            easing: 'easeOutCubic'
+                        },
+                        y: {
+                            duration: 250,
+                            easing: 'easeOutCubic'
+                        }
                     },
                     plugins: {
                         legend: { 
@@ -1886,6 +1928,9 @@
                             borderWidth: 1,
                             cornerRadius: 8,
                             displayColors: true
+                        },
+                        annotation: {
+                            annotations: []
                         }
                     },
                     scales: {
@@ -2000,6 +2045,8 @@
                     brewStartTime = Date.now() / 1000;
                     brewEndTime = null;
                     liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
+                    phaseTransitionTimes = [];
+                    lastPhaseIndex = -1;
                     console.log('Brew started, resetting chart data. ESP32 brewTime:', brewState.brewTime);
                 } else {
                     // ESP32's brewTime is already high - reset it
@@ -2007,6 +2054,8 @@
                     brewStartTime = Date.now() / 1000;
                     brewEndTime = null;
                     liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
+                    phaseTransitionTimes = [];
+                    lastPhaseIndex = -1;
                 }
             }
             
@@ -2032,7 +2081,7 @@
             
             // Only add new data point if time has advanced
             const lastLabel = liveChartData.labels.length > 0 ? parseFloat(liveChartData.labels[liveChartData.labels.length - 1]) : -1;
-            if (relativeTime > lastLabel + 0.1) { // Add point every 0.1 seconds minimum
+            if (relativeTime > lastLabel + 0.05) { // Add point every 0.05 seconds for smoother animation
                 liveChartData.labels.push(relativeTime.toFixed(1));
                 liveChartData.pressure.push(brewState.pressure || 0);
                 liveChartData.flow.push(brewState.flow || 0);
@@ -2071,8 +2120,56 @@
                 liveChart.options.scales.x.max = Math.max(currentRelativeTime, 10);
             }
             
-            // Update chart without animation for real-time feel
-            liveChart.update('none');
+            // Track phase transitions for markers
+            const currentPhaseIndex = brewState.phaseIndex !== undefined ? brewState.phaseIndex : -1;
+            if (currentPhaseIndex !== lastPhaseIndex && lastPhaseIndex >= 0 && relativeTime > 0) {
+                // Phase transition detected
+                phaseTransitionTimes.push({
+                    time: relativeTime,
+                    fromPhase: lastPhaseIndex,
+                    toPhase: currentPhaseIndex,
+                    phaseName: brewState.phase || `Phase ${currentPhaseIndex + 1}`
+                });
+                console.log(`Phase transition at ${relativeTime.toFixed(1)}s: Phase ${lastPhaseIndex + 1} → Phase ${currentPhaseIndex + 1}`);
+            }
+            lastPhaseIndex = currentPhaseIndex;
+            
+            // Update phase markers/annotations (Gaggimate style)
+            if (liveChart.options.plugins && liveChart.options.plugins.annotation) {
+                const annotations = [];
+                phaseTransitionTimes.forEach((transition, idx) => {
+                    if (transition.time <= relativeTime) {
+                        annotations.push({
+                            type: 'line',
+                            xMin: transition.time,
+                            xMax: transition.time,
+                            borderColor: 'rgba(0, 122, 255, 0.7)',
+                            borderWidth: 2.5,
+                            borderDash: [8, 4],
+                            label: {
+                                display: true,
+                                content: transition.phaseName,
+                                position: 'start',
+                                backgroundColor: 'rgba(0, 122, 255, 0.9)',
+                                color: 'white',
+                                font: { size: 11, weight: '600' },
+                                padding: { x: 8, y: 4 },
+                                borderRadius: 6,
+                                yAdjust: -12,
+                                textAlign: 'center'
+                            },
+                            enter: {
+                                duration: 300,
+                                easing: 'easeOutCubic'
+                            }
+                        });
+                    }
+                });
+                liveChart.options.plugins.annotation.annotations = annotations;
+            }
+            
+            // Update chart with smooth animation like Gaggimate
+            liveChart.update('active');
         }
         
         function resetLiveChart() {
@@ -2080,9 +2177,14 @@
             brewStartTime = null;
             brewEndTime = null;
             brewPhases = [];
+            phaseTransitionTimes = [];
+            lastPhaseIndex = -1;
             if (liveChart) {
                 liveChart.data.labels = [];
                 liveChart.data.datasets.forEach(d => d.data = []);
+                if (liveChart.options.plugins && liveChart.options.plugins.annotation) {
+                    liveChart.options.plugins.annotation.annotations = [];
+                }
                 liveChart.update();
             }
         }
