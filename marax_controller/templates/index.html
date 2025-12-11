@@ -1926,10 +1926,21 @@
                 return;
             }
             
-            // Destroy existing chart
+            // Only destroy if chart exists and is different instance
             if (liveChart) {
                 try {
-                liveChart.destroy();
+                    // Check if chart is already using this canvas
+                    if (liveChart.canvas && liveChart.canvas === canvas) {
+                        console.log('Chart already initialized on this canvas, skipping re-initialization');
+                        // Just update the chart to ensure it's visible
+                        setTimeout(() => {
+                            if (liveChart) {
+                                liveChart.update('none');
+                            }
+                        }, 50);
+                        return;
+                    }
+                    liveChart.destroy();
                 } catch (e) {
                     console.warn('Error destroying existing chart:', e);
                 }
@@ -2142,13 +2153,15 @@
                 plugins: [phaseMarkerPlugin]
             });
             
-            // Force chart to render
+            // Force chart to render and ensure visibility
             setTimeout(() => {
-                if (liveChart) {
+                if (liveChart && liveChart.canvas) {
+                    liveChart.canvas.style.display = 'block';
+                    liveChart.canvas.style.visibility = 'visible';
                     liveChart.update('none');
-                    console.log('Chart forced to render');
+                    console.log('Chart forced to render and made visible');
                 }
-            }, 100);
+            }, 150);
             
             console.log('Live chart initialized successfully (Gaggimate style)');
         }
