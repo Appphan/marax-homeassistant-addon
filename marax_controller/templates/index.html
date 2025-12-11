@@ -1465,7 +1465,7 @@
         <div id="live" class="tab-content">
             <h2 style="margin: 0 0 var(--spacing-lg) 0; color: var(--system-label); font-size: var(--font-size-title-1); font-weight: 600;">Dashboard</h2>
             
-            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: var(--spacing-lg); align-items: end;">
+            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: var(--spacing-lg); align-items: start;">
                 <!-- Left: Phase Control -->
             <div class="status-card">
                     <h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--system-label); font-size: var(--font-size-title-3); font-weight: 600;">Phase Control</h3>
@@ -1940,7 +1940,7 @@
                         }, 50);
                         return;
                     }
-                    liveChart.destroy();
+                liveChart.destroy();
                 } catch (e) {
                     console.warn('Error destroying existing chart:', e);
                 }
@@ -2182,8 +2182,8 @@
                 // Brew just started - set start time to now so timer starts at 0
                 const now = Date.now() / 1000;
                 brewStartTime = now;
-                brewEndTime = null;
-                liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
+                    brewEndTime = null;
+                    liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
                 phaseTransitionTimes = [];
                 lastPhaseIndex = -1;
                 console.log('Brew started, resetting chart data and timer to 0. ESP32 brewTime:', brewState.brewTime);
@@ -2192,7 +2192,7 @@
             // Reset if brew ended
             if (!brewState.isActive && brewStartTime !== null) {
                 brewStartTime = null;
-                brewEndTime = null;
+                    brewEndTime = null;
             }
             
             // Reset brewStartTime if brew ended
@@ -2691,10 +2691,10 @@
                                 brewTime = brewState.brewTime;
                             }
                         }
-                    } else {
+                            } else {
                         // Brew just started - set start time to now so timer starts at 0
-                        brewStartTime = currentTime;
-                        brewTime = 0;
+                                brewStartTime = currentTime;
+                                brewTime = 0;
                     }
                     
                     // Get active profile name
@@ -4758,17 +4758,110 @@
                 }, 2000);
                 console.log('Update interval set to 2 seconds');
                 
-                // Fast brew state update loop for smooth chart (Gaggimate style - 100ms updates)
+                // Fast brew state update loop for smooth chart and dashboard (Gaggimate style - 100ms updates)
                 async function updateBrewStateFast() {
                     try {
                         const brewState = await fetchAPI('brew/state');
                         if (brewState && typeof brewState === 'object' && Object.keys(brewState).length > 0) {
                             const currentTime = Date.now() / 1000;
+                            
                             // Always update chart for smoothness
                             updateLiveChart(brewState, currentTime);
+                            
+                            // Update dashboard elements for smooth updates (temperature, pressure, phase progress, timer)
+                            updateDashboardFast(brewState, currentTime);
                         }
                     } catch (error) {
                         // Silently handle errors to avoid console spam
+                    }
+                }
+                
+                // Fast dashboard update function (called every 100ms for smooth UI)
+                function updateDashboardFast(brewState, currentTime) {
+                    if (!brewState) return;
+                    
+                    // Calculate brew time
+                    let brewTime = 0;
+                    if (brewStartTime !== null) {
+                        brewTime = currentTime - brewStartTime;
+                    }
+                    
+                    // Update brew timer
+                    const brewTimer = document.getElementById('brew-timer');
+                    if (brewTimer && brewState.isActive) {
+                        const minutes = Math.floor(brewTime / 60);
+                        const seconds = Math.floor(brewTime % 60);
+                        brewTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                    
+                    // Update pressure display
+                    const currentPressureEl = document.getElementById('current-pressure-display');
+                    const targetPressureEl = document.getElementById('target-pressure-display');
+                    if (currentPressureEl) {
+                        const pressure = brewState.pressure !== undefined ? brewState.pressure.toFixed(1) : '0.0';
+                        currentPressureEl.textContent = pressure;
+                    }
+                    if (targetPressureEl) {
+                        const targetPressure = brewState.targetPressure !== undefined ? brewState.targetPressure.toFixed(1) : '0.0';
+                        targetPressureEl.textContent = targetPressure;
+                    }
+                    
+                    // Update phase progress bar with breakout criteria
+                    if (brewState.isActive) {
+                        const phaseIndex = brewState.phaseIndex !== undefined ? brewState.phaseIndex : -1;
+                        const phaseTime = brewState.phaseTime !== undefined ? brewState.phaseTime : 0;
+                        const phaseMaxDuration = brewState.phaseMaxDuration !== undefined ? brewState.phaseMaxDuration : 0;
+                        // Use brewState.weight for current weight (accumulated weight)
+                        const currentWeight = brewState.weight !== undefined ? brewState.weight : 0;
+                        // Get phase weight (weight accumulated in this phase) - fallback to calculating from current weight
+                        const phaseWeight = brewState.phaseWeight !== undefined ? brewState.phaseWeight : currentWeight;
+                        const breakoutCriteria = brewState.breakoutCriteria || brewState.breakout_criteria || [];
+                        
+                        const phaseProgressBar = document.getElementById('phase-progress-bar');
+                        const phaseDurationDisplay = document.getElementById('phase-duration-display');
+                        const phaseTimeDisplay = document.getElementById('phase-time-display');
+                        
+                        if (phaseIndex >= 0 && phaseProgressBar && phaseDurationDisplay && phaseTimeDisplay) {
+                            // Calculate progress based on breakout criteria
+                            let progress = 0;
+                            let progressLabel = '';
+                            let maxValue = 0;
+                            
+                            // Find active breakout criteria
+                            const activeCriteria = breakoutCriteria.filter(c => c && c.enabled !== false && c.type > 0);
+                            if (activeCriteria.length > 0) {
+                                // Use the first active criterion for progress
+                                const crit = activeCriteria[0];
+                                if (crit.type === 1) { // Time-based
+                                    maxValue = crit.threshold || phaseMaxDuration || 0;
+                                    progress = maxValue > 0 ? Math.min((phaseTime / maxValue) * 100, 100) : 0;
+                                    progressLabel = `${phaseTime.toFixed(1)}s / ${maxValue.toFixed(1)}s`;
+                                } else if (crit.type === 2) { // Weight-based
+                                    maxValue = crit.threshold || 0;
+                                    progress = maxValue > 0 ? Math.min((phaseWeight / maxValue) * 100, 100) : 0;
+                                    progressLabel = `${phaseWeight.toFixed(1)}g / ${maxValue.toFixed(1)}g`;
+                                } else if (crit.type === 3) { // Flow-based
+                                    maxValue = crit.threshold || 0;
+                                    const currentFlow = brewState.flow || 0;
+                                    progress = maxValue > 0 ? Math.min((currentFlow / maxValue) * 100, 100) : 0;
+                                    progressLabel = `${currentFlow.toFixed(1)} ml/s / ${maxValue.toFixed(1)} ml/s`;
+                                } else {
+                                    // Fallback to time
+                                    maxValue = phaseMaxDuration || 0;
+                                    progress = maxValue > 0 ? Math.min((phaseTime / maxValue) * 100, 100) : 0;
+                                    progressLabel = `${phaseTime.toFixed(1)}s / ${maxValue.toFixed(1)}s`;
+                                }
+                            } else {
+                                // No breakout criteria - use time
+                                maxValue = phaseMaxDuration || 0;
+                                progress = maxValue > 0 ? Math.min((phaseTime / maxValue) * 100, 100) : 0;
+                                progressLabel = `${phaseTime.toFixed(1)}s / ${maxValue.toFixed(1)}s`;
+                            }
+                            
+                            phaseDurationDisplay.textContent = progressLabel.split(' / ')[1] || '-';
+                            phaseTimeDisplay.textContent = progressLabel.split(' / ')[0] || '0.0s';
+                            phaseProgressBar.style.width = `${progress}%`;
+                        }
                     }
                 }
                 
