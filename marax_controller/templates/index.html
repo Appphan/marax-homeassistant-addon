@@ -2158,10 +2158,19 @@
                 if (liveChart && liveChart.canvas) {
                     liveChart.canvas.style.display = 'block';
                     liveChart.canvas.style.visibility = 'visible';
+                    liveChart.canvas.style.width = '100%';
+                    liveChart.canvas.style.height = '100%';
+                    liveChart.resize();
                     liveChart.update('none');
                     console.log('Chart forced to render and made visible');
                 }
-            }, 150);
+                // Also ensure chart container is visible
+                const chartContainer = canvas.closest('.chart-container');
+                if (chartContainer) {
+                    chartContainer.style.display = 'block';
+                    chartContainer.style.visibility = 'visible';
+                }
+            }, 200);
             
             console.log('Live chart initialized successfully (Gaggimate style)');
         }
