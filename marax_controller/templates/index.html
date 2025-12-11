@@ -1461,36 +1461,81 @@
             </div>
         </div>
         
-        <!-- Live Brew Tab -->
+        <!-- Live Brew Tab - Gaggimate Dashboard Style -->
         <div id="live" class="tab-content">
-            <!-- Current Profile Display in Live View -->
-            <div id="live-current-profile-display" class="current-profile-card" style="display: none; margin-bottom: var(--spacing-lg);">
-                <div class="current-profile-info">
-                    <div class="current-profile-icon">
-                        <i class="fas fa-coffee"></i>
-                    </div>
-                    <div class="current-profile-details">
-                        <div class="current-profile-label">Active Profile</div>
-                        <div class="current-profile-name" id="live-current-profile-name">-</div>
-                    </div>
-                </div>
-                <div class="current-profile-badge" id="live-current-profile-badge">
-                    <i class="fas fa-check-circle"></i> Active
-                </div>
-            </div>
+            <h2 style="margin: 0 0 var(--spacing-lg) 0; color: var(--system-label); font-size: var(--font-size-title-1); font-weight: 600;">Dashboard</h2>
             
-            <div class="status-card">
-                <div class="section-header">
-                    <h2 style="margin: 0;"><i class="fas fa-chart-line"></i> Live Brew Monitoring</h2>
-                    <label style="display: flex; align-items: center; gap: var(--spacing-sm); cursor: pointer; padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-md); transition: all var(--transition-base);" 
-                           onmouseover="this.style.background='var(--system-fill)'" 
-                           onmouseout="this.style.background='transparent'">
-                        <input type="checkbox" id="auto-switch-checkbox" style="width: 18px; height: 18px; cursor: pointer;">
-                        <span style="font-size: var(--font-size-subheadline); color: var(--system-label);"><i class="fas fa-magic"></i> Auto-switch</span>
-                    </label>
-                </div>
-                <div id="live-brew-status" style="margin-bottom: var(--spacing-lg);">
-                    <div style="text-align: center; padding: var(--spacing-2xl) var(--spacing-lg);">
+            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: var(--spacing-lg); align-items: start;">
+                <!-- Left: Process Controls -->
+                <div class="status-card">
+                    <h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--system-label); font-size: var(--font-size-title-3); font-weight: 600;">Process Controls</h3>
+                    
+                    <!-- Mode Selection -->
+                    <div style="display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-lg);">
+                        <button id="mode-standby" class="mode-button" style="flex: 1; padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-xl); border: 1px solid var(--system-separator); background: var(--system-grouped-background); color: var(--system-secondary-label); cursor: pointer; transition: all var(--transition-base);">Standby</button>
+                        <button id="mode-brew" class="mode-button active" style="flex: 1; padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-xl); border: 1px solid var(--system-blue); background: rgba(0, 122, 255, 0.15); color: var(--system-blue); cursor: pointer; transition: all var(--transition-base); font-weight: 600;">Brew</button>
+                        <button id="mode-steam" class="mode-button" style="flex: 1; padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-xl); border: 1px solid var(--system-separator); background: var(--system-grouped-background); color: var(--system-secondary-label); cursor: pointer; transition: all var(--transition-base);">Steam</button>
+                        <button id="mode-water" class="mode-button" style="flex: 1; padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-xl); border: 1px solid var(--system-separator); background: var(--system-grouped-background); color: var(--system-secondary-label); cursor: pointer; transition: all var(--transition-base);">Water</button>
+                    </div>
+                    
+                    <!-- Temperature Display -->
+                    <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-md); padding: var(--spacing-md); background: rgba(255, 255, 255, 0.05); border-radius: var(--radius-lg);">
+                        <i class="fas fa-thermometer-half" style="font-size: 24px; color: #FF6B6B;"></i>
+                        <div style="flex: 1;">
+                            <div style="font-size: var(--font-size-body); color: var(--system-secondary-label); margin-bottom: var(--spacing-xs);">Temperature</div>
+                            <div style="font-size: var(--font-size-title-2); font-weight: 600; color: var(--system-label);">
+                                <span id="current-temp">0.0</span> / <span id="target-temp" style="color: var(--system-green);">0.0</span>°C
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pressure Display -->
+                    <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-md); padding: var(--spacing-md); background: rgba(255, 255, 255, 0.05); border-radius: var(--radius-lg);">
+                        <i class="fas fa-tachometer-alt" style="font-size: 24px; color: var(--system-blue);"></i>
+                        <div style="flex: 1;">
+                            <div style="font-size: var(--font-size-body); color: var(--system-secondary-label); margin-bottom: var(--spacing-xs);">Pressure</div>
+                            <div style="font-size: var(--font-size-title-2); font-weight: 600; color: var(--system-label);">
+                                <span id="current-pressure-display">0.0</span> / <span id="target-pressure-display" style="color: var(--system-blue);">0.0</span> bar
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Profile -->
+                    <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-md); padding: var(--spacing-md); background: rgba(255, 255, 255, 0.05); border-radius: var(--radius-lg);">
+                        <i class="fas fa-list" style="font-size: 20px; color: var(--system-secondary-label);"></i>
+                        <div style="flex: 1;">
+                            <div style="font-size: var(--font-size-body); color: var(--system-secondary-label); margin-bottom: var(--spacing-xs);">Current Profile</div>
+                            <div style="font-size: var(--font-size-title-3); font-weight: 600; color: var(--system-label);" id="dashboard-profile-name">-</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Phase -->
+                    <div id="phase-section" style="display: none; margin-bottom: var(--spacing-md);">
+                        <div style="font-size: var(--font-size-caption-1); color: var(--system-secondary-label); margin-bottom: var(--spacing-xs); text-transform: uppercase; letter-spacing: 0.5px;">Current Phase</div>
+                        <div style="font-size: var(--font-size-title-2); font-weight: 700; color: var(--system-label); margin-bottom: var(--spacing-sm);" id="dashboard-phase-name">-</div>
+                        
+                        <!-- Phase Progress -->
+                        <div style="margin-bottom: var(--spacing-sm);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-xs);">
+                                <span style="font-size: var(--font-size-caption-1); color: var(--system-secondary-label);" id="phase-duration-display">0s</span>
+                                <span style="font-size: var(--font-size-caption-1); color: var(--system-secondary-label);" id="phase-time-display">0.0s</span>
+                            </div>
+                            <div style="background: rgba(0, 0, 0, 0.3); border-radius: var(--radius-md); height: 8px; overflow: hidden;">
+                                <div id="phase-progress-bar" style="background: linear-gradient(90deg, var(--system-blue), #4ECDC4); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Brew Timer -->
+                    <div id="brew-timer-section" style="display: none; text-align: center; padding: var(--spacing-lg); background: rgba(0, 122, 255, 0.1); border-radius: var(--radius-xl); border: 1px solid rgba(0, 122, 255, 0.2);">
+                        <div style="font-size: 48px; font-weight: 700; color: var(--system-blue); font-variant-numeric: tabular-nums; margin-bottom: var(--spacing-sm);" id="brew-timer">0:00</div>
+                        <button id="pause-brew-btn" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--system-blue); background: rgba(0, 122, 255, 0.2); color: var(--system-blue); cursor: pointer; display: flex; align-items: center; justify-content: center; margin: 0 auto; transition: all var(--transition-base);">
+                            <i class="fas fa-pause"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div id="dashboard-empty-state" style="text-align: center; padding: var(--spacing-2xl);">
                         <div style="font-size: 64px; color: var(--system-tertiary-label); margin-bottom: var(--spacing-md); opacity: 0.5;">
                             <i class="fas fa-coffee"></i>
                         </div>
@@ -1499,36 +1544,12 @@
                     </div>
                 </div>
                 
-                <!-- Phase Information Card -->
-                <div id="phase-info-card" style="display: none; background: rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 20px; margin-bottom: 20px;">
-                    <h3 style="margin-top: 0;">Current Phase: <span id="current-phase-name">-</span></h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0;">
-                        <div>
-                            <strong>Phase Time:</strong> <span id="phase-time">0.0</span>s
-                        </div>
-                        <div>
-                            <strong>Phase Weight:</strong> <span id="phase-weight">0.0</span>g
-                        </div>
-                        <div>
-                            <strong>Target Pressure:</strong> <span id="target-pressure">0.0</span> bar
-                        </div>
-                        <div>
-                            <strong>Current Pressure:</strong> <span id="current-pressure">0.0</span> bar
-                        </div>
+                <!-- Right: Chart -->
+                <div class="status-card">
+                    <h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--system-label); font-size: var(--font-size-title-3); font-weight: 600;">Temperature & Pressure Chart</h3>
+                    <div class="chart-container" style="height: 500px;">
+                        <canvas id="liveChart"></canvas>
                     </div>
-                    
-                    <!-- Breakout Criteria -->
-                    <div id="breakout-criteria-section" style="margin-top: 20px;">
-                        <h4>Breakout Criteria (to transition to next phase)</h4>
-                        <div id="breakout-criteria-list"></div>
-                        <div id="next-phase-info" style="margin-top: 15px; padding: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 5px;">
-                            <strong>Next Phase:</strong> <span id="next-phase-name">-</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="chart-container">
-                    <canvas id="liveChart"></canvas>
                 </div>
             </div>
         </div>
@@ -2048,16 +2069,7 @@
                                 font: { size: 12, weight: '500' }
                             },
                             min: 0,
-                            max: function(context) {
-                                if (brewEndTime !== null) {
-                                    return brewEndTime;
-                                }
-                                if (brewStartTime !== null) {
-                                    const currentTime = (Date.now() / 1000) - brewStartTime;
-                                    return Math.max(currentTime, 10);
-                                }
-                                return 10;
-                            },
+                            max: 60, // Fixed axis - 60 seconds (Gaggimate style)
                             grid: {
                                 color: 'var(--system-separator)',
                                 lineWidth: 0.5
@@ -2218,15 +2230,9 @@
             liveChart.data.datasets[1].data = liveChartData.flow;
             liveChart.data.datasets[2].data = liveChartData.weight;
             
-            // Update x-axis max: during brew = current time, after brew = end time (fixed)
-            if (brewEndTime !== null) {
-                // Brew finished - fix the x-axis at end time
-                liveChart.options.scales.x.max = brewEndTime - brewStartTime;
-            } else if (brewStartTime !== null) {
-                // Brew active - x-axis follows current time
-                const currentRelativeTime = (Date.now() / 1000) - brewStartTime;
-                liveChart.options.scales.x.max = Math.max(currentRelativeTime, 10);
-            }
+            // Fixed axis - always 60 seconds (Gaggimate style)
+            liveChart.options.scales.x.max = 60;
+            liveChart.options.scales.x.min = 0;
             
             // Track phase transitions for markers
             const currentPhaseIndex = brewState.phaseIndex !== undefined ? brewState.phaseIndex : -1;
@@ -2701,89 +2707,96 @@
                     }
                     
                     const targetPressure = brewState.targetPressure !== undefined ? brewState.targetPressure.toFixed(1) : '0.0';
+                    const currentTemp = brewState.temperature !== undefined ? brewState.temperature.toFixed(1) : '0.0';
+                    const targetTemp = brewState.targetTemperature !== undefined ? brewState.targetTemperature.toFixed(1) : '0.0';
                     
-                    const liveBrewStatusEl = document.getElementById('live-brew-status');
-                    if (liveBrewStatusEl) {
-                        // Get phase information from brew state
-                        const phaseName = brewState.phase || 'N/A';
-                        const phaseIndex = brewState.phaseIndex !== undefined ? brewState.phaseIndex : -1;
-                        const phaseTime = brewState.phaseTime !== undefined ? brewState.phaseTime : 0;
-                        const totalPhases = brewState.totalPhases !== undefined ? brewState.totalPhases : 0;
-                        
-                        // Create phase indicator
-                        let phaseIndicator = '';
-                        if (phaseIndex >= 0 && totalPhases > 0) {
-                            const phaseNumber = phaseIndex + 1;
-                            phaseIndicator = `<div class="stat-item phase-marker" style="grid-column: 1 / -1; background: rgba(0, 122, 255, 0.2); border-radius: 8px; padding: 10px; margin-top: 10px;">
-                                <div style="display: flex; align-items: center; justify-content: space-between;">
-                                    <div>
-                                        <div class="stat-label" style="font-size: 0.9em; opacity: 0.8;">Current Phase</div>
-                                        <div class="stat-value" style="font-size: 1.3em; font-weight: bold; color: #007AFF;">
-                                            ${phaseName.charAt(0).toUpperCase() + phaseName.slice(1)}
-                                            <span style="font-size: 0.8em; opacity: 0.7; margin-left: 8px;">(${phaseNumber}/${totalPhases})</span>
-                                        </div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <div class="stat-label" style="font-size: 0.9em; opacity: 0.8;">Phase Time</div>
-                                        <div class="stat-value" style="font-size: 1.1em;">${phaseTime.toFixed(1)}s</div>
-                                    </div>
-                                </div>
-                            </div>`;
-                        }
-                        
-                        const weight = brewState.weight !== undefined ? brewState.weight : null;
-                        liveBrewStatusEl.innerHTML = `
-                            <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--spacing-md);">
-                                <div class="stat-item has-icon">
-                                    <div class="stat-label"><i class="fas fa-clock"></i> Brew Time</div>
-                                    <div class="stat-value">${brewTime.toFixed(1)}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;">s</span></div>
-                                </div>
-                                <div class="stat-item has-icon">
-                                    <div class="stat-label"><i class="fas fa-tachometer-alt" style="color: #FF6B6B;"></i> Pressure</div>
-                                    <div class="stat-value" style="color: #FF6B6B;">${pressure}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;"> bar</span></div>
-                                </div>
-                                <div class="stat-item has-icon">
-                                    <div class="stat-label"><i class="fas fa-bullseye" style="color: var(--system-blue);"></i> Target</div>
-                                    <div class="stat-value" style="color: var(--system-blue);">${targetPressure}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;"> bar</span></div>
-                                </div>
-                                <div class="stat-item has-icon">
-                                    <div class="stat-label"><i class="fas fa-tint" style="color: #4ECDC4;"></i> Flow</div>
-                                    <div class="stat-value" style="color: #4ECDC4;">${flow}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;"> ml/s</span></div>
-                                </div>
-                                ${weight !== null ? `
-                                <div class="stat-item has-icon">
-                                    <div class="stat-label"><i class="fas fa-weight" style="color: #95E1D3;"></i> Weight</div>
-                                    <div class="stat-value" style="color: #95E1D3;">${weight.toFixed(1)}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;"> g</span></div>
-                                </div>
-                                ` : ''}
-                            </div>
-                            ${phaseIndicator}
-                        `;
-                        
-                        // Update live profile display
-                        const liveProfileDisplay = document.getElementById('live-current-profile-display');
-                        const liveProfileName = document.getElementById('live-current-profile-name');
-                        if (liveProfileDisplay && liveProfileName && activeProfileName !== 'None') {
-                            liveProfileDisplay.style.display = 'flex';
-                            liveProfileName.textContent = activeProfileName;
-                        } else if (liveProfileDisplay) {
-                            liveProfileDisplay.style.display = 'none';
-                        }
-                        
-                        // Update profile name asynchronously if it's being fetched
-                        if (activeProfileId !== null) {
-                            fetchAPI('profiles').then(profilesResponse => {
-                                if (profilesResponse && profilesResponse.profiles && Array.isArray(profilesResponse.profiles)) {
-                                    const activeProfile = profilesResponse.profiles.find(p => p.id === activeProfileId);
-                                    if (activeProfile) {
-                                        const profileNameEl = document.getElementById('live-profile-name');
-                                        if (profileNameEl) {
+                    // Update Gaggimate-style dashboard
+                    // Temperature
+                    const currentTempEl = document.getElementById('current-temp');
+                    const targetTempEl = document.getElementById('target-temp');
+                    if (currentTempEl) currentTempEl.textContent = currentTemp;
+                    if (targetTempEl) targetTempEl.textContent = targetTemp;
+                    
+                    // Pressure
+                    const currentPressureEl = document.getElementById('current-pressure-display');
+                    const targetPressureEl = document.getElementById('target-pressure-display');
+                    if (currentPressureEl) currentPressureEl.textContent = pressure;
+                    if (targetPressureEl) targetPressureEl.textContent = targetPressure;
+                    
+                    // Profile
+                    const profileNameEl = document.getElementById('dashboard-profile-name');
+                    if (profileNameEl) {
+                        if (activeProfileName !== 'None') {
+                            profileNameEl.textContent = activeProfileName;
+                        } else {
+                            // Fetch profile name
+                            if (activeProfileId !== null) {
+                                fetchAPI('profiles').then(profilesResponse => {
+                                    if (profilesResponse && profilesResponse.profiles && Array.isArray(profilesResponse.profiles)) {
+                                        const activeProfile = profilesResponse.profiles.find(p => p.id === activeProfileId);
+                                        if (activeProfile && profileNameEl) {
                                             profileNameEl.textContent = activeProfile.name || activeProfile.profileName || 'Unnamed';
                                         }
                                     }
-                                }
-                            }).catch(e => console.error('Error fetching profiles for display:', e));
+                                }).catch(e => console.error('Error fetching profiles:', e));
+                            } else {
+                                profileNameEl.textContent = '-';
+                            }
                         }
+                    }
+                    
+                    // Phase information
+                    const phaseName = brewState.phase || 'N/A';
+                    const phaseIndex = brewState.phaseIndex !== undefined ? brewState.phaseIndex : -1;
+                    const phaseTime = brewState.phaseTime !== undefined ? brewState.phaseTime : 0;
+                    const totalPhases = brewState.totalPhases !== undefined ? brewState.totalPhases : 0;
+                    const phaseMaxDuration = brewState.phaseMaxDuration !== undefined ? brewState.phaseMaxDuration : 0;
+                    
+                    const phaseSection = document.getElementById('phase-section');
+                    const dashboardPhaseName = document.getElementById('dashboard-phase-name');
+                    const phaseDurationDisplay = document.getElementById('phase-duration-display');
+                    const phaseTimeDisplay = document.getElementById('phase-time-display');
+                    const phaseProgressBar = document.getElementById('phase-progress-bar');
+                    const emptyState = document.getElementById('dashboard-empty-state');
+                    const brewTimerSection = document.getElementById('brew-timer-section');
+                    const brewTimer = document.getElementById('brew-timer');
+                    
+                    if (brewState.isActive) {
+                        // Show active brew elements
+                        if (emptyState) emptyState.style.display = 'none';
+                        if (brewTimerSection) brewTimerSection.style.display = 'block';
+                        
+                        // Update brew timer (starts from 0)
+                        if (brewTimer) {
+                            const minutes = Math.floor(brewTime / 60);
+                            const seconds = Math.floor(brewTime % 60);
+                            brewTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                        }
+                        
+                        // Update phase section
+                        if (phaseIndex >= 0 && totalPhases > 0) {
+                            if (phaseSection) phaseSection.style.display = 'block';
+                            if (dashboardPhaseName) {
+                                dashboardPhaseName.textContent = phaseName.charAt(0).toUpperCase() + phaseName.slice(1);
+                            }
+                            if (phaseDurationDisplay) {
+                                phaseDurationDisplay.textContent = phaseMaxDuration > 0 ? `${phaseMaxDuration}s` : '-';
+                            }
+                            if (phaseTimeDisplay) {
+                                phaseTimeDisplay.textContent = `${phaseTime.toFixed(1)}s`;
+                            }
+                            if (phaseProgressBar && phaseMaxDuration > 0) {
+                                const progress = Math.min((phaseTime / phaseMaxDuration) * 100, 100);
+                                phaseProgressBar.style.width = `${progress}%`;
+                            }
+                        } else {
+                            if (phaseSection) phaseSection.style.display = 'none';
+                        }
+                    } else {
+                        // Hide active brew elements
+                        if (emptyState) emptyState.style.display = 'block';
+                        if (brewTimerSection) brewTimerSection.style.display = 'none';
+                        if (phaseSection) phaseSection.style.display = 'none';
                     }
                     
                     // Update phase information from brew state (primary) or API (fallback)
