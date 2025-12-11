@@ -1483,7 +1483,13 @@
                     </label>
                 </div>
                 <div id="live-brew-status" style="margin-bottom: var(--spacing-lg);">
-                    <p style="text-align: center; color: var(--system-secondary-label); padding: var(--spacing-xl);">No active brew</p>
+                    <div style="text-align: center; padding: var(--spacing-2xl) var(--spacing-lg);">
+                        <div style="font-size: 64px; color: var(--system-tertiary-label); margin-bottom: var(--spacing-md); opacity: 0.5;">
+                            <i class="fas fa-coffee"></i>
+                        </div>
+                        <h3 style="color: var(--system-label); font-size: var(--font-size-title-2); font-weight: 600; margin: 0 0 var(--spacing-xs) 0;">No Active Brew</h3>
+                        <p style="color: var(--system-secondary-label); font-size: var(--font-size-body); margin: 0;">Start a brew to see live data</p>
+                    </div>
                 </div>
                 
                 <!-- Phase Information Card -->
@@ -1638,6 +1644,7 @@
         }
         
         let updateInterval;
+        let brewStateUpdateInterval; // Fast update interval for brew state
         let liveChart = null;
         let liveChartData = {
             labels: [],
@@ -2146,36 +2153,36 @@
                 console.log('Brew ended');
             }
             
-            if (!brewState.isActive) {
-                // Don't update chart if brew is not active (but keep last data visible)
-                return;
-            }
+            // Always update chart for smoothness, even when not brewing
+            // This ensures the chart stays responsive and smooth
             
             // Calculate time relative to brew start
             const relativeTime = brewStartTime !== null ? (time - brewStartTime) : time;
             
-            // Only add new data point if time has advanced
-            const lastLabel = liveChartData.labels.length > 0 ? parseFloat(liveChartData.labels[liveChartData.labels.length - 1]) : -1;
-            if (relativeTime > lastLabel + 0.05) { // Add point every 0.05 seconds for smoother animation
+            // Only add new data point if brew is active and time has advanced
+            if (brewState.isActive) {
+                const lastLabel = liveChartData.labels.length > 0 ? parseFloat(liveChartData.labels[liveChartData.labels.length - 1]) : -1;
+                if (relativeTime > lastLabel + 0.05) { // Add point every 0.05 seconds for smoother animation
                 liveChartData.labels.push(relativeTime.toFixed(1));
                 liveChartData.pressure.push(brewState.pressure || 0);
                 liveChartData.flow.push(brewState.flow || 0);
                 liveChartData.weight.push(brewState.weight || 0);
                 
-                // Limit data points to last 300 seconds to prevent memory issues
-                if (liveChartData.labels.length > 3000) {
-                    liveChartData.labels.shift();
-                    liveChartData.pressure.shift();
-                    liveChartData.flow.shift();
-                    liveChartData.weight.shift();
-                }
-            } else {
-                // Update last point if time hasn't advanced much
-                if (liveChartData.labels.length > 0) {
-                    const lastIdx = liveChartData.labels.length - 1;
-                    liveChartData.pressure[lastIdx] = brewState.pressure || 0;
-                    liveChartData.flow[lastIdx] = brewState.flow || 0;
-                    liveChartData.weight[lastIdx] = brewState.weight || 0;
+                    // Limit data points to last 300 seconds to prevent memory issues
+                    if (liveChartData.labels.length > 3000) {
+                        liveChartData.labels.shift();
+                        liveChartData.pressure.shift();
+                        liveChartData.flow.shift();
+                        liveChartData.weight.shift();
+                    }
+                } else {
+                    // Update last point if time hasn't advanced much
+                    if (liveChartData.labels.length > 0) {
+                        const lastIdx = liveChartData.labels.length - 1;
+                        liveChartData.pressure[lastIdx] = brewState.pressure || 0;
+                        liveChartData.flow[lastIdx] = brewState.flow || 0;
+                        liveChartData.weight[lastIdx] = brewState.weight || 0;
+                    }
                 }
             }
             
@@ -2791,10 +2798,19 @@
                     }
                     const liveBrewStatusEl = document.getElementById('live-brew-status');
                     if (liveBrewStatusEl) {
+                        // Gaggimate-style empty state
                         liveBrewStatusEl.innerHTML = `
-                            <p>No active brew</p>
-                            ${brewEndTime !== null && brewStartTime !== null ? 
-                                `<p style="opacity: 0.7; margin-top: 10px;">Last brew duration: ${(brewEndTime - brewStartTime).toFixed(1)}s</p>` : ''}
+                            <div style="text-align: center; padding: var(--spacing-2xl) var(--spacing-lg);">
+                                <div style="font-size: 64px; color: var(--system-tertiary-label); margin-bottom: var(--spacing-md); opacity: 0.5;">
+                                    <i class="fas fa-coffee"></i>
+                                </div>
+                                <h3 style="color: var(--system-label); font-size: var(--font-size-title-2); font-weight: 600; margin: 0 0 var(--spacing-xs) 0;">No Active Brew</h3>
+                                <p style="color: var(--system-secondary-label); font-size: var(--font-size-body); margin: 0;">
+                                    ${brewEndTime !== null && brewStartTime !== null ? 
+                                        `Last brew: ${(brewEndTime - brewStartTime).toFixed(1)}s` : 
+                                        'Start a brew to see live data'}
+                                </p>
+                            </div>
                         `;
                     }
                     // Hide phase info when not brewing
@@ -4654,6 +4670,24 @@
                     }
                 }, 2000);
                 console.log('Update interval set to 2 seconds');
+                
+                // Fast brew state update loop for smooth chart (Gaggimate style - 100ms updates)
+                async function updateBrewStateFast() {
+                    try {
+                        const brewState = await fetchAPI('brew/state');
+                        if (brewState && typeof brewState === 'object' && Object.keys(brewState).length > 0) {
+                            const currentTime = Date.now() / 1000;
+                            // Always update chart for smoothness
+                            updateLiveChart(brewState, currentTime);
+                        }
+                    } catch (error) {
+                        // Silently handle errors to avoid console spam
+                    }
+                }
+                
+                // Start fast update loop (100ms = 10 updates per second for ultra-smooth animation)
+                brewStateUpdateInterval = setInterval(updateBrewStateFast, 100);
+                console.log('Fast brew state update interval set to 100ms for smooth chart');
                 
                 // Update analytics
                 updateAnalytics().catch(err => {
