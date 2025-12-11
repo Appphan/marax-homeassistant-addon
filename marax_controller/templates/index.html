@@ -929,12 +929,19 @@
         }
         .chart-container {
             position: relative;
-            height: 300px;
+            height: 400px;
+            width: 100%;
             margin-top: var(--spacing-lg);
             background: var(--system-grouped-background);
             border-radius: var(--radius-xl);
-            padding: var(--spacing-md);
+            padding: var(--spacing-lg);
             border: 0.5px solid var(--system-separator);
+        }
+        
+        .chart-container canvas {
+            display: block !important;
+            width: 100% !important;
+            height: 100% !important;
         }
         
         /* Gaggimate-inspired Chart Styling */
@@ -1826,80 +1833,98 @@
             }
         }
         
+        // Phase marker plugin (Gaggimate style)
+        const phaseMarkerPlugin = {
+            id: 'phaseMarkerPlugin',
+            afterDraw: (chart) => {
+                const ctx = chart.ctx;
+                const chartArea = chart.chartArea;
+                const xScale = chart.scales.x;
+                
+                if (!phaseTransitionTimes || phaseTransitionTimes.length === 0) return;
+                
+                phaseTransitionTimes.forEach((transition) => {
+                    try {
+                        const xPos = xScale.getPixelForValue(transition.time);
+                        
+                        if (xPos >= chartArea.left && xPos <= chartArea.right) {
+                            ctx.save();
+                            
+                            // Draw vertical dashed line
+                            ctx.strokeStyle = 'rgba(0, 122, 255, 0.85)';
+                            ctx.lineWidth = 2.5;
+                            ctx.setLineDash([10, 5]);
+                            ctx.beginPath();
+                            ctx.moveTo(xPos, chartArea.top);
+                            ctx.lineTo(xPos, chartArea.bottom);
+                            ctx.stroke();
+                            
+                            // Draw label
+                            const labelText = transition.phaseName || 'Phase';
+                            ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                            const textMetrics = ctx.measureText(labelText);
+                            const labelWidth = textMetrics.width + 16;
+                            const labelHeight = 24;
+                            const labelX = xPos - labelWidth / 2;
+                            const labelY = chartArea.top + 10;
+                            
+                            // Rounded rectangle background
+                            ctx.fillStyle = 'rgba(0, 122, 255, 0.95)';
+                            ctx.beginPath();
+                            const radius = 6;
+                            ctx.moveTo(labelX + radius, labelY);
+                            ctx.lineTo(labelX + labelWidth - radius, labelY);
+                            ctx.quadraticCurveTo(labelX + labelWidth, labelY, labelX + labelWidth, labelY + radius);
+                            ctx.lineTo(labelX + labelWidth, labelY + labelHeight - radius);
+                            ctx.quadraticCurveTo(labelX + labelWidth, labelY + labelHeight, labelX + labelWidth - radius, labelY + labelHeight);
+                            ctx.lineTo(labelX + radius, labelY + labelHeight);
+                            ctx.quadraticCurveTo(labelX, labelY + labelHeight, labelX, labelY + labelHeight - radius);
+                            ctx.lineTo(labelX, labelY + radius);
+                            ctx.quadraticCurveTo(labelX, labelY, labelX + radius, labelY);
+                            ctx.closePath();
+                            ctx.fill();
+                            
+                            // Text
+                            ctx.fillStyle = 'white';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(labelText, xPos, labelY + labelHeight / 2);
+                            
+                            ctx.restore();
+                        }
+                    } catch (e) {
+                        console.warn('Error drawing phase marker:', e);
+                    }
+                });
+            }
+        };
+        
         function initLiveChart() {
-            const ctx = document.getElementById('liveChart');
-            if (!ctx) {
+            const canvas = document.getElementById('liveChart');
+            if (!canvas) {
                 console.error('Live chart canvas not found!');
                 return;
             }
+            
+            // Destroy existing chart
             if (liveChart) {
-                liveChart.destroy();
+                try {
+                    liveChart.destroy();
+                } catch (e) {
+                    console.warn('Error destroying existing chart:', e);
+                }
             }
+            
             console.log('Initializing live chart from scratch (Gaggimate style)...');
             
-            // Define custom phase marker plugin
-            const phaseMarkerPlugin = {
-                id: 'phaseMarkerPlugin',
-                afterDraw: (chart) => {
-                    const ctx = chart.ctx;
-                    const chartArea = chart.chartArea;
-                    const xScale = chart.scales.x;
-                    
-                    // Draw phase markers
-                    if (phaseTransitionTimes && phaseTransitionTimes.length > 0) {
-                        phaseTransitionTimes.forEach((transition) => {
-                            const xPos = xScale.getPixelForValue(transition.time);
-                            
-                            if (xPos >= chartArea.left && xPos <= chartArea.right) {
-                                // Draw vertical line
-                                ctx.save();
-                                ctx.strokeStyle = 'rgba(0, 122, 255, 0.85)';
-                                ctx.lineWidth = 2.5;
-                                ctx.setLineDash([10, 5]);
-                                ctx.beginPath();
-                                ctx.moveTo(xPos, chartArea.top);
-                                ctx.lineTo(xPos, chartArea.bottom);
-                                ctx.stroke();
-                                
-                                // Draw label background
-                                const labelText = transition.phaseName;
-                                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-                                const textMetrics = ctx.measureText(labelText);
-                                const labelWidth = textMetrics.width + 16;
-                                const labelHeight = 24;
-                                const labelX = xPos - labelWidth / 2;
-                                const labelY = chartArea.top + 10;
-                                
-                                // Background with rounded corners
-                                ctx.fillStyle = 'rgba(0, 122, 255, 0.95)';
-                                ctx.beginPath();
-                                const radius = 6;
-                                ctx.moveTo(labelX + radius, labelY);
-                                ctx.lineTo(labelX + labelWidth - radius, labelY);
-                                ctx.quadraticCurveTo(labelX + labelWidth, labelY, labelX + labelWidth, labelY + radius);
-                                ctx.lineTo(labelX + labelWidth, labelY + labelHeight - radius);
-                                ctx.quadraticCurveTo(labelX + labelWidth, labelY + labelHeight, labelX + labelWidth - radius, labelY + labelHeight);
-                                ctx.lineTo(labelX + radius, labelY + labelHeight);
-                                ctx.quadraticCurveTo(labelX, labelY + labelHeight, labelX, labelY + labelHeight - radius);
-                                ctx.lineTo(labelX, labelY + radius);
-                                ctx.quadraticCurveTo(labelX, labelY, labelX + radius, labelY);
-                                ctx.closePath();
-                                ctx.fill();
-                                
-                                // Text
-                                ctx.fillStyle = 'white';
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-                                ctx.fillText(labelText, xPos, labelY + labelHeight / 2);
-                                
-                                ctx.restore();
-                            }
-                        });
-                    }
-                }
-            };
+            // Get canvas context
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                console.error('Could not get canvas context!');
+                return;
+            }
             
-            // Gaggimate-style chart configuration
+            // Gaggimate-style chart - completely rebuilt
             liveChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -2014,7 +2039,6 @@
                             annotations: []
                         }
                     },
-                    plugins: [phaseMarkerPlugin],
                     scales: {
                         x: {
                             title: { 
@@ -2103,9 +2127,11 @@
                             }
                         }
                     }
-                }
+                },
+                plugins: [phaseMarkerPlugin]
             });
-            console.log('Live chart initialized successfully');
+            
+            console.log('Live chart initialized successfully (Gaggimate style)');
         }
         
         function updateLiveChart(brewState, time) {
