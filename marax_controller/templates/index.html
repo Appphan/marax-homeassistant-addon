@@ -77,6 +77,14 @@
             --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
             --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            /* Gaggimate-inspired Chart Colors */
+            --chart-pressure: #FF6B6B;
+            --chart-flow: #4ECDC4;
+            --chart-weight: #95E1D3;
+            --chart-bg: rgba(255, 255, 255, 0.02);
+            --chart-grid: rgba(255, 255, 255, 0.08);
+            --chart-text: rgba(255, 255, 255, 0.7);
         }
         
         @media (prefers-color-scheme: dark) {
@@ -815,7 +823,20 @@
         .chart-container {
             position: relative;
             height: 300px;
-            margin-top: 20px;
+            margin-top: var(--spacing-lg);
+            background: var(--system-grouped-background);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-md);
+            border: 0.5px solid var(--system-separator);
+        }
+        
+        /* Gaggimate-inspired Chart Styling */
+        .chart-wrapper {
+            background: var(--system-secondary-background);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-lg);
+            border: 0.5px solid var(--system-separator);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         }
         .analytics-grid {
             display: grid;
@@ -1584,26 +1605,41 @@
                         {
                             label: 'Pressure (bar)',
                             data: [],
-                            borderColor: 'rgb(255, 99, 132)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: '#FF6B6B',
+                            backgroundColor: 'rgba(255, 107, 107, 0.15)',
+                            borderWidth: 2.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            fill: true,
+                            tension: 0.4,
                             yAxisID: 'y',
-                            tension: 0.1
+                            cubicInterpolationMode: 'monotone'
                         },
                         {
                             label: 'Flow (ml/s)',
                             data: [],
-                            borderColor: 'rgb(54, 162, 235)',
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: '#4ECDC4',
+                            backgroundColor: 'rgba(78, 205, 196, 0.15)',
+                            borderWidth: 2.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            fill: true,
+                            tension: 0.4,
                             yAxisID: 'y1',
-                            tension: 0.1
+                            cubicInterpolationMode: 'monotone'
                         },
                         {
                             label: 'Weight (g)',
                             data: [],
-                            borderColor: 'rgb(75, 192, 192)',
-                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: '#95E1D3',
+                            backgroundColor: 'rgba(149, 225, 211, 0.15)',
+                            borderWidth: 2.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            fill: true,
+                            tension: 0.4,
                             yAxisID: 'y2',
-                            tension: 0.1
+                            cubicInterpolationMode: 'monotone'
                         }
                     ]
                 },
@@ -1617,45 +1653,118 @@
                     animation: {
                         duration: 0 // Disable animation for real-time updates
                     },
+                    plugins: {
+                        legend: { 
+                            display: true, 
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: {
+                                    size: 12,
+                                    weight: '500'
+                                },
+                                color: 'var(--system-label)'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 13, weight: '600' },
+                            bodyFont: { size: 12 },
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            displayColors: true
+                        }
+                    },
                     scales: {
                         x: {
-                            title: { display: true, text: 'Time (s)' },
+                            title: { 
+                                display: true, 
+                                text: 'Time (s)',
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 12, weight: '500' }
+                            },
                             min: 0,
                             max: function(context) {
-                                // During brewing: show current time, after brewing: show end time
                                 if (brewEndTime !== null) {
                                     return brewEndTime;
                                 }
                                 if (brewStartTime !== null) {
                                     const currentTime = (Date.now() / 1000) - brewStartTime;
-                                    return Math.max(currentTime, 10); // At least 10 seconds
+                                    return Math.max(currentTime, 10);
                                 }
                                 return 10;
+                            },
+                            grid: {
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
+                            ticks: {
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 11 }
                             }
                         },
                         y: {
                             type: 'linear',
                             display: true,
                             position: 'left',
-                            title: { display: true, text: 'Pressure (bar)' }
+                            title: { 
+                                display: true, 
+                                text: 'Pressure (bar)',
+                                color: '#FF6B6B',
+                                font: { size: 12, weight: '600' }
+                            },
+                            grid: {
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
+                            ticks: {
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 11 }
+                            }
                         },
                         y1: {
                             type: 'linear',
                             display: true,
                             position: 'right',
-                            title: { display: true, text: 'Flow (ml/s)' },
-                            grid: { drawOnChartArea: false }
+                            title: { 
+                                display: true, 
+                                text: 'Flow (ml/s)',
+                                color: '#4ECDC4',
+                                font: { size: 12, weight: '600' }
+                            },
+                            grid: { 
+                                drawOnChartArea: false,
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
+                            ticks: {
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 11 }
+                            }
                         },
                         y2: {
                             type: 'linear',
                             display: true,
                             position: 'right',
-                            title: { display: true, text: 'Weight (g)' },
-                            grid: { drawOnChartArea: false }
+                            title: { 
+                                display: true, 
+                                text: 'Weight (g)',
+                                color: '#95E1D3',
+                                font: { size: 12, weight: '600' }
+                            },
+                            grid: { 
+                                drawOnChartArea: false,
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
+                            ticks: {
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 11 }
+                            }
                         }
-                    },
-                    plugins: {
-                        legend: { display: true, position: 'top' }
                     }
                 }
             });
@@ -1813,18 +1922,28 @@
                         {
                             label: 'Pressure (bar)',
                             data: pressurePoints,
-                            borderColor: 'rgb(255, 99, 132)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: '#FF6B6B',
+                            backgroundColor: 'rgba(255, 107, 107, 0.15)',
+                            borderWidth: 2.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            fill: true,
+                            tension: 0.4,
                             yAxisID: 'y',
-                            tension: 0.4
+                            cubicInterpolationMode: 'monotone'
                         },
                         {
                             label: 'Flow (ml/s)',
                             data: flowPoints,
-                            borderColor: 'rgb(54, 162, 235)',
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: '#4ECDC4',
+                            backgroundColor: 'rgba(78, 205, 196, 0.15)',
+                            borderWidth: 2.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            fill: true,
+                            tension: 0.4,
                             yAxisID: 'y1',
-                            tension: 0.4
+                            cubicInterpolationMode: 'monotone'
                         }
                     ]
                 },
@@ -1835,29 +1954,82 @@
                         mode: 'index',
                         intersect: false,
                     },
+                    plugins: {
+                        legend: { 
+                            display: true, 
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 12,
+                                font: { size: 11, weight: '500' },
+                                color: 'var(--system-label)'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            titleFont: { size: 12, weight: '600' },
+                            bodyFont: { size: 11 },
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                            cornerRadius: 8
+                        }
+                    },
                     scales: {
                         x: {
-                            title: { display: true, text: 'Time (s)' }
+                            title: { 
+                                display: true, 
+                                text: 'Time (s)',
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 11, weight: '500' }
+                            },
+                            grid: {
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
+                            ticks: {
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 10 }
+                            }
                         },
                         y: {
                             type: 'linear',
                             display: true,
                             position: 'left',
-                            title: { display: true, text: 'Pressure (bar)' }
+                            title: { 
+                                display: true, 
+                                text: 'Pressure (bar)',
+                                color: '#FF6B6B',
+                                font: { size: 11, weight: '600' }
+                            },
+                            grid: {
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
+                            ticks: {
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 10 }
+                            }
                         },
                         y1: {
                             type: 'linear',
                             display: true,
                             position: 'right',
-                            title: { display: true, text: 'Flow (ml/s)' },
-                            grid: { drawOnChartArea: false }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: true, position: 'top' },
-                        title: {
-                            display: true,
-                            text: profile.name || 'Profile Graph'
+                            title: { 
+                                display: true, 
+                                text: 'Flow (ml/s)',
+                                color: '#4ECDC4',
+                                font: { size: 11, weight: '600' }
+                            },
+                            grid: { 
+                                drawOnChartArea: false,
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
+                            ticks: {
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 10 }
+                            }
                         }
                     }
                 }
@@ -3237,20 +3409,28 @@
                         {
                             label: 'Pressure (bar)',
                             data: pressurePoints,
-                            borderColor: 'rgb(255, 99, 132)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            yAxisID: 'y',
+                            borderColor: '#FF6B6B',
+                            backgroundColor: 'rgba(255, 107, 107, 0.15)',
+                            borderWidth: 2.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            fill: true,
                             tension: 0.4,
-                            fill: true
+                            yAxisID: 'y',
+                            cubicInterpolationMode: 'monotone'
                         },
                         {
                             label: 'Flow (ml/s)',
                             data: flowPoints,
-                            borderColor: 'rgb(54, 162, 235)',
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                            yAxisID: 'y1',
+                            borderColor: '#4ECDC4',
+                            backgroundColor: 'rgba(78, 205, 196, 0.15)',
+                            borderWidth: 2.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            fill: true,
                             tension: 0.4,
-                            fill: true
+                            yAxisID: 'y1',
+                            cubicInterpolationMode: 'monotone'
                         }
                     ]
                 },
@@ -3263,17 +3443,39 @@
                     },
                     scales: {
                         x: {
-                            title: { display: true, text: 'Time (s)', color: 'white' },
-                            ticks: { color: 'white' },
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            title: { 
+                                display: true, 
+                                text: 'Time (s)',
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 11, weight: '500' }
+                            },
+                            ticks: { 
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 10 }
+                            },
+                            grid: { 
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            }
                         },
                         y: {
                             type: 'linear',
                             display: true,
                             position: 'left',
-                            title: { display: true, text: 'Pressure (bar)', color: 'white' },
-                            ticks: { color: 'white' },
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            title: { 
+                                display: true, 
+                                text: 'Pressure (bar)',
+                                color: '#FF6B6B',
+                                font: { size: 11, weight: '600' }
+                            },
+                            ticks: { 
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 10 }
+                            },
+                            grid: { 
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
                             min: pressureMin,
                             max: pressureMax
                         },
@@ -3281,22 +3483,48 @@
                             type: 'linear',
                             display: true,
                             position: 'right',
-                            title: { display: true, text: 'Flow (ml/s)', color: 'white' },
-                            ticks: { color: 'white' },
-                            grid: { drawOnChartArea: false }
+                            title: { 
+                                display: true, 
+                                text: 'Flow (ml/s)',
+                                color: '#4ECDC4',
+                                font: { size: 11, weight: '600' }
+                            },
+                            ticks: { 
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 10 }
+                            },
+                            grid: { 
+                                drawOnChartArea: false,
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            }
                         }
                     },
                     plugins: {
                         legend: { 
                             display: true, 
                             position: 'top',
-                            labels: { color: 'white' }
+                            labels: {
+                                usePointStyle: true,
+                                padding: 12,
+                                font: { size: 11, weight: '500' },
+                                color: 'var(--system-label)'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            titleFont: { size: 12, weight: '600' },
+                            bodyFont: { size: 11 },
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                            cornerRadius: 8
                         },
                         title: {
                             display: true,
                             text: phase.name || `Phase ${phaseIndex + 1}`,
-                            color: 'white',
-                            font: { size: 14 }
+                            color: 'var(--system-label)',
+                            font: { size: 13, weight: '600' }
                         }
                     }
                 }
@@ -3485,18 +3713,28 @@
                         {
                             label: 'Pressure (bar)',
                             data: pressurePoints,
-                            borderColor: 'rgb(255, 99, 132)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: '#FF6B6B',
+                            backgroundColor: 'rgba(255, 107, 107, 0.15)',
+                            borderWidth: 2.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            fill: true,
+                            tension: 0.4,
                             yAxisID: 'y',
-                            tension: 0.4
+                            cubicInterpolationMode: 'monotone'
                         },
                         {
                             label: 'Flow (ml/s)',
                             data: flowPoints,
-                            borderColor: 'rgb(54, 162, 235)',
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: '#4ECDC4',
+                            backgroundColor: 'rgba(78, 205, 196, 0.15)',
+                            borderWidth: 2.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            fill: true,
+                            tension: 0.4,
                             yAxisID: 'y1',
-                            tension: 0.4
+                            cubicInterpolationMode: 'monotone'
                         }
                     ]
                 },
@@ -3507,15 +3745,62 @@
                         mode: 'index',
                         intersect: false,
                     },
+                    plugins: {
+                        legend: { 
+                            display: true, 
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 12,
+                                font: { size: 11, weight: '500' },
+                                color: 'var(--system-label)'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            titleFont: { size: 12, weight: '600' },
+                            bodyFont: { size: 11 },
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                            cornerRadius: 8
+                        }
+                    },
                     scales: {
                         x: {
-                            title: { display: true, text: 'Time (s)' }
+                            title: { 
+                                display: true, 
+                                text: 'Time (s)',
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 11, weight: '500' }
+                            },
+                            grid: {
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
+                            ticks: {
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 10 }
+                            }
                         },
                         y: {
                             type: 'linear',
                             display: true,
                             position: 'left',
-                            title: { display: true, text: 'Pressure (bar)' },
+                            title: { 
+                                display: true, 
+                                text: 'Pressure (bar)',
+                                color: '#FF6B6B',
+                                font: { size: 11, weight: '600' }
+                            },
+                            grid: {
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
+                            ticks: {
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 10 }
+                            },
                             min: pressureMin,
                             max: pressureMax
                         },
@@ -3523,8 +3808,21 @@
                             type: 'linear',
                             display: true,
                             position: 'right',
-                            title: { display: true, text: 'Flow (ml/s)' },
-                            grid: { drawOnChartArea: false }
+                            title: { 
+                                display: true, 
+                                text: 'Flow (ml/s)',
+                                color: '#4ECDC4',
+                                font: { size: 11, weight: '600' }
+                            },
+                            grid: { 
+                                drawOnChartArea: false,
+                                color: 'var(--system-separator)',
+                                lineWidth: 0.5
+                            },
+                            ticks: {
+                                color: 'var(--system-secondary-label)',
+                                font: { size: 10 }
+                            }
                         }
                     },
                     plugins: {
