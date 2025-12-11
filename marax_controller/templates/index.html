@@ -231,6 +231,22 @@
             margin-bottom: var(--spacing-lg);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
             border: 0.5px solid var(--system-separator);
+            transition: all var(--transition-base);
+        }
+        
+        .status-card:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-card h2 {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .status-card h2 i {
+            color: var(--system-blue);
         }
         
         .status-grid {
@@ -247,10 +263,29 @@
             text-align: center;
             border: 0.5px solid var(--system-separator);
             transition: all var(--transition-base);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: transparent;
+            transition: background var(--transition-base);
         }
         
         .stat-item:hover {
             background: var(--system-tertiary-background);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        
+        .stat-item.has-icon::before {
+            background: linear-gradient(90deg, var(--system-blue), #4ECDC4);
         }
         
         .stat-label {
@@ -259,6 +294,10 @@
             margin-bottom: var(--spacing-xs);
             font-weight: 500;
             letter-spacing: -0.1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-xs);
         }
         
         .stat-value {
@@ -266,6 +305,73 @@
             font-weight: 600;
             color: var(--system-label);
             letter-spacing: -0.3px;
+        }
+        
+        /* Gaggimate-style Metric Cards */
+        .metric-card {
+            background: var(--system-secondary-background);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-lg);
+            border: 0.5px solid var(--system-separator);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            transition: all var(--transition-base);
+        }
+        
+        .metric-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            transform: translateY(-1px);
+        }
+        
+        .metric-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .metric-title {
+            font-size: var(--font-size-subheadline);
+            color: var(--system-secondary-label);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+        
+        .metric-value {
+            font-size: var(--font-size-title-1);
+            font-weight: 700;
+            color: var(--system-label);
+            letter-spacing: -0.5px;
+        }
+        
+        .metric-unit {
+            font-size: var(--font-size-subheadline);
+            color: var(--system-secondary-label);
+            font-weight: 500;
+            margin-left: var(--spacing-xs);
+        }
+        
+        .metric-trend {
+            font-size: var(--font-size-caption-1);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-md);
+            font-weight: 600;
+        }
+        
+        .metric-trend.up {
+            background: rgba(52, 199, 89, 0.15);
+            color: var(--system-green);
+        }
+        
+        .metric-trend.down {
+            background: rgba(255, 59, 48, 0.15);
+            color: var(--system-red);
+        }
+        
+        .metric-trend.stable {
+            background: rgba(120, 120, 128, 0.15);
+            color: var(--system-secondary-label);
         }
         
         /* Apple Design Buttons */
@@ -1100,20 +1206,20 @@
             </div>
             
             <div class="status-card">
-                <h2>Device Status</h2>
+                <h2><i class="fas fa-microchip"></i> Device Status</h2>
                 <div id="device-status" class="loading">Loading...</div>
             </div>
             
             <div class="status-card">
-                <h2>Brew State</h2>
+                <h2><i class="fas fa-coffee"></i> Brew State</h2>
                 <div id="brew-status" class="loading">Loading...</div>
-                <div style="margin-top: 15px;">
-                    <button class="button danger" onclick="stopBrew()">Stop Brew</button>
+                <div style="margin-top: var(--spacing-md);">
+                    <button class="button danger" onclick="stopBrew()"><i class="fas fa-stop"></i> Stop Brew</button>
                 </div>
             </div>
             
             <div class="status-card">
-                <h2>Machine State</h2>
+                <h2><i class="fas fa-thermometer-half"></i> Machine State</h2>
                 <div id="machine-status" class="loading">Loading...</div>
             </div>
             
@@ -1349,16 +1455,34 @@
         
         <!-- Live Brew Tab -->
         <div id="live" class="tab-content">
+            <!-- Current Profile Display in Live View -->
+            <div id="live-current-profile-display" class="current-profile-card" style="display: none; margin-bottom: var(--spacing-lg);">
+                <div class="current-profile-info">
+                    <div class="current-profile-icon">
+                        <i class="fas fa-coffee"></i>
+                    </div>
+                    <div class="current-profile-details">
+                        <div class="current-profile-label">Active Profile</div>
+                        <div class="current-profile-name" id="live-current-profile-name">-</div>
+                    </div>
+                </div>
+                <div class="current-profile-badge" id="live-current-profile-badge">
+                    <i class="fas fa-check-circle"></i> Active
+                </div>
+            </div>
+            
             <div class="status-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div class="section-header">
                     <h2 style="margin: 0;"><i class="fas fa-chart-line"></i> Live Brew Monitoring</h2>
-                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                        <input type="checkbox" id="auto-switch-checkbox" style="width: 20px; height: 20px; cursor: pointer;">
-                        <span><i class="fas fa-magic"></i> Auto-switch when brewing starts</span>
+                    <label style="display: flex; align-items: center; gap: var(--spacing-sm); cursor: pointer; padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-md); transition: all var(--transition-base);" 
+                           onmouseover="this.style.background='var(--system-fill)'" 
+                           onmouseout="this.style.background='transparent'">
+                        <input type="checkbox" id="auto-switch-checkbox" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-size: var(--font-size-subheadline); color: var(--system-label);"><i class="fas fa-magic"></i> Auto-switch</span>
                     </label>
                 </div>
-                <div id="live-brew-status" style="margin-bottom: 20px;">
-                    <p>No active brew</p>
+                <div id="live-brew-status" style="margin-bottom: var(--spacing-lg);">
+                    <p style="text-align: center; color: var(--system-secondary-label); padding: var(--spacing-xl);">No active brew</p>
                 </div>
                 
                 <!-- Phase Information Card -->
@@ -2266,23 +2390,23 @@
                     const deviceStatusEl = document.getElementById('device-status');
                     if (deviceStatusEl) {
                         deviceStatusEl.innerHTML = `
-                            <div class="status-grid">
-                                <div class="stat-item">
-                                    <div class="stat-label">MQTT Status</div>
-                                    <div class="stat-value">${mqttStatus}</div>
-                                    <div style="font-size: 0.8em; opacity: 0.7;">${mqttInfo}</div>
+                            <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-wifi" style="color: ${status.mqtt_connected ? 'var(--system-green)' : 'var(--system-red)'};"></i> MQTT</div>
+                                    <div class="stat-value" style="color: ${status.mqtt_connected ? 'var(--system-green)' : 'var(--system-red)'}; font-size: var(--font-size-title-3);">${status.mqtt_connected ? 'Connected' : 'Disconnected'}</div>
+                                    <div style="font-size: var(--font-size-caption-1); color: var(--system-tertiary-label); margin-top: var(--spacing-xs);">${mqttInfo}</div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">Device Status</div>
-                                    <div class="stat-value">${deviceStatus}</div>
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-circle" style="color: ${deviceStatus === 'Online' ? 'var(--system-green)' : 'var(--system-orange)'};"></i> Device</div>
+                                    <div class="stat-value" style="color: ${deviceStatus === 'Online' ? 'var(--system-green)' : 'var(--system-orange)'}; font-size: var(--font-size-title-3);">${deviceStatus}</div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">Firmware</div>
-                                    <div class="stat-value">${firmware}</div>
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-code-branch"></i> Firmware</div>
+                                    <div class="stat-value" style="font-size: var(--font-size-title-3);">${firmware}</div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">Uptime</div>
-                                    <div class="stat-value">${uptime}</div>
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-clock"></i> Uptime</div>
+                                    <div class="stat-value" style="font-size: var(--font-size-title-3);">${uptime}</div>
                                 </div>
                             </div>
                             ${!status.mqtt_connected ? '<div class="error" style="margin-top: 15px;">⚠️ MQTT not connected. Check configuration and ensure your MaraX device is publishing to MQTT.</div>' : ''}
@@ -2312,26 +2436,26 @@
                     const brewStatusEl = document.getElementById('brew-status');
                     if (brewStatusEl) {
                         brewStatusEl.innerHTML = `
-                            <div class="status-grid">
-                                <div class="stat-item">
-                                    <div class="stat-label">Active</div>
-                                    <div class="stat-value">${brewState.isActive ? 'Yes' : 'No'}</div>
+                            <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-power-off" style="color: ${brewState.isActive ? 'var(--system-green)' : 'var(--system-secondary-label)'};"></i> Status</div>
+                                    <div class="stat-value" style="color: ${brewState.isActive ? 'var(--system-green)' : 'var(--system-secondary-label)'}; font-size: var(--font-size-title-3);">${brewState.isActive ? 'Active' : 'Idle'}</div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">Pressure</div>
-                                    <div class="stat-value">${pressure} bar</div>
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-tachometer-alt" style="color: #FF6B6B;"></i> Pressure</div>
+                                    <div class="stat-value" style="color: #FF6B6B;">${pressure}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;"> bar</span></div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">Target Pressure</div>
-                                    <div class="stat-value">${targetPressure} bar</div>
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-bullseye" style="color: var(--system-blue);"></i> Target</div>
+                                    <div class="stat-value" style="color: var(--system-blue);">${targetPressure}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;"> bar</span></div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">Flow</div>
-                                    <div class="stat-value">${flow} ml/s</div>
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-tint" style="color: #4ECDC4;"></i> Flow</div>
+                                    <div class="stat-value" style="color: #4ECDC4;">${flow}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;"> ml/s</span></div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">Pump Power</div>
-                                    <div class="stat-value">${pumpPower}%</div>
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-bolt" style="color: var(--system-orange);"></i> Pump</div>
+                                    <div class="stat-value" style="color: var(--system-orange);">${pumpPower}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;">%</span></div>
                                 </div>
                             </div>
                         `;
@@ -2429,31 +2553,44 @@
                             </div>`;
                         }
                         
+                        const weight = brewState.weight !== undefined ? brewState.weight : null;
                         liveBrewStatusEl.innerHTML = `
-                            <div class="status-grid">
-                                <div class="stat-item">
-                                    <div class="stat-label">Profile</div>
-                                    <div class="stat-value" id="live-profile-name">${activeProfileName}</div>
+                            <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--spacing-md);">
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-clock"></i> Brew Time</div>
+                                    <div class="stat-value">${brewTime.toFixed(1)}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;">s</span></div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">Brew Time</div>
-                                    <div class="stat-value">${brewTime.toFixed(1)}s</div>
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-tachometer-alt" style="color: #FF6B6B;"></i> Pressure</div>
+                                    <div class="stat-value" style="color: #FF6B6B;">${pressure}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;"> bar</span></div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">Pressure</div>
-                                    <div class="stat-value">${pressure} bar</div>
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-bullseye" style="color: var(--system-blue);"></i> Target</div>
+                                    <div class="stat-value" style="color: var(--system-blue);">${targetPressure}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;"> bar</span></div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">Target Pressure</div>
-                                    <div class="stat-value">${targetPressure} bar</div>
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-tint" style="color: #4ECDC4;"></i> Flow</div>
+                                    <div class="stat-value" style="color: #4ECDC4;">${flow}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;"> ml/s</span></div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">Flow</div>
-                                    <div class="stat-value">${flow} ml/s</div>
+                                ${weight !== null ? `
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-weight" style="color: #95E1D3;"></i> Weight</div>
+                                    <div class="stat-value" style="color: #95E1D3;">${weight.toFixed(1)}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;"> g</span></div>
                                 </div>
+                                ` : ''}
                             </div>
                             ${phaseIndicator}
                         `;
+                        
+                        // Update live profile display
+                        const liveProfileDisplay = document.getElementById('live-current-profile-display');
+                        const liveProfileName = document.getElementById('live-current-profile-name');
+                        if (liveProfileDisplay && liveProfileName && activeProfileName !== 'None') {
+                            liveProfileDisplay.style.display = 'flex';
+                            liveProfileName.textContent = activeProfileName;
+                        } else if (liveProfileDisplay) {
+                            liveProfileDisplay.style.display = 'none';
+                        }
                         
                         // Update profile name asynchronously if it's being fetched
                         if (activeProfileId !== null) {
@@ -2549,18 +2686,18 @@
                     const machineStatusEl = document.getElementById('machine-status');
                     if (machineStatusEl) {
                         machineStatusEl.innerHTML = `
-                            <div class="status-grid">
-                                <div class="stat-item">
-                                    <div class="stat-label">Mode</div>
-                                    <div class="stat-value">${mode}</div>
+                            <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-sliders-h" style="color: var(--system-blue);"></i> Mode</div>
+                                    <div class="stat-value" style="font-size: var(--font-size-title-3);">${mode}</div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">Coffee Temp</div>
-                                    <div class="stat-value">${coffeeTemp}°C</div>
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-thermometer-half" style="color: #FF6B6B;"></i> Coffee Temp</div>
+                                    <div class="stat-value" style="color: #FF6B6B;">${coffeeTemp}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;">°C</span></div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">Steam Temp</div>
-                                    <div class="stat-value">${steamTemp}°C</div>
+                                <div class="stat-item has-icon">
+                                    <div class="stat-label"><i class="fas fa-fire" style="color: var(--system-orange);"></i> Steam Temp</div>
+                                    <div class="stat-value" style="color: var(--system-orange);">${steamTemp}<span style="font-size: var(--font-size-subheadline); color: var(--system-secondary-label); font-weight: 500;">°C</span></div>
                                 </div>
                             </div>
                         `;
