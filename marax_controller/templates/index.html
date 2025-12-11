@@ -994,6 +994,76 @@
         .progress-bar-success {
             background: var(--system-green);
         }
+        
+        /* Gaggimate-style Current Profile Display */
+        .current-profile-card {
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.1) 0%, rgba(78, 205, 196, 0.1) 100%);
+            border: 0.5px solid rgba(0, 122, 255, 0.3);
+            border-radius: var(--radius-2xl);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 12px rgba(0, 122, 255, 0.1);
+            transition: all var(--transition-base);
+        }
+        
+        .current-profile-card:hover {
+            box-shadow: 0 4px 16px rgba(0, 122, 255, 0.15);
+            transform: translateY(-1px);
+        }
+        
+        .current-profile-info {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+        
+        .current-profile-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-xl);
+            background: linear-gradient(135deg, var(--system-blue) 0%, #4ECDC4 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+        }
+        
+        .current-profile-details {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+        
+        .current-profile-label {
+            font-size: var(--font-size-subheadline);
+            color: var(--system-secondary-label);
+            font-weight: 500;
+        }
+        
+        .current-profile-name {
+            font-size: var(--font-size-title-2);
+            font-weight: 600;
+            color: var(--system-label);
+            letter-spacing: -0.3px;
+        }
+        
+        .current-profile-badge {
+            background: rgba(52, 199, 89, 0.15);
+            color: var(--system-green);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-xl);
+            font-size: var(--font-size-caption-1);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            border: 0.5px solid rgba(52, 199, 89, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -1013,6 +1083,22 @@
         
         <!-- Dashboard Tab -->
         <div id="dashboard" class="tab-content active">
+            <!-- Current Profile Display - Gaggimate Style -->
+            <div id="current-profile-display" class="current-profile-card" style="display: none;">
+                <div class="current-profile-info">
+                    <div class="current-profile-icon">
+                        <i class="fas fa-coffee"></i>
+                    </div>
+                    <div class="current-profile-details">
+                        <div class="current-profile-label">Current Profile</div>
+                        <div class="current-profile-name" id="current-profile-display-name">-</div>
+                    </div>
+                </div>
+                <div class="current-profile-badge" id="current-profile-badge">
+                    <i class="fas fa-check-circle"></i> Active
+                </div>
+            </div>
+            
             <div class="status-card">
                 <h2>Device Status</h2>
                 <div id="device-status" class="loading">Loading...</div>
@@ -1511,7 +1597,7 @@
                     successDiv.style.alignItems = 'center';
                 } else {
                     successDiv.textContent = message;
-                    successDiv.style.background = 'rgba(76, 175, 80, 0.8)';
+                successDiv.style.background = 'rgba(76, 175, 80, 0.8)';
                     successDiv.style.padding = 'var(--spacing-md)';
                     successDiv.style.fontSize = 'var(--font-size-body)';
                     successDiv.style.opacity = '1';
@@ -2015,8 +2101,8 @@
                             type: 'linear',
                             display: true,
                             position: 'right',
-                            title: { 
-                                display: true, 
+                        title: {
+                            display: true,
                                 text: 'Flow (ml/s)',
                                 color: '#4ECDC4',
                                 font: { size: 11, weight: '600' }
@@ -2656,6 +2742,17 @@
                 await updateProfiles(false);
                 updateSelectedProfileIndicator(id, currentProfiles);
                 
+                // Update current profile display immediately
+                const currentProfileDisplay = document.getElementById('current-profile-display');
+                const currentProfileName = document.getElementById('current-profile-display-name');
+                if (currentProfileDisplay && currentProfileName && currentProfiles) {
+                    const profile = currentProfiles.find(p => p.id === id);
+                    if (profile) {
+                        currentProfileDisplay.style.display = 'flex';
+                        currentProfileName.textContent = profile.name || `Profile ${id}`;
+                    }
+                }
+                
                 // Hide sync badge after 1.5 seconds
                 setTimeout(() => {
                     syncBadge.style.display = 'none';
@@ -2711,20 +2808,35 @@
             const indicator = document.getElementById('selected-profile-indicator');
             const nameSpan = document.getElementById('selected-profile-name');
             const label = document.getElementById('indicator-label');
+            const currentProfileDisplay = document.getElementById('current-profile-display');
+            const currentProfileName = document.getElementById('current-profile-display-name');
             
             if (profileId !== null && profileId !== undefined && profiles) {
                 const profile = profiles.find(p => p.id === profileId);
                 if (profile) {
+                    // Update profiles tab indicator
                     indicator.style.display = 'block';
-                indicator.style.background = 'rgba(52, 199, 89, 0.08)';
-                indicator.style.borderColor = 'rgba(52, 199, 89, 0.2)';
+                    indicator.style.background = 'rgba(52, 199, 89, 0.08)';
+                    indicator.style.borderColor = 'rgba(52, 199, 89, 0.2)';
                     label.textContent = '✓ Active Profile:';
                     nameSpan.textContent = profile.name || `Profile ${profileId}`;
+                    
+                    // Update dashboard current profile display (Gaggimate style)
+                    if (currentProfileDisplay && currentProfileName) {
+                        currentProfileDisplay.style.display = 'flex';
+                        currentProfileName.textContent = profile.name || `Profile ${profileId}`;
+                    }
                 } else {
                     indicator.style.display = 'none';
+                    if (currentProfileDisplay) {
+                        currentProfileDisplay.style.display = 'none';
+                    }
                 }
             } else {
                 indicator.style.display = 'none';
+                if (currentProfileDisplay) {
+                    currentProfileDisplay.style.display = 'none';
+                }
             }
         }
         
