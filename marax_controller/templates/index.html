@@ -1618,6 +1618,25 @@
     </div>
 
     <script>
+        // Register Chart.js annotation plugin
+        if (typeof Chart !== 'undefined') {
+            try {
+                if (typeof annotationPlugin !== 'undefined') {
+                    Chart.register(annotationPlugin);
+                } else if (typeof ChartAnnotation !== 'undefined') {
+                    Chart.register(ChartAnnotation);
+                } else {
+                    // Try to register from global scope
+                    const annotation = window.annotationPlugin || window.ChartAnnotation;
+                    if (annotation) {
+                        Chart.register(annotation);
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not register annotation plugin:', e);
+            }
+        }
+        
         let updateInterval;
         let liveChart = null;
         let liveChartData = {
@@ -1809,66 +1828,123 @@
             if (liveChart) {
                 liveChart.destroy();
             }
-            console.log('Initializing live chart...');
+            console.log('Initializing live chart from scratch (Gaggimate style)...');
+            
+            // Define custom phase marker plugin
+            const phaseMarkerPlugin = {
+                id: 'phaseMarkerPlugin',
+                afterDraw: (chart) => {
+                    const ctx = chart.ctx;
+                    const chartArea = chart.chartArea;
+                    const xScale = chart.scales.x;
+                    
+                    // Draw phase markers
+                    if (phaseTransitionTimes && phaseTransitionTimes.length > 0) {
+                        phaseTransitionTimes.forEach((transition) => {
+                            const xPos = xScale.getPixelForValue(transition.time);
+                            
+                            if (xPos >= chartArea.left && xPos <= chartArea.right) {
+                                // Draw vertical line
+                                ctx.save();
+                                ctx.strokeStyle = 'rgba(0, 122, 255, 0.85)';
+                                ctx.lineWidth = 2.5;
+                                ctx.setLineDash([10, 5]);
+                                ctx.beginPath();
+                                ctx.moveTo(xPos, chartArea.top);
+                                ctx.lineTo(xPos, chartArea.bottom);
+                                ctx.stroke();
+                                
+                                // Draw label background
+                                const labelText = transition.phaseName;
+                                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                                const textMetrics = ctx.measureText(labelText);
+                                const labelWidth = textMetrics.width + 16;
+                                const labelHeight = 24;
+                                const labelX = xPos - labelWidth / 2;
+                                const labelY = chartArea.top + 10;
+                                
+                                // Background with rounded corners
+                                ctx.fillStyle = 'rgba(0, 122, 255, 0.95)';
+                                ctx.beginPath();
+                                const radius = 6;
+                                ctx.moveTo(labelX + radius, labelY);
+                                ctx.lineTo(labelX + labelWidth - radius, labelY);
+                                ctx.quadraticCurveTo(labelX + labelWidth, labelY, labelX + labelWidth, labelY + radius);
+                                ctx.lineTo(labelX + labelWidth, labelY + labelHeight - radius);
+                                ctx.quadraticCurveTo(labelX + labelWidth, labelY + labelHeight, labelX + labelWidth - radius, labelY + labelHeight);
+                                ctx.lineTo(labelX + radius, labelY + labelHeight);
+                                ctx.quadraticCurveTo(labelX, labelY + labelHeight, labelX, labelY + labelHeight - radius);
+                                ctx.lineTo(labelX, labelY + radius);
+                                ctx.quadraticCurveTo(labelX, labelY, labelX + radius, labelY);
+                                ctx.closePath();
+                                ctx.fill();
+                                
+                                // Text
+                                ctx.fillStyle = 'white';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(labelText, xPos, labelY + labelHeight / 2);
+                                
+                                ctx.restore();
+                            }
+                        });
+                    }
+                }
+            };
+            
+            // Gaggimate-style chart configuration
             liveChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: [],
                     datasets: [
                         {
-                            label: 'Pressure (bar)',
+                            label: 'Pressure',
                             data: [],
                             borderColor: '#FF6B6B',
-                            backgroundColor: 'rgba(255, 107, 107, 0.15)',
-                            borderWidth: 2.5,
+                            backgroundColor: 'rgba(255, 107, 107, 0.12)',
+                            borderWidth: 3,
                             pointRadius: 0,
-                            pointHoverRadius: 4,
+                            pointHoverRadius: 6,
+                            pointHoverBorderWidth: 2,
                             fill: true,
-                            tension: 0.4,
+                            tension: 0.5,
                             yAxisID: 'y',
                             cubicInterpolationMode: 'monotone',
-                            segment: {
-                                borderColor: ctx => {
-                                    // Smooth color transitions
-                                    return '#FF6B6B';
-                                }
-                            }
+                            spanGaps: false,
+                            stepped: false
                         },
                         {
-                            label: 'Flow (ml/s)',
+                            label: 'Flow',
                             data: [],
                             borderColor: '#4ECDC4',
-                            backgroundColor: 'rgba(78, 205, 196, 0.15)',
-                            borderWidth: 2.5,
+                            backgroundColor: 'rgba(78, 205, 196, 0.12)',
+                            borderWidth: 3,
                             pointRadius: 0,
-                            pointHoverRadius: 4,
+                            pointHoverRadius: 6,
+                            pointHoverBorderWidth: 2,
                             fill: true,
-                            tension: 0.4,
+                            tension: 0.5,
                             yAxisID: 'y1',
                             cubicInterpolationMode: 'monotone',
-                            segment: {
-                                borderColor: ctx => {
-                                    return '#4ECDC4';
-                                }
-                            }
+                            spanGaps: false,
+                            stepped: false
                         },
                         {
-                            label: 'Weight (g)',
+                            label: 'Weight',
                             data: [],
                             borderColor: '#95E1D3',
-                            backgroundColor: 'rgba(149, 225, 211, 0.15)',
-                            borderWidth: 2.5,
+                            backgroundColor: 'rgba(149, 225, 211, 0.12)',
+                            borderWidth: 3,
                             pointRadius: 0,
-                            pointHoverRadius: 4,
+                            pointHoverRadius: 6,
+                            pointHoverBorderWidth: 2,
                             fill: true,
-                            tension: 0.4,
+                            tension: 0.5,
                             yAxisID: 'y2',
                             cubicInterpolationMode: 'monotone',
-                            segment: {
-                                borderColor: ctx => {
-                                    return '#95E1D3';
-                                }
-                            }
+                            spanGaps: false,
+                            stepped: false
                         }
                     ]
                 },
@@ -1880,29 +1956,27 @@
                         intersect: false,
                     },
                     animation: {
-                        duration: 250, // Smooth animation like Gaggimate
-                        easing: 'easeOutCubic',
+                        duration: 200,
+                        easing: 'easeOutQuart',
                         x: {
                             type: 'number',
-                            easing: 'easeOutCubic',
-                            duration: 250,
-                            from: NaN // Animate from previous value
+                            easing: 'easeOutQuart',
+                            duration: 200,
+                            from: NaN
                         },
                         y: {
                             type: 'number',
-                            easing: 'easeOutCubic',
-                            duration: 250,
-                            from: NaN // Animate from previous value
+                            easing: 'easeOutQuart',
+                            duration: 200,
+                            from: NaN
                         }
                     },
-                    animations: {
-                        x: {
-                            duration: 250,
-                            easing: 'easeOutCubic'
-                        },
-                        y: {
-                            duration: 250,
-                            easing: 'easeOutCubic'
+                    transitions: {
+                        active: {
+                            animation: {
+                                duration: 200,
+                                easing: 'easeOutQuart'
+                            }
                         }
                     },
                     plugins: {
@@ -1933,6 +2007,7 @@
                             annotations: []
                         }
                     },
+                    plugins: [phaseMarkerPlugin],
                     scales: {
                         x: {
                             title: { 
@@ -2134,39 +2209,7 @@
             }
             lastPhaseIndex = currentPhaseIndex;
             
-            // Update phase markers/annotations (Gaggimate style)
-            if (liveChart.options.plugins && liveChart.options.plugins.annotation) {
-                const annotations = [];
-                phaseTransitionTimes.forEach((transition, idx) => {
-                    if (transition.time <= relativeTime) {
-                        annotations.push({
-                            type: 'line',
-                            xMin: transition.time,
-                            xMax: transition.time,
-                            borderColor: 'rgba(0, 122, 255, 0.7)',
-                            borderWidth: 2.5,
-                            borderDash: [8, 4],
-                            label: {
-                                display: true,
-                                content: transition.phaseName,
-                                position: 'start',
-                                backgroundColor: 'rgba(0, 122, 255, 0.9)',
-                                color: 'white',
-                                font: { size: 11, weight: '600' },
-                                padding: { x: 8, y: 4 },
-                                borderRadius: 6,
-                                yAdjust: -12,
-                                textAlign: 'center'
-                            },
-                            enter: {
-                                duration: 300,
-                                easing: 'easeOutCubic'
-                            }
-                        });
-                    }
-                });
-                liveChart.options.plugins.annotation.annotations = annotations;
-            }
+            // Phase markers are drawn by custom plugin automatically
             
             // Update chart with smooth animation like Gaggimate
             liveChart.update('active');
