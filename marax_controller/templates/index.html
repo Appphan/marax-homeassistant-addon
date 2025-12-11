@@ -2249,15 +2249,31 @@
                 }
             }
             
-            // Update chart data
+            // Update chart data - convert to {x, y} format for Chart.js
             liveChart.data.labels = liveChartData.labels;
-            liveChart.data.datasets[0].data = liveChartData.pressure;
-            liveChart.data.datasets[1].data = liveChartData.flow;
-            liveChart.data.datasets[2].data = liveChartData.weight;
+            liveChart.data.datasets[0].data = liveChartData.pressure.map((val, idx) => ({
+                x: parseFloat(liveChartData.labels[idx]) || 0,
+                y: val || 0
+            }));
+            liveChart.data.datasets[1].data = liveChartData.flow.map((val, idx) => ({
+                x: parseFloat(liveChartData.labels[idx]) || 0,
+                y: val || 0
+            }));
+            liveChart.data.datasets[2].data = liveChartData.weight.map((val, idx) => ({
+                x: parseFloat(liveChartData.labels[idx]) || 0,
+                y: val || 0
+            }));
             
             // Fixed axis - always 60 seconds (Gaggimate style)
-            liveChart.options.scales.x.max = 60;
-            liveChart.options.scales.x.min = 0;
+            if (liveChart.options.scales && liveChart.options.scales.x) {
+                liveChart.options.scales.x.max = 60;
+                liveChart.options.scales.x.min = 0;
+            }
+            
+            // Ensure chart is visible before updating
+            if (liveChart.canvas && liveChart.canvas.style.display === 'none') {
+                liveChart.canvas.style.display = 'block';
+            }
             
             // Track phase transitions for markers
             const currentPhaseIndex = brewState.phaseIndex !== undefined ? brewState.phaseIndex : -1;
