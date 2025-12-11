@@ -1465,18 +1465,17 @@
         <div id="live" class="tab-content">
             <h2 style="margin: 0 0 var(--spacing-lg) 0; color: var(--system-label); font-size: var(--font-size-title-1); font-weight: 600;">Dashboard</h2>
             
-            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: var(--spacing-lg); align-items: start;">
-                <!-- Left: Process Controls -->
-                <div class="status-card">
-                    <h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--system-label); font-size: var(--font-size-title-3); font-weight: 600;">Process Controls</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: var(--spacing-lg); align-items: end;">
+                <!-- Left: Phase Control -->
+            <div class="status-card">
+                    <h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--system-label); font-size: var(--font-size-title-3); font-weight: 600;">Phase Control</h3>
                     
-                    <!-- Mode Selection -->
-                    <div style="display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-lg);">
-                        <button id="mode-standby" class="mode-button" style="flex: 1; padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-xl); border: 1px solid var(--system-separator); background: var(--system-grouped-background); color: var(--system-secondary-label); cursor: pointer; transition: all var(--transition-base);">Standby</button>
-                        <button id="mode-brew" class="mode-button active" style="flex: 1; padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-xl); border: 1px solid var(--system-blue); background: rgba(0, 122, 255, 0.15); color: var(--system-blue); cursor: pointer; transition: all var(--transition-base); font-weight: 600;">Brew</button>
-                        <button id="mode-steam" class="mode-button" style="flex: 1; padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-xl); border: 1px solid var(--system-separator); background: var(--system-grouped-background); color: var(--system-secondary-label); cursor: pointer; transition: all var(--transition-base);">Steam</button>
-                        <button id="mode-water" class="mode-button" style="flex: 1; padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-xl); border: 1px solid var(--system-separator); background: var(--system-grouped-background); color: var(--system-secondary-label); cursor: pointer; transition: all var(--transition-base);">Water</button>
-                    </div>
+                    <!-- Next Phase Button -->
+                    <div id="next-phase-control" style="display: none; margin-bottom: var(--spacing-lg);">
+                        <button id="next-phase-btn" class="button primary" style="width: 100%; padding: var(--spacing-md); font-size: var(--font-size-body); font-weight: 600; border-radius: var(--radius-lg);">
+                            <i class="fas fa-forward"></i> Next Phase
+                        </button>
+                </div>
                     
                     <!-- Temperature Display -->
                     <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-md); padding: var(--spacing-md); background: rgba(255, 255, 255, 0.05); border-radius: var(--radius-lg);">
@@ -1487,8 +1486,8 @@
                                 <span id="current-temp">0.0</span> / <span id="target-temp" style="color: var(--system-green);">0.0</span>°C
                             </div>
                         </div>
-                    </div>
-                    
+                </div>
+                
                     <!-- Pressure Display -->
                     <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-md); padding: var(--spacing-md); background: rgba(255, 255, 255, 0.05); border-radius: var(--radius-lg);">
                         <i class="fas fa-tachometer-alt" style="font-size: 24px; color: var(--system-blue);"></i>
@@ -1496,9 +1495,9 @@
                             <div style="font-size: var(--font-size-body); color: var(--system-secondary-label); margin-bottom: var(--spacing-xs);">Pressure</div>
                             <div style="font-size: var(--font-size-title-2); font-weight: 600; color: var(--system-label);">
                                 <span id="current-pressure-display">0.0</span> / <span id="target-pressure-display" style="color: var(--system-blue);">0.0</span> bar
-                            </div>
                         </div>
-                    </div>
+                        </div>
+                        </div>
                     
                     <!-- Current Profile -->
                     <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-md); padding: var(--spacing-md); background: rgba(255, 255, 255, 0.05); border-radius: var(--radius-lg);">
@@ -1522,10 +1521,10 @@
                             </div>
                             <div style="background: rgba(0, 0, 0, 0.3); border-radius: var(--radius-md); height: 8px; overflow: hidden;">
                                 <div id="phase-progress-bar" style="background: linear-gradient(90deg, var(--system-blue), #4ECDC4); height: 100%; width: 0%; transition: width 0.3s;"></div>
-                            </div>
                         </div>
                     </div>
-                    
+                </div>
+                
                     <!-- Brew Timer -->
                     <div id="brew-timer-section" style="display: none; text-align: center; padding: var(--spacing-lg); background: rgba(0, 122, 255, 0.1); border-radius: var(--radius-xl); border: 1px solid rgba(0, 122, 255, 0.2);">
                         <div style="font-size: 48px; font-weight: 700; color: var(--system-blue); font-variant-numeric: tabular-nums; margin-bottom: var(--spacing-sm);" id="brew-timer">0:00</div>
@@ -1548,7 +1547,7 @@
                 <div class="status-card">
                     <h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--system-label); font-size: var(--font-size-title-3); font-weight: 600;">Temperature & Pressure Chart</h3>
                     <div class="chart-container" style="height: 500px;">
-                        <canvas id="liveChart"></canvas>
+                    <canvas id="liveChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -1930,7 +1929,7 @@
             // Destroy existing chart
             if (liveChart) {
                 try {
-                    liveChart.destroy();
+                liveChart.destroy();
                 } catch (e) {
                     console.warn('Error destroying existing chart:', e);
                 }
@@ -2143,6 +2142,14 @@
                 plugins: [phaseMarkerPlugin]
             });
             
+            // Force chart to render
+            setTimeout(() => {
+                if (liveChart) {
+                    liveChart.update('none');
+                    console.log('Chart forced to render');
+                }
+            }, 100);
+            
             console.log('Live chart initialized successfully (Gaggimate style)');
         }
         
@@ -2157,26 +2164,22 @@
                 return;
             }
             
-            // Track brew start time
+            // Track brew start time - always start from 0
             if (brewState.isActive && brewStartTime === null) {
-                // Only set brewStartTime if ESP32's brewTime is small (< 5s), meaning brew just started
-                // Otherwise, ESP32's brewTime might be from a previous brew that didn't reset
-                if (brewState.brewTime === undefined || brewState.brewTime === null || brewState.brewTime < 5) {
-                    brewStartTime = Date.now() / 1000;
-                    brewEndTime = null;
-                    liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
-                    phaseTransitionTimes = [];
-                    lastPhaseIndex = -1;
-                    console.log('Brew started, resetting chart data. ESP32 brewTime:', brewState.brewTime);
-                } else {
-                    // ESP32's brewTime is already high - reset it
-                    console.log('ESP32 brewTime is high (' + brewState.brewTime + 's), resetting to 0');
-                    brewStartTime = Date.now() / 1000;
-                    brewEndTime = null;
-                    liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
-                    phaseTransitionTimes = [];
-                    lastPhaseIndex = -1;
-                }
+                // Brew just started - set start time to now so timer starts at 0
+                const now = Date.now() / 1000;
+                brewStartTime = now;
+                brewEndTime = null;
+                liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
+                phaseTransitionTimes = [];
+                lastPhaseIndex = -1;
+                console.log('Brew started, resetting chart data and timer to 0. ESP32 brewTime:', brewState.brewTime);
+            }
+            
+            // Reset if brew ended
+            if (!brewState.isActive && brewStartTime !== null) {
+                brewStartTime = null;
+                brewEndTime = null;
             }
             
             // Reset brewStartTime if brew ended
@@ -2199,27 +2202,27 @@
             
             // Only add new data point if brew is active and time has advanced
             if (brewState.isActive) {
-                const lastLabel = liveChartData.labels.length > 0 ? parseFloat(liveChartData.labels[liveChartData.labels.length - 1]) : -1;
+            const lastLabel = liveChartData.labels.length > 0 ? parseFloat(liveChartData.labels[liveChartData.labels.length - 1]) : -1;
                 if (relativeTime > lastLabel + 0.05) { // Add point every 0.05 seconds for smoother animation
                 liveChartData.labels.push(relativeTime.toFixed(1));
                 liveChartData.pressure.push(brewState.pressure || 0);
                 liveChartData.flow.push(brewState.flow || 0);
                 liveChartData.weight.push(brewState.weight || 0);
                 
-                    // Limit data points to last 300 seconds to prevent memory issues
-                    if (liveChartData.labels.length > 3000) {
-                        liveChartData.labels.shift();
-                        liveChartData.pressure.shift();
-                        liveChartData.flow.shift();
-                        liveChartData.weight.shift();
-                    }
-                } else {
-                    // Update last point if time hasn't advanced much
-                    if (liveChartData.labels.length > 0) {
-                        const lastIdx = liveChartData.labels.length - 1;
-                        liveChartData.pressure[lastIdx] = brewState.pressure || 0;
-                        liveChartData.flow[lastIdx] = brewState.flow || 0;
-                        liveChartData.weight[lastIdx] = brewState.weight || 0;
+                // Limit data points to last 300 seconds to prevent memory issues
+                if (liveChartData.labels.length > 3000) {
+                    liveChartData.labels.shift();
+                    liveChartData.pressure.shift();
+                    liveChartData.flow.shift();
+                    liveChartData.weight.shift();
+                }
+            } else {
+                // Update last point if time hasn't advanced much
+                if (liveChartData.labels.length > 0) {
+                    const lastIdx = liveChartData.labels.length - 1;
+                    liveChartData.pressure[lastIdx] = brewState.pressure || 0;
+                    liveChartData.flow[lastIdx] = brewState.flow || 0;
+                    liveChartData.weight[lastIdx] = brewState.weight || 0;
                     }
                 }
             }
@@ -2707,15 +2710,9 @@
                     }
                     
                     const targetPressure = brewState.targetPressure !== undefined ? brewState.targetPressure.toFixed(1) : '0.0';
-                    const currentTemp = brewState.temperature !== undefined ? brewState.temperature.toFixed(1) : '0.0';
-                    const targetTemp = brewState.targetTemperature !== undefined ? brewState.targetTemperature.toFixed(1) : '0.0';
                     
-                    // Update Gaggimate-style dashboard
-                    // Temperature
-                    const currentTempEl = document.getElementById('current-temp');
-                    const targetTempEl = document.getElementById('target-temp');
-                    if (currentTempEl) currentTempEl.textContent = currentTemp;
-                    if (targetTempEl) targetTempEl.textContent = targetTemp;
+                    // Get temperature from machine state (fetched separately)
+                    // Will be updated when machine state is fetched
                     
                     // Pressure
                     const currentPressureEl = document.getElementById('current-pressure-display');
@@ -2746,11 +2743,13 @@
                     }
                     
                     // Phase information
-                    const phaseName = brewState.phase || 'N/A';
-                    const phaseIndex = brewState.phaseIndex !== undefined ? brewState.phaseIndex : -1;
-                    const phaseTime = brewState.phaseTime !== undefined ? brewState.phaseTime : 0;
-                    const totalPhases = brewState.totalPhases !== undefined ? brewState.totalPhases : 0;
+                        const phaseName = brewState.phase || 'N/A';
+                        const phaseIndex = brewState.phaseIndex !== undefined ? brewState.phaseIndex : -1;
+                        const phaseTime = brewState.phaseTime !== undefined ? brewState.phaseTime : 0;
+                        const totalPhases = brewState.totalPhases !== undefined ? brewState.totalPhases : 0;
                     const phaseMaxDuration = brewState.phaseMaxDuration !== undefined ? brewState.phaseMaxDuration : 0;
+                    const phaseWeight = brewState.phaseWeight !== undefined ? brewState.phaseWeight : 0;
+                    const breakoutCriteria = brewState.breakoutCriteria || [];
                     
                     const phaseSection = document.getElementById('phase-section');
                     const dashboardPhaseName = document.getElementById('dashboard-phase-name');
@@ -2760,14 +2759,17 @@
                     const emptyState = document.getElementById('dashboard-empty-state');
                     const brewTimerSection = document.getElementById('brew-timer-section');
                     const brewTimer = document.getElementById('brew-timer');
+                    const nextPhaseControl = document.getElementById('next-phase-control');
                     
                     if (brewState.isActive) {
                         // Show active brew elements
                         if (emptyState) emptyState.style.display = 'none';
                         if (brewTimerSection) brewTimerSection.style.display = 'block';
+                        if (nextPhaseControl) nextPhaseControl.style.display = 'block';
                         
-                        // Update brew timer (starts from 0)
+                        // Update brew timer (starts from 0) - ensure it starts at 0 when brew begins
                         if (brewTimer) {
+                            // Use brewTime which should start from 0
                             const minutes = Math.floor(brewTime / 60);
                             const seconds = Math.floor(brewTime % 60);
                             brewTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
@@ -2779,24 +2781,62 @@
                             if (dashboardPhaseName) {
                                 dashboardPhaseName.textContent = phaseName.charAt(0).toUpperCase() + phaseName.slice(1);
                             }
+                            
+                            // Calculate progress based on breakout criteria
+                            let progress = 0;
+                            let progressLabel = '';
+                            let maxValue = 0;
+                            
+                            // Find active breakout criteria
+                            const activeCriteria = breakoutCriteria.filter(c => c && c.enabled && c.type > 0);
+                            if (activeCriteria.length > 0) {
+                                // Use the first active criterion for progress
+                                const crit = activeCriteria[0];
+                                if (crit.type === 1) { // Time-based
+                                    maxValue = crit.threshold || phaseMaxDuration || 0;
+                                    progress = maxValue > 0 ? Math.min((phaseTime / maxValue) * 100, 100) : 0;
+                                    progressLabel = `${phaseTime.toFixed(1)}s / ${maxValue.toFixed(1)}s`;
+                                } else if (crit.type === 2) { // Weight-based
+                                    maxValue = crit.threshold || 0;
+                                    progress = maxValue > 0 ? Math.min((phaseWeight / maxValue) * 100, 100) : 0;
+                                    progressLabel = `${phaseWeight.toFixed(1)}g / ${maxValue.toFixed(1)}g`;
+                                } else if (crit.type === 3) { // Flow-based
+                                    maxValue = crit.threshold || 0;
+                                    const currentFlow = brewState.flow || 0;
+                                    progress = maxValue > 0 ? Math.min((currentFlow / maxValue) * 100, 100) : 0;
+                                    progressLabel = `${currentFlow.toFixed(1)} ml/s / ${maxValue.toFixed(1)} ml/s`;
+                                } else {
+                                    // Fallback to time
+                                    maxValue = phaseMaxDuration || 0;
+                                    progress = maxValue > 0 ? Math.min((phaseTime / maxValue) * 100, 100) : 0;
+                                    progressLabel = `${phaseTime.toFixed(1)}s / ${maxValue.toFixed(1)}s`;
+                                }
+                            } else {
+                                // No breakout criteria - use time
+                                maxValue = phaseMaxDuration || 0;
+                                progress = maxValue > 0 ? Math.min((phaseTime / maxValue) * 100, 100) : 0;
+                                progressLabel = `${phaseTime.toFixed(1)}s / ${maxValue.toFixed(1)}s`;
+                            }
+                            
                             if (phaseDurationDisplay) {
-                                phaseDurationDisplay.textContent = phaseMaxDuration > 0 ? `${phaseMaxDuration}s` : '-';
+                                phaseDurationDisplay.textContent = progressLabel.split(' / ')[1] || '-';
                             }
                             if (phaseTimeDisplay) {
-                                phaseTimeDisplay.textContent = `${phaseTime.toFixed(1)}s`;
+                                phaseTimeDisplay.textContent = progressLabel.split(' / ')[0] || '0.0s';
                             }
-                            if (phaseProgressBar && phaseMaxDuration > 0) {
-                                const progress = Math.min((phaseTime / phaseMaxDuration) * 100, 100);
+                            if (phaseProgressBar) {
                                 phaseProgressBar.style.width = `${progress}%`;
                             }
                         } else {
                             if (phaseSection) phaseSection.style.display = 'none';
+                            if (nextPhaseControl) nextPhaseControl.style.display = 'none';
                         }
                     } else {
                         // Hide active brew elements
                         if (emptyState) emptyState.style.display = 'block';
                         if (brewTimerSection) brewTimerSection.style.display = 'none';
                         if (phaseSection) phaseSection.style.display = 'none';
+                        if (nextPhaseControl) nextPhaseControl.style.display = 'none';
                     }
                     
                     // Update phase information from brew state (primary) or API (fallback)
@@ -2845,7 +2885,7 @@
                                 </div>
                                 <h3 style="color: var(--system-label); font-size: var(--font-size-title-2); font-weight: 600; margin: 0 0 var(--spacing-xs) 0;">No Active Brew</h3>
                                 <p style="color: var(--system-secondary-label); font-size: var(--font-size-body); margin: 0;">
-                                    ${brewEndTime !== null && brewStartTime !== null ? 
+                            ${brewEndTime !== null && brewStartTime !== null ? 
                                         `Last brew: ${(brewEndTime - brewStartTime).toFixed(1)}s` : 
                                         'Start a brew to see live data'}
                                 </p>
@@ -2880,8 +2920,15 @@
                 console.log('Machine state response:', machineState);
                 if (machineState && typeof machineState === 'object' && Object.keys(machineState).length > 0) {
                     const mode = machineState.mode || 'N/A';
-                    const coffeeTemp = machineState.coffee_temp !== undefined ? machineState.coffee_temp : 0;
-                    const steamTemp = machineState.steam_temp !== undefined ? machineState.steam_temp : 0;
+                    const coffeeTemp = machineState.coffee_temp !== undefined ? machineState.coffee_temp.toFixed(1) : '0.0';
+                    const steamTemp = machineState.steam_temp !== undefined ? machineState.steam_temp.toFixed(1) : '0.0';
+                    const targetTemp = machineState.target_temp !== undefined ? machineState.target_temp.toFixed(1) : coffeeTemp; // Use coffee temp as target if not specified
+                    
+                    // Update dashboard temperature display
+                    const currentTempEl = document.getElementById('current-temp');
+                    const targetTempEl = document.getElementById('target-temp');
+                    if (currentTempEl) currentTempEl.textContent = coffeeTemp;
+                    if (targetTempEl) targetTempEl.textContent = targetTemp;
                     
                     const machineStatusEl = document.getElementById('machine-status');
                     if (machineStatusEl) {
@@ -4727,6 +4774,23 @@
                 // Start fast update loop (100ms = 10 updates per second for ultra-smooth animation)
                 brewStateUpdateInterval = setInterval(updateBrewStateFast, 100);
                 console.log('Fast brew state update interval set to 100ms for smooth chart');
+                
+                // Next Phase button handler
+                const nextPhaseBtn = document.getElementById('next-phase-btn');
+                if (nextPhaseBtn) {
+                    nextPhaseBtn.addEventListener('click', async () => {
+                        try {
+                            const response = await fetchAPI('phase/next');
+                            if (response && response.success) {
+                                console.log('Phase advanced successfully');
+                            } else {
+                                console.warn('Failed to advance phase:', response);
+                            }
+                        } catch (error) {
+                            console.error('Error advancing phase:', error);
+                        }
+                    });
+                }
                 
                 // Update analytics
                 updateAnalytics().catch(err => {
