@@ -1467,7 +1467,7 @@
             
             <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: var(--spacing-lg); align-items: stretch;">
                 <!-- Left: Phase Control -->
-            <div class="status-card">
+                <div class="status-card" style="display: flex; flex-direction: column; height: 100%;">
                     <h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--system-label); font-size: var(--font-size-title-3); font-weight: 600;">Phase Control</h3>
                     
                     <!-- Next Phase Button -->
@@ -2191,6 +2191,21 @@
                 liveChart.data.datasets[2].data = [];
             }
             
+            // Dynamic x-axis: start of shot on left, current time on right
+            if (liveChart.options.scales && liveChart.options.scales.x) {
+                if (brewState.isActive && relativeTime > 0) {
+                    // Show last 60 seconds, with current time on the right
+                    const maxTime = relativeTime;
+                    const minTime = Math.max(0, maxTime - 60);
+                    liveChart.options.scales.x.min = minTime;
+                    liveChart.options.scales.x.max = maxTime;
+                } else {
+                    // When not brewing, show fixed 0-60 range
+                    liveChart.options.scales.x.min = 0;
+                    liveChart.options.scales.x.max = 60;
+                }
+            }
+            
             // Track phase transitions
             const currentPhaseIndex = brewState.phaseIndex !== undefined ? brewState.phaseIndex : -1;
             if (currentPhaseIndex !== lastPhaseIndex && lastPhaseIndex >= 0 && relativeTime > 0) {
@@ -2812,7 +2827,7 @@
                     if (currentPressureEl) currentPressureEl.textContent = pressure;
                     if (targetPressureEl) targetPressureEl.textContent = targetPressure;
                     
-                    // Profile
+                    // Profile - always show profile name
                     const profileNameEl = document.getElementById('dashboard-profile-name');
                     if (profileNameEl) {
                         if (activeProfileName !== 'None') {
@@ -2824,7 +2839,8 @@
                                     if (profilesResponse && profilesResponse.profiles && Array.isArray(profilesResponse.profiles)) {
                                         const activeProfile = profilesResponse.profiles.find(p => p.id === activeProfileId);
                                         if (activeProfile && profileNameEl) {
-                                            profileNameEl.textContent = activeProfile.name || activeProfile.profileName || 'Unnamed';
+                                            const profileName = activeProfile.name || activeProfile.profileName || 'Unnamed';
+                                            profileNameEl.textContent = profileName;
                                             // Show profile preview when no active brew
                                             if (!brewState.isActive) {
                                                 updateProfilePreview(activeProfile);
@@ -2833,7 +2849,12 @@
                                     }
                                 }).catch(e => console.error('Error fetching profiles:', e));
                             } else {
-                                profileNameEl.textContent = '-';
+                                // No active profile - try to get from brew state
+                                if (brewState.profileName) {
+                                    profileNameEl.textContent = brewState.profileName;
+                                } else {
+                                    profileNameEl.textContent = '-';
+                                }
                             }
                         }
                     }
