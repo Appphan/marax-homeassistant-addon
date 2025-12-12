@@ -930,18 +930,21 @@
         .chart-container {
             position: relative;
             height: 400px;
+            max-height: 400px;
             width: 100%;
             margin-top: var(--spacing-lg);
             background: var(--system-grouped-background);
             border-radius: var(--radius-xl);
             padding: var(--spacing-lg);
             border: 0.5px solid var(--system-separator);
+            overflow: hidden;
         }
         
         .chart-container canvas {
             display: block !important;
             width: 100% !important;
             height: 100% !important;
+            max-height: 100% !important;
         }
         
         /* Gaggimate-inspired Chart Styling */
@@ -1546,7 +1549,7 @@
                 <!-- Right: Chart -->
                 <div class="status-card" style="display: flex; flex-direction: column; height: 100%;">
                     <h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--system-label); font-size: var(--font-size-title-3); font-weight: 600;">Temperature & Pressure Chart</h3>
-                    <div class="chart-container" style="flex: 1; min-height: 400px; position: relative;">
+                    <div class="chart-container" style="flex: 1 1 auto; min-height: 400px; max-height: 600px; position: relative; overflow: hidden;">
                         <canvas id="liveChart"></canvas>
                     </div>
                     <!-- Profile Preview (shown when no active brew) -->
@@ -2113,9 +2116,18 @@
                 plugins: [phaseMarkerPlugin]
             });
             
-            // Force resize and update
+            // Force resize and update with proper constraints
             setTimeout(() => {
-                if (liveChart) {
+                if (liveChart && liveChart.canvas) {
+                    const container = canvas.closest('.chart-container');
+                    if (container) {
+                        // Ensure container has proper height constraints
+                        const containerHeight = container.offsetHeight;
+                        if (containerHeight > 0) {
+                            canvas.style.maxHeight = containerHeight + 'px';
+                            canvas.style.height = containerHeight + 'px';
+                        }
+                    }
                     liveChart.resize();
                     liveChart.update('none');
                     console.log('Chart initialized and rendered');
