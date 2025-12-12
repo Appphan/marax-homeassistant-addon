@@ -977,6 +977,23 @@
             opacity: 0.8;
         }
         
+        /* Heat Map Styles */
+        .heatmap-cell {
+            transition: all 0.2s ease;
+        }
+        .heatmap-cell:hover {
+            transform: scale(1.2);
+            z-index: 10;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .heatmap-cell {
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        }
+        
         /* Apple Design Tips - Utility Classes */
         .flex-row {
             display: flex;
@@ -1598,6 +1615,56 @@
                 <!-- Stats will be loaded here -->
             </div>
             
+            <!-- Heat Map Section -->
+            <div class="status-card" style="margin-bottom: var(--spacing-lg);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                    <h3 style="margin: 0;"><i class="fas fa-calendar-alt"></i> Shot Activity Heat Map</h3>
+                    <div style="display: flex; gap: var(--spacing-sm); align-items: center;">
+                        <select id="heatmapMetric" class="select" onchange="loadHeatMap()" style="min-width: 150px;">
+                            <option value="count">Shot Count</option>
+                            <option value="quality">Quality Score</option>
+                            <option value="extraction">Extraction Yield</option>
+                        </select>
+                        <select id="heatmapDays" class="select" onchange="loadHeatMap()" style="min-width: 120px;">
+                            <option value="90">Last 90 Days</option>
+                            <option value="180">Last 180 Days</option>
+                            <option value="365" selected>Last Year</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="heatmap-container" style="overflow-x: auto; padding: var(--spacing-md);">
+                    <div style="text-align: center; padding: var(--spacing-xl); color: var(--system-secondary-label);">
+                        Loading heat map...
+                    </div>
+                </div>
+                <div id="heatmap-legend" style="display: flex; justify-content: center; gap: var(--spacing-sm); margin-top: var(--spacing-md); font-size: var(--font-size-footnote); color: var(--system-secondary-label);">
+                    <!-- Legend will be loaded here -->
+                </div>
+            </div>
+            
+            <!-- Enhanced Analytics Overview -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+                <!-- Correlations Card -->
+            <div class="status-card">
+                    <h3><i class="fas fa-project-diagram"></i> Metric Correlations</h3>
+                    <div id="correlations-content" style="margin-top: var(--spacing-md);">
+                        <div style="text-align: center; padding: var(--spacing-md); color: var(--system-secondary-label);">
+                            Loading correlations...
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Insights Card -->
+                <div class="status-card">
+                    <h3><i class="fas fa-lightbulb"></i> Pattern Insights</h3>
+                    <div id="insights-content" style="margin-top: var(--spacing-md);">
+                        <div style="text-align: center; padding: var(--spacing-md); color: var(--system-secondary-label);">
+                            Loading insights...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Shot List -->
             <div id="shots-list" style="display: grid; gap: var(--spacing-md);">
                 <div style="text-align: center; padding: var(--spacing-xl); color: var(--system-secondary-label);">
@@ -1881,6 +1948,7 @@
                     } else if (tabName === 'analytics' && tabText.includes('Analytics')) {
                         t.classList.add('active');
                         loadShots(); // Load shots when analytics tab is shown
+                        loadHeatMap(); // Load heat map when analytics tab is shown
                     } else if (tabName === 'diagnostics' && tabText.includes('Diagnostics')) {
                         t.classList.add('active');
                     }
@@ -4943,6 +5011,7 @@
                 displayShots(allShots);
                 loadShotStats();
                 loadProfileFilterOptions();
+                loadHeatMap();
             } catch (error) {
                 console.error('Error loading shots:', error);
                 document.getElementById('shots-list').innerHTML = `
@@ -4971,7 +5040,7 @@
                 const qualityClass = getQualityClass(qualityScore);
                 const eyPercent = shot.extraction_yield_percent || 0;
                 
-                return `
+                            return `
                     <div class="status-card" style="cursor: pointer;" onclick="viewShotDetail(${shot.id})">
                         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-md);">
                             <div>
@@ -5022,9 +5091,9 @@
                                 <i class="fas fa-chart-line"></i> Details
                             </button>
                         </div>
-                    </div>
-                `;
-            }).join('');
+                                </div>
+                            `;
+                        }).join('');
         }
         
         function getQualityClass(score) {
@@ -5107,6 +5176,317 @@
             document.getElementById('shotDateTo').value = '';
             document.getElementById('shotSortBy').value = 'timestamp';
             loadShots();
+        }
+        
+        // Heat Map Functions
+        async function loadHeatMap() {
+            try {
+                const container = document.getElementById('heatmap-container');
+                container.innerHTML = '<div style="text-align: center; padding: var(--spacing-xl); color: var(--system-secondary-label);">Loading heat map...</div>';
+                
+                const days = document.getElementById('heatmapDays')?.value || 365;
+                const metric = document.getElementById('heatmapMetric')?.value || 'count';
+                const profileFilter = document.getElementById('shotProfileFilter')?.value || '';
+                
+                let url = `shots/heatmap?days=${days}`;
+                if (profileFilter) url += `&profile_id=${profileFilter}`;
+                
+                const data = await fetchAPI(url);
+                if (!data || !Array.isArray(data)) {
+                    throw new Error('Invalid heatmap data');
+                }
+                
+                renderHeatMap(data, metric);
+                loadCorrelations();
+                loadInsights();
+            } catch (error) {
+                console.error('Error loading heat map:', error);
+                document.getElementById('heatmap-container').innerHTML = `
+                    <div style="text-align: center; padding: var(--spacing-xl); color: var(--system-red);">
+                        Error loading heat map: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        function renderHeatMap(data, metric = 'count') {
+            const container = document.getElementById('heatmap-container');
+            const legend = document.getElementById('heatmap-legend');
+            
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: var(--spacing-xl); color: var(--system-secondary-label);">No data available</div>';
+                return;
+            }
+            
+            // Calculate max value for color scaling
+            let maxValue = 0;
+            data.forEach(d => {
+                let value = 0;
+                if (metric === 'count') value = d.count || 0;
+                else if (metric === 'quality') value = d.avg_quality || 0;
+                else if (metric === 'extraction') value = d.avg_extraction_yield || 0;
+                maxValue = Math.max(maxValue, value);
+            });
+            
+            // Group data by week
+            const weeks = [];
+            let currentWeek = [];
+            let currentDate = new Date(data[0].date);
+            const endDate = new Date(data[data.length - 1].date);
+            
+            // Create a map for quick lookup
+            const dataMap = {};
+            data.forEach(d => {
+                dataMap[d.date] = d;
+            });
+            
+            // Generate all dates in range
+            const allDates = [];
+            let date = new Date(currentDate);
+            while (date <= endDate) {
+                const dateStr = date.toISOString().split('T')[0];
+                allDates.push({
+                    date: dateStr,
+                    data: dataMap[dateStr] || { count: 0, avg_quality: 0, avg_extraction_yield: 0 }
+                });
+                date.setDate(date.getDate() + 1);
+            }
+            
+            // Group into weeks (starting from Sunday)
+            const weeksData = [];
+            let week = [];
+            allDates.forEach((item, index) => {
+                const d = new Date(item.date);
+                const dayOfWeek = d.getDay(); // 0 = Sunday
+                
+                week.push(item);
+                
+                if (dayOfWeek === 6 || index === allDates.length - 1) { // Saturday or last day
+                    weeksData.push(week);
+                    week = [];
+                }
+            });
+            
+            // Create heat map HTML
+            let html = '<div style="display: flex; gap: 2px; font-size: 10px;">';
+            
+            // Add month labels
+            html += '<div style="display: flex; flex-direction: column; gap: 2px; margin-right: 4px;">';
+            let lastMonth = -1;
+            weeksData.forEach((week, weekIndex) => {
+                if (week.length > 0) {
+                    const firstDate = new Date(week[0].date);
+                    const month = firstDate.getMonth();
+                    if (month !== lastMonth && weekIndex % 4 === 0) {
+                        html += `<div style="height: 13px; line-height: 13px; color: var(--system-secondary-label);">${firstDate.toLocaleString('default', { month: 'short' })}</div>`;
+                        lastMonth = month;
+                    } else {
+                        html += '<div style="height: 13px;"></div>';
+                    }
+                }
+            });
+            html += '</div>';
+            
+            // Add weeks
+            weeksData.forEach((week, weekIndex) => {
+                html += '<div style="display: flex; flex-direction: column; gap: 2px;">';
+                week.forEach((item, dayIndex) => {
+                    const d = item.data;
+                    let value = 0;
+                    if (metric === 'count') value = d.count || 0;
+                    else if (metric === 'quality') value = d.avg_quality || 0;
+                    else if (metric === 'extraction') value = d.avg_extraction_yield || 0;
+                    
+                    const intensity = maxValue > 0 ? Math.min(value / maxValue, 1) : 0;
+                    const color = getHeatMapColor(intensity);
+                    
+                    const dateObj = new Date(item.date);
+                    const tooltip = `${dateObj.toLocaleDateString()}: ${value.toFixed(metric === 'count' ? 0 : 1)}${metric === 'count' ? ' shots' : metric === 'quality' ? ' quality' : '% extraction'}`;
+                    
+                    html += `<div 
+                        class="heatmap-cell" 
+                        style="width: 13px; height: 13px; background: ${color}; border-radius: 2px; cursor: pointer;"
+                        title="${tooltip}"
+                        data-date="${item.date}"
+                        data-value="${value}"
+                        onmouseover="showHeatMapTooltip(event, '${tooltip}')"
+                    ></div>`;
+                });
+                html += '</div>';
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+            
+            // Update legend
+            const legendLabels = metric === 'count' 
+                ? ['No shots', '1-2 shots', '3-5 shots', '6-10 shots', '10+ shots']
+                : metric === 'quality'
+                ? ['No data', '0-40', '40-60', '60-80', '80-100']
+                : ['No data', '0-15%', '15-18%', '18-22%', '22%+'];
+            
+            legend.innerHTML = `
+                <span style="margin-right: var(--spacing-md);">Less</span>
+                ${[0, 0.25, 0.5, 0.75, 1].map((intensity, i) => `
+                    <div style="display: inline-flex; align-items: center; gap: var(--spacing-xs);">
+                        <div style="width: 13px; height: 13px; background: ${getHeatMapColor(intensity)}; border-radius: 2px;"></div>
+                        ${i === 4 ? `<span>More</span>` : ''}
+                    </div>
+                `).join('')}
+            `;
+        }
+        
+        function getHeatMapColor(intensity) {
+            // GitHub-style color scheme
+            if (intensity === 0) return '#ebedf0';
+            if (intensity < 0.25) return '#c6e48b';
+            if (intensity < 0.5) return '#7bc96f';
+            if (intensity < 0.75) return '#239a3b';
+            return '#196127';
+        }
+        
+        function showHeatMapTooltip(event, text) {
+            // Simple tooltip - could be enhanced with a proper tooltip library
+            event.target.setAttribute('title', text);
+        }
+        
+        async function loadCorrelations() {
+            try {
+                const container = document.getElementById('correlations-content');
+                const profileFilter = document.getElementById('shotProfileFilter')?.value || '';
+                
+                let url = 'shots/correlations?days=90';
+                if (profileFilter) url += `&profile_id=${profileFilter}`;
+                
+                const data = await fetchAPI(url);
+                if (!data || data.error) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: var(--spacing-md); color: var(--system-secondary-label);">
+                            ${data?.error || 'No correlation data available'}
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const correlations = data.correlations || {};
+                const strongest = data.strongest_positive || null;
+                
+                let html = '';
+                if (Object.keys(correlations).length > 0) {
+                    html = '<div style="display: grid; gap: var(--spacing-sm);">';
+                    Object.entries(correlations)
+                        .sort((a, b) => Math.abs(b[1].correlation) - Math.abs(a[1].correlation))
+                        .slice(0, 5)
+                        .forEach(([metric, data]) => {
+                            const corr = data.correlation;
+                            const color = corr > 0 ? 'var(--system-green)' : 'var(--system-red)';
+                            const icon = corr > 0 ? '↑' : '↓';
+                            html += `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-sm); background: var(--system-secondary-fill); border-radius: var(--radius-sm);">
+                                    <span style="font-size: var(--font-size-footnote);">${metric.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                                    <div style="display: flex; align-items: center; gap: var(--spacing-xs);">
+                                        <span style="color: ${color}; font-weight: 600;">${icon} ${Math.abs(corr).toFixed(2)}</span>
+                                        ${data.significant ? '<span style="color: var(--system-green); font-size: 10px;">●</span>' : ''}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    html += '</div>';
+                    
+                    if (strongest && strongest[1]) {
+                        html += `
+                            <div style="margin-top: var(--spacing-md); padding: var(--spacing-sm); background: var(--system-blue); color: white; border-radius: var(--radius-sm); font-size: var(--font-size-footnote);">
+                                <strong>Strongest correlation:</strong> ${strongest[0].replace(/_/g, ' ')} (${strongest[1].correlation > 0 ? '+' : ''}${strongest[1].correlation.toFixed(2)})
+                            </div>
+                        `;
+                    }
+                } else {
+                    html = '<div style="text-align: center; padding: var(--spacing-md); color: var(--system-secondary-label);">No correlation data available</div>';
+                }
+                
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading correlations:', error);
+                document.getElementById('correlations-content').innerHTML = `
+                    <div style="text-align: center; padding: var(--spacing-md); color: var(--system-red);">
+                        Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        async function loadInsights() {
+            try {
+                const container = document.getElementById('insights-content');
+                const profileFilter = document.getElementById('shotProfileFilter')?.value || '';
+                
+                let url = 'shots/insights?days=90';
+                if (profileFilter) url += `&profile_id=${profileFilter}`;
+                
+                const data = await fetchAPI(url);
+                if (!data || data.error) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: var(--spacing-md); color: var(--system-secondary-label);">
+                            ${data?.error || 'No insights available'}
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '<div style="display: grid; gap: var(--spacing-sm);">';
+                
+                if (data.quality_trend) {
+                    const trendIcon = data.quality_trend === 'improving' ? '📈' : '➡️';
+                    const trendColor = data.quality_trend === 'improving' ? 'var(--system-green)' : 'var(--system-secondary-label)';
+                    html += `
+                        <div style="padding: var(--spacing-sm); background: var(--system-secondary-fill); border-radius: var(--radius-sm);">
+                            <div style="font-size: var(--font-size-footnote); color: var(--system-secondary-label);">Quality Trend</div>
+                            <div style="font-size: var(--font-size-headline); color: ${trendColor};">
+                                ${trendIcon} ${data.quality_trend.charAt(0).toUpperCase() + data.quality_trend.slice(1)}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                if (data.avg_quality) {
+                    html += `
+                        <div style="padding: var(--spacing-sm); background: var(--system-secondary-fill); border-radius: var(--radius-sm);">
+                            <div style="font-size: var(--font-size-footnote); color: var(--system-secondary-label);">Average Quality</div>
+                            <div style="font-size: var(--font-size-headline); color: ${getQualityColor(data.avg_quality)};">
+                                ${data.avg_quality.toFixed(1)}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                if (data.best_profile) {
+                    html += `
+                        <div style="padding: var(--spacing-sm); background: var(--system-secondary-fill); border-radius: var(--radius-sm);">
+                            <div style="font-size: var(--font-size-footnote); color: var(--system-secondary-label);">Best Profile</div>
+                            <div style="font-size: var(--font-size-headline);">${data.best_profile}</div>
+                        </div>
+                    `;
+                }
+                
+                if (data.consistency_score) {
+                    html += `
+                        <div style="padding: var(--spacing-sm); background: var(--system-secondary-fill); border-radius: var(--radius-sm);">
+                            <div style="font-size: var(--font-size-footnote); color: var(--system-secondary-label);">Consistency</div>
+                            <div style="font-size: var(--font-size-headline);">${data.consistency_score.toFixed(1)}%</div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading insights:', error);
+                document.getElementById('insights-content').innerHTML = `
+                    <div style="text-align: center; padding: var(--spacing-md); color: var(--system-red);">
+                        Error: ${error.message}
+                    </div>
+                `;
+            }
         }
         
         async function viewShotDetail(shotId) {

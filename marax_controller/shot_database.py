@@ -8,6 +8,7 @@ import sqlite3
 import json
 import os
 import logging
+import statistics
 from datetime import datetime
 from pathlib import Path
 from shot_analytics import calculate_shot_analytics
@@ -464,6 +465,230 @@ def get_trend_data(days=30, profile_id=None):
     except Exception as e:
         logger.error(f"Error getting trend data: {e}")
         raise
+
+def get_heatmap_data(days=365, profile_id=None):
+    """Get heat map data for calendar visualization (GitHub-style)"""
+    try:
+        from datetime import timedelta, date
+        import calendar
+        
+        # Calculate date range
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=days)
+        timestamp_from = int(datetime.combine(start_date, datetime.min.time()).timestamp())
+        
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        # Get daily aggregates
+        query = """SELECT 
+            DATE(datetime(timestamp, 'unixepoch')) as date,
+            COUNT(*) as count,
+            AVG(quality_score) as avg_quality,
+            AVG(extraction_yield_percent) as avg_ey,
+            MAX(quality_score) as max_quality,
+            MIN(quality_score) as min_quality
+            FROM shots 
+            WHERE timestamp >= ?"""
+        params = [timestamp_from]
+        
+        if profile_id is not None:
+            query += " AND profile_id = ?"
+            params.append(profile_id)
+        
+        query += " GROUP BY DATE(datetime(timestamp, 'unixepoch'))"
+        
+        c.execute(query, params)
+        rows = c.fetchall()
+        conn.close()
+        
+        # Create a dictionary for quick lookup
+        data_dict = {}
+        for row in rows:
+            data_dict[row[0]] = {
+                'count': row[1],
+                'avg_quality': round(row[2] or 0, 1),
+                'avg_extraction_yield': round(row[3] or 0, 1),
+                'max_quality': round(row[4] or 0, 1) if row[4] else 0,
+                'min_quality': round(row[5] or 0, 1) if row[5] else 0
+            }
+        
+        # Generate all dates in range (fill in missing dates with 0)
+        heatmap_data = []
+        current_date = start_date
+        while current_date <= end_date:
+            date_str = current_date.isoformat()
+            if date_str in data_dict:
+                heatmap_data.append({
+                    'date': date_str,
+                    'count': data_dict[date_str]['count'],
+                    'avg_quality': data_dict[date_str]['avg_quality'],
+                    'avg_extraction_yield': data_dict[date_str]['avg_extraction_yield'],
+                    'max_quality': data_dict[date_str]['max_quality'],
+                    'min_quality': data_dict[date_str]['min_quality']
+                })
+            else:
+                heatmap_data.append({
+                    'date': date_str,
+                    'count': 0,
+                    'avg_quality': 0,
+                    'avg_extraction_yield': 0,
+                    'max_quality': 0,
+                    'min_quality': 0
+                })
+            current_date += timedelta(days=1)
+        
+        return heatmap_data
+    except Exception as e:
+        logger.error(f"Error getting heatmap data: {e}")
+        raise
+
+
+def get_correlation_analysis(profile_id=None, days=90):
+    """Get correlation analysis between different metrics"""
+    try:
+        from datetime import timedelta
+        from scipy import stats
+        import numpy as np
+        
+        date_from = datetime.now() - timedelta(days=days)
+        timestamp_from = int(date_from.timestamp())
+        
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        query = """SELECT 
+            total_time, total_weight, peak_pressure, average_pressure,
+            peak_flow, average_flow, quality_score, extraction_yield_percent,
+            flow_stability, pressure_stability
+            FROM shots 
+            WHERE timestamp >= ? AND quality_score IS NOT NULL"""
+        params = [timestamp_from]
+        
+        if profile_id is not None:
+            query += " AND profile_id = ?"
+            params.append(profile_id)
+        
+        c.execute(query, params)
+        rows = c.fetchall()
+        conn.close()
+        
+        if len(rows) < 10:  # Need at least 10 data points for meaningful correlation
+            return {'error': 'Insufficient data for correlation analysis'}
+        
+        # Extract columns
+        data = {
+            'time': [r[0] or 0 for r in rows],
+            'weight': [r[1] or 0 for r in rows],
+            'peak_pressure': [r[2] or 0 for r in rows],
+            'avg_pressure': [r[3] or 0 for r in rows],
+            'peak_flow': [r[4] or 0 for r in rows],
+            'avg_flow': [r[5] or 0 for r in rows],
+            'quality': [r[6] or 0 for r in rows],
+            'extraction_yield': [r[7] or 0 for r in rows],
+            'flow_stability': [r[8] or 0 for r in rows],
+            'pressure_stability': [r[9] or 0 for r in rows]
+        }
+        
+        # Calculate correlations with quality score
+        correlations = {}
+        quality = np.array(data['quality'])
+        
+        for key, values in data.items():
+            if key != 'quality' and len(values) > 0:
+                try:
+                    corr, p_value = stats.pearsonr(quality, np.array(values))
+                    correlations[key] = {
+                        'correlation': round(float(corr), 3),
+                        'p_value': round(float(p_value), 4),
+                        'significant': p_value < 0.05
+                    }
+                except:
+                    correlations[key] = {'correlation': 0, 'p_value': 1, 'significant': False}
+        
+        return {
+            'total_shots': len(rows),
+            'correlations': correlations,
+            'strongest_positive': max(correlations.items(), key=lambda x: x[1]['correlation'] if x[1]['correlation'] > 0 else -999),
+            'strongest_negative': min(correlations.items(), key=lambda x: x[1]['correlation'] if x[1]['correlation'] < 0 else 999)
+        }
+    except ImportError:
+        # scipy not available, return simplified analysis
+        return {'error': 'Advanced correlation analysis requires scipy library'}
+    except Exception as e:
+        logger.error(f"Error getting correlation analysis: {e}")
+        return {'error': str(e)}
+
+
+def get_pattern_insights(profile_id=None, days=90):
+    """Identify patterns and insights from shot data"""
+    try:
+        from datetime import timedelta
+        from collections import Counter
+        
+        date_from = datetime.now() - timedelta(days=days)
+        timestamp_from = int(date_from.timestamp())
+        
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        query = """SELECT 
+            timestamp, quality_score, extraction_yield_percent, total_time,
+            peak_pressure, average_flow, profile_name
+            FROM shots 
+            WHERE timestamp >= ?"""
+        params = [timestamp_from]
+        
+        if profile_id is not None:
+            query += " AND profile_id = ?"
+            params.append(profile_id)
+        
+        c.execute(query, params)
+        rows = c.fetchall()
+        conn.close()
+        
+        if len(rows) < 5:
+            return {'error': 'Insufficient data for pattern analysis'}
+        
+        # Analyze patterns
+        quality_scores = [r[1] or 0 for r in rows if r[1]]
+        extraction_yields = [r[2] or 0 for r in rows if r[2]]
+        times = [r[3] or 0 for r in rows if r[3]]
+        pressures = [r[4] or 0 for r in rows if r[4]]
+        flows = [r[5] or 0 for r in rows if r[5]]
+        profiles = [r[6] for r in rows if r[6]]
+        
+        insights = {
+            'total_shots': len(rows),
+            'quality_trend': 'improving' if len(quality_scores) > 7 and quality_scores[-7:] > quality_scores[:7] else 'stable',
+            'avg_quality': round(sum(quality_scores) / len(quality_scores), 1) if quality_scores else 0,
+            'best_profile': Counter(profiles).most_common(1)[0][0] if profiles else None,
+            'optimal_time_range': {
+                'min': round(min(times), 1) if times else 0,
+                'max': round(max(times), 1) if times else 0,
+                'avg': round(sum(times) / len(times), 1) if times else 0
+            },
+            'consistency_score': round(100 - (statistics.stdev(quality_scores) if len(quality_scores) > 1 else 0), 1) if quality_scores else 0
+        }
+        
+        # Identify best performing time of day (if we have hour data)
+        hours = []
+        for row in rows:
+            try:
+                dt = datetime.fromtimestamp(row[0])
+                hours.append(dt.hour)
+            except:
+                pass
+        
+        if hours:
+            hour_counts = Counter(hours)
+            insights['best_hour'] = hour_counts.most_common(1)[0][0] if hour_counts else None
+        
+        return insights
+    except Exception as e:
+        logger.error(f"Error getting pattern insights: {e}")
+        return {'error': str(e)}
+
 
 def delete_shot(shot_id):
     """Delete a shot from the database"""

@@ -15,7 +15,8 @@ import threading
 import time
 from shot_database import (
     init_database, save_shot, get_shots, get_shot, get_shot_stats, delete_shot,
-    get_best_shots, get_trend_data
+    get_best_shots, get_trend_data, get_heatmap_data, get_correlation_analysis,
+    get_pattern_insights
 )
 from shot_analytics import calculate_shot_analytics, compare_shots
 from profile_database import (
@@ -1455,6 +1456,45 @@ def api_compare_shots_post():
         return jsonify(comparison)
     except Exception as e:
         logger.error(f"Error comparing shots: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shots/heatmap', methods=['GET'])
+def api_shot_heatmap():
+    """Get heat map data for calendar visualization"""
+    try:
+        days = request.args.get('days', 365, type=int)
+        profile_id = request.args.get('profile_id', type=int)
+        
+        heatmap_data = get_heatmap_data(days=days, profile_id=profile_id)
+        return jsonify(heatmap_data)
+    except Exception as e:
+        logger.error(f"Error getting heatmap data: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shots/correlations', methods=['GET'])
+def api_shot_correlations():
+    """Get correlation analysis between metrics"""
+    try:
+        days = request.args.get('days', 90, type=int)
+        profile_id = request.args.get('profile_id', type=int)
+        
+        correlations = get_correlation_analysis(profile_id=profile_id, days=days)
+        return jsonify(correlations)
+    except Exception as e:
+        logger.error(f"Error getting correlations: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shots/insights', methods=['GET'])
+def api_shot_insights():
+    """Get pattern insights and recommendations"""
+    try:
+        days = request.args.get('days', 90, type=int)
+        profile_id = request.args.get('profile_id', type=int)
+        
+        insights = get_pattern_insights(profile_id=profile_id, days=days)
+        return jsonify(insights)
+    except Exception as e:
+        logger.error(f"Error getting insights: {e}")
         return jsonify({'error': str(e)}), 500
 
 # Static files
