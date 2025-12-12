@@ -6022,8 +6022,15 @@
                             let progressLabel = '';
                             let maxValue = 0;
                             
-                            // Find active breakout criteria
-                            const activeCriteria = breakoutCriteria.filter(c => c && c.enabled !== false && c.type > 0);
+                            // Find active breakout criteria - check enabled property properly
+                            const activeCriteria = breakoutCriteria.filter(c => {
+                                if (!c || !c.type || c.type <= 0) return false;
+                                // If enabled is explicitly false, exclude it
+                                if (c.enabled === false) return false;
+                                // Otherwise include it (enabled === true or undefined)
+                                return true;
+                            });
+                            
                             if (activeCriteria.length > 0) {
                                 // Use the first active criterion for progress
                                 const crit = activeCriteria[0];
@@ -6033,8 +6040,10 @@
                                     progressLabel = `${phaseTime.toFixed(1)}s / ${maxValue.toFixed(1)}s`;
                                 } else if (crit.type === 2) { // Weight-based
                                     maxValue = crit.threshold || 0;
-                                    progress = maxValue > 0 ? Math.min((phaseWeight / maxValue) * 100, 100) : 0;
-                                    progressLabel = `${phaseWeight.toFixed(1)}g / ${maxValue.toFixed(1)}g`;
+                                    // Use phaseWeight (weight in this phase) for progress
+                                    const currentPhaseWeight = phaseWeight;
+                                    progress = maxValue > 0 ? Math.min((currentPhaseWeight / maxValue) * 100, 100) : 0;
+                                    progressLabel = `${currentPhaseWeight.toFixed(1)}g / ${maxValue.toFixed(1)}g`;
                                 } else if (crit.type === 3) { // Flow-based
                                     maxValue = crit.threshold || 0;
                                     const currentFlow = brewState.flow || 0;
