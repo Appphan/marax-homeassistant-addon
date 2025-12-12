@@ -1567,7 +1567,7 @@
                 <div class="status-card" style="display: flex; flex-direction: column; height: 100%;">
                     <h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--system-label); font-size: var(--font-size-title-3); font-weight: 600;">Temperature & Pressure Chart</h3>
                     <div class="chart-container" style="flex: 1 1 auto; min-height: 400px; max-height: 600px; position: relative; overflow: hidden;">
-                        <canvas id="liveChart"></canvas>
+                    <canvas id="liveChart"></canvas>
                     </div>
                     <!-- Profile Preview (shown when no active brew) -->
                     <div id="profile-preview-section" style="display: none; margin-top: var(--spacing-md); border-top: 1px solid var(--system-separator); padding-top: var(--spacing-md);">
@@ -2070,7 +2070,7 @@
             // Destroy existing chart completely
             if (liveChart) {
                 try {
-                    liveChart.destroy();
+                liveChart.destroy();
                 } catch (e) {
                     console.warn('Error destroying existing chart:', e);
                 }
@@ -2278,8 +2278,8 @@
             // Track brew start time
             if (brewState.isActive && brewStartTime === null) {
                 brewStartTime = time;
-                brewEndTime = null;
-                liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
+                    brewEndTime = null;
+                    liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
                 phaseTransitionTimes = [];
                 lastPhaseIndex = -1;
             }
@@ -2305,18 +2305,18 @@
             if (brewState.isActive) {
                 const lastTime = liveChartData.labels.length > 0 ? parseFloat(liveChartData.labels[liveChartData.labels.length - 1]) : -1;
                 if (relativeTime > lastTime + 0.05) {
-                    liveChartData.labels.push(relativeTime.toFixed(1));
-                    liveChartData.pressure.push(brewState.pressure || 0);
-                    liveChartData.flow.push(brewState.flow || 0);
-                    liveChartData.weight.push(brewState.weight || 0);
-                    
+                liveChartData.labels.push(relativeTime.toFixed(1));
+                liveChartData.pressure.push(brewState.pressure || 0);
+                liveChartData.flow.push(brewState.flow || 0);
+                liveChartData.weight.push(brewState.weight || 0);
+                
                     // Limit to 3000 points
-                    if (liveChartData.labels.length > 3000) {
-                        liveChartData.labels.shift();
-                        liveChartData.pressure.shift();
-                        liveChartData.flow.shift();
-                        liveChartData.weight.shift();
-                    }
+                if (liveChartData.labels.length > 3000) {
+                    liveChartData.labels.shift();
+                    liveChartData.pressure.shift();
+                    liveChartData.flow.shift();
+                    liveChartData.weight.shift();
+                }
                 }
             }
             
@@ -2354,12 +2354,9 @@
                         liveChart.options.scales.x.min = minTime;
                         liveChart.options.scales.x.max = maxTime;
                     } else if (dataMaxTime > 0) {
-                        // Brew ended - align x-axis to actual data range
-                        // Show from start (0) to end of data, but cap at 60 seconds window
-                        const maxTime = Math.max(dataMaxTime, 60);
-                        const minTime = Math.max(0, maxTime - 60);
-                        liveChart.options.scales.x.min = minTime;
-                        liveChart.options.scales.x.max = maxTime;
+                        // Brew ended - show from 0 to end of shot time (not 0-60)
+                        liveChart.options.scales.x.min = 0;
+                        liveChart.options.scales.x.max = dataMaxTime;
                     } else {
                         // No data - show fixed 0-60 range
                         liveChart.options.scales.x.min = 0;
@@ -2369,6 +2366,27 @@
                     // No data - show fixed 0-60 range
                     liveChart.options.scales.x.min = 0;
                     liveChart.options.scales.x.max = 60;
+                }
+            }
+            
+            // Update weight y-axis based on target weight (next full number of 10th + 10)
+            if (liveChart.options.scales && liveChart.options.scales.y2) {
+                // Get target weight from brew state or calculate from data
+                let targetWeight = 0;
+                if (brewState.targetWeight !== undefined && brewState.targetWeight > 0) {
+                    targetWeight = brewState.targetWeight;
+                } else if (liveChartData.weight.length > 0) {
+                    // Use max weight from data as fallback
+                    targetWeight = Math.max(...liveChartData.weight);
+                }
+                
+                if (targetWeight > 0) {
+                    // Calculate: next full number of 10th + 10
+                    // Example: 38 -> round up to 40 -> +10 = 50
+                    const nextTen = Math.ceil(targetWeight / 10) * 10;
+                    const maxWeight = nextTen + 10;
+                    liveChart.options.scales.y2.max = maxWeight;
+                    liveChart.options.scales.y2.min = 0;
                 }
             }
             
@@ -3100,8 +3118,15 @@
                             let progressLabel = '';
                             let maxValue = 0;
                             
-                            // Find active breakout criteria
-                            const activeCriteria = breakoutCriteria.filter(c => c && c.enabled && c.type > 0);
+                            // Find active breakout criteria - check enabled property properly
+                            const activeCriteria = breakoutCriteria.filter(c => {
+                                if (!c || !c.type || c.type <= 0) return false;
+                                // If enabled is explicitly false, exclude it
+                                if (c.enabled === false) return false;
+                                // Otherwise include it (enabled === true or undefined)
+                                return true;
+                            });
+                            
                             if (activeCriteria.length > 0) {
                                 // Use the first active criterion for progress
                                 const crit = activeCriteria[0];
@@ -3111,8 +3136,10 @@
                                     progressLabel = `${phaseTime.toFixed(1)}s / ${maxValue.toFixed(1)}s`;
                                 } else if (crit.type === 2) { // Weight-based
                                     maxValue = crit.threshold || 0;
-                                    progress = maxValue > 0 ? Math.min((phaseWeight / maxValue) * 100, 100) : 0;
-                                    progressLabel = `${phaseWeight.toFixed(1)}g / ${maxValue.toFixed(1)}g`;
+                                    // Use phaseWeight (weight in this phase) for progress
+                                    const currentPhaseWeight = phaseWeight;
+                                    progress = maxValue > 0 ? Math.min((currentPhaseWeight / maxValue) * 100, 100) : 0;
+                                    progressLabel = `${currentPhaseWeight.toFixed(1)}g / ${maxValue.toFixed(1)}g`;
                                 } else if (crit.type === 3) { // Flow-based
                                     maxValue = crit.threshold || 0;
                                     const currentFlow = brewState.flow || 0;
