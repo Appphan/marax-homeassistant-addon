@@ -2155,14 +2155,22 @@
                 lastPhaseIndex = -1;
             }
             
-            // Reset if brew ended
-            if (!brewState.isActive && brewStartTime !== null) {
-                brewStartTime = null;
-                brewEndTime = null;
+            // Track brew end time (but keep brewStartTime for x-axis alignment)
+            if (!brewState.isActive && brewStartTime !== null && brewEndTime === null) {
+                brewEndTime = time;
             }
             
-            // Calculate relative time
-            const relativeTime = brewStartTime !== null ? (time - brewStartTime) : 0;
+            // Calculate relative time - use brewEndTime if brew has ended
+            let relativeTime = 0;
+            if (brewStartTime !== null) {
+                if (brewEndTime !== null) {
+                    // Brew has ended - use the end time for alignment
+                    relativeTime = brewEndTime - brewStartTime;
+                } else {
+                    // Brew is active - use current time
+                    relativeTime = time - brewStartTime;
+                }
+            }
             
             // Add data points when brewing
             if (brewState.isActive) {
@@ -2203,16 +2211,33 @@
                 liveChart.data.datasets[2].data = [];
             }
             
-            // Dynamic x-axis: start of shot on left, current time on right
+            // Dynamic x-axis: start of shot on left, current/end time on right
             if (liveChart.options.scales && liveChart.options.scales.x) {
-                if (brewState.isActive && relativeTime > 0) {
-                    // Show last 60 seconds, with current time on the right
-                    const maxTime = relativeTime;
-                    const minTime = Math.max(0, maxTime - 60);
-                    liveChart.options.scales.x.min = minTime;
-                    liveChart.options.scales.x.max = maxTime;
+                if (liveChartData.labels.length > 0) {
+                    // Use actual data range to align x-axis
+                    const dataMaxTime = Math.max(...liveChartData.labels.map(t => parseFloat(t)));
+                    const dataMinTime = Math.min(...liveChartData.labels.map(t => parseFloat(t)));
+                    
+                    if (brewState.isActive && relativeTime > 0) {
+                        // Show last 60 seconds, with current time on the right
+                        const maxTime = relativeTime;
+                        const minTime = Math.max(0, maxTime - 60);
+                        liveChart.options.scales.x.min = minTime;
+                        liveChart.options.scales.x.max = maxTime;
+                    } else if (dataMaxTime > 0) {
+                        // Brew ended - align x-axis to actual data range
+                        // Show from start (0) to end of data, but cap at 60 seconds window
+                        const maxTime = Math.max(dataMaxTime, 60);
+                        const minTime = Math.max(0, maxTime - 60);
+                        liveChart.options.scales.x.min = minTime;
+                        liveChart.options.scales.x.max = maxTime;
+                    } else {
+                        // No data - show fixed 0-60 range
+                        liveChart.options.scales.x.min = 0;
+                        liveChart.options.scales.x.max = 60;
+                    }
                 } else {
-                    // When not brewing, show fixed 0-60 range
+                    // No data - show fixed 0-60 range
                     liveChart.options.scales.x.min = 0;
                     liveChart.options.scales.x.max = 60;
                 }
