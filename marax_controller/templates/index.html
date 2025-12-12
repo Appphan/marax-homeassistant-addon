@@ -5191,9 +5191,27 @@
                 let url = `shots/heatmap?days=${days}`;
                 if (profileFilter) url += `&profile_id=${profileFilter}`;
                 
+                console.log('Loading heat map from:', url);
                 const data = await fetchAPI(url);
-                if (!data || !Array.isArray(data)) {
-                    throw new Error('Invalid heatmap data');
+                console.log('Heat map data received:', data);
+                
+                if (!data) {
+                    throw new Error('No data received from server');
+                }
+                
+                if (!Array.isArray(data)) {
+                    console.error('Invalid heatmap data format:', typeof data, data);
+                    throw new Error('Invalid heatmap data format');
+                }
+                
+                if (data.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: var(--spacing-xl); color: var(--system-secondary-label);">
+                            No shot data available for the selected time period.<br>
+                            <small style="opacity: 0.7;">Try selecting a different time range or check if shots have been recorded.</small>
+                        </div>
+                    `;
+                    return;
                 }
                 
                 renderHeatMap(data, metric);
@@ -5203,7 +5221,8 @@
                 console.error('Error loading heat map:', error);
                 document.getElementById('heatmap-container').innerHTML = `
                     <div style="text-align: center; padding: var(--spacing-xl); color: var(--system-red);">
-                        Error loading heat map: ${error.message}
+                        Error loading heat map: ${error.message}<br>
+                        <small style="opacity: 0.7;">Check browser console for details</small>
                     </div>
                 `;
             }
@@ -5215,8 +5234,11 @@
             
             if (!data || data.length === 0) {
                 container.innerHTML = '<div style="text-align: center; padding: var(--spacing-xl); color: var(--system-secondary-label);">No data available</div>';
+                legend.innerHTML = '';
                 return;
             }
+            
+            console.log('Rendering heat map with', data.length, 'data points, metric:', metric);
             
             // Calculate max value for color scaling
             let maxValue = 0;
@@ -5228,69 +5250,141 @@
                 maxValue = Math.max(maxValue, value);
             });
             
-            // Group data by week
-            const weeks = [];
-            let currentWeek = [];
-            let currentDate = new Date(data[0].date);
-            const endDate = new Date(data[data.length - 1].date);
+            console.log('Max value for', metric, ':', maxValue);
             
             // Create a map for quick lookup
             const dataMap = {};
             data.forEach(d => {
-                dataMap[d.date] = d;
+                // Ensure date is in YYYY-MM-DD format
+                const dateStr = d.date.split('T')[0]; // Handle ISO datetime strings
+                dataMap[dateStr] = d;
             });
+            
+            // Get date range from data
+            const dates = data.map(d => d.date.split('T')[0]).sort();
+            const startDate = new Date(dates[0] + 'T00:00:00');
+            const endDate = new Date(dates[dates.length - 1] + 'T00:00:00');
+            
+            // Also consider the selected days range - we want to show the full range
+            const days = parseInt(document.getElementById('heatmapDays')?.value || 365);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const rangeStart = new Date(today);
+            rangeStart.setDate(rangeStart.getDate() - days);
+            
+            // Use the earlier of the two start dates
+            const actualStart = startDate < rangeStart ? startDate : rangeStart;
+            const actualEnd = endDate > today ? today : endDate;
             
             // Generate all dates in range
             const allDates = [];
-            let date = new Date(currentDate);
-            while (date <= endDate) {
-                const dateStr = date.toISOString().split('T')[0];
+            const currentDate = new Date(actualStart);
+            while (currentDate <= actualEnd) {
+                const dateStr = currentDate.toISOString().split('T')[0];
                 allDates.push({
                     date: dateStr,
                     data: dataMap[dateStr] || { count: 0, avg_quality: 0, avg_extraction_yield: 0 }
                 });
-                date.setDate(date.getDate() + 1);
+                currentDate.setDate(currentDate.getDate() + 1);
             }
             
-            // Group into weeks (starting from Sunday)
+            console.log('Generated', allDates.length, 'dates from', actualStart.toISOString().split('T')[0], 'to', actualEnd.toISOString().split('T')[0]);
+            
+            // Group into weeks (GitHub style: weeks start on Sunday, go Sunday-Saturday)
+            // First, find the first Sunday before or on the start date
+            const firstDate = new Date(actualStart);
+            const firstDayOfWeek = firstDate.getDay(); // 0 = Sunday
+            const daysToSubtract = firstDayOfWeek; // Days to go back to Sunday
+            firstDate.setDate(firstDate.getDate() - daysToSubtract);
+            
+            // Group dates into weeks
             const weeksData = [];
-            let week = [];
-            allDates.forEach((item, index) => {
-                const d = new Date(item.date);
-                const dayOfWeek = d.getDay(); // 0 = Sunday
+            let currentWeek = [];
+            let weekStart = new Date(firstDate);
+            
+            // Add empty days at the start if needed
+            if (daysToSubtract > 0) {
+                for (let i = 0; i < daysToSubtract; i++) {
+                    const emptyDate = new Date(firstDate);
+                    emptyDate.setDate(emptyDate.getDate() + i);
+                    currentWeek.push({
+                        date: emptyDate.toISOString().split('T')[0],
+                        data: { count: 0, avg_quality: 0, avg_extraction_yield: 0 }
+                    });
+                }
+            }
+            
+            // Process all dates
+            allDates.forEach((item) => {
+                const itemDate = new Date(item.date + 'T00:00:00');
+                const dayOfWeek = itemDate.getDay();
                 
-                week.push(item);
+                currentWeek.push(item);
                 
-                if (dayOfWeek === 6 || index === allDates.length - 1) { // Saturday or last day
-                    weeksData.push(week);
-                    week = [];
+                // If it's Saturday (6) or we've filled a week, start a new week
+                if (dayOfWeek === 6 || currentWeek.length === 7) {
+                    // Pad to 7 days if needed
+                    while (currentWeek.length < 7) {
+                        const lastDate = new Date(currentWeek[currentWeek.length - 1].date + 'T00:00:00');
+                        lastDate.setDate(lastDate.getDate() + 1);
+                        currentWeek.push({
+                            date: lastDate.toISOString().split('T')[0],
+                            data: { count: 0, avg_quality: 0, avg_extraction_yield: 0 }
+                        });
+                    }
+                    weeksData.push([...currentWeek]);
+                    currentWeek = [];
                 }
             });
             
-            // Create heat map HTML
-            let html = '<div style="display: flex; gap: 2px; font-size: 10px;">';
+            // Add remaining days in the last week
+            if (currentWeek.length > 0) {
+                while (currentWeek.length < 7) {
+                    const lastDate = new Date(currentWeek[currentWeek.length - 1].date + 'T00:00:00');
+                    lastDate.setDate(lastDate.getDate() + 1);
+                    currentWeek.push({
+                        date: lastDate.toISOString().split('T')[0],
+                        data: { count: 0, avg_quality: 0, avg_extraction_yield: 0 }
+                    });
+                }
+                weeksData.push(currentWeek);
+            }
             
-            // Add month labels
-            html += '<div style="display: flex; flex-direction: column; gap: 2px; margin-right: 4px;">';
+            console.log('Grouped into', weeksData.length, 'weeks');
+            
+            // Create heat map HTML
+            let html = '<div style="display: flex; gap: 2px; font-size: 10px; align-items: flex-start;">';
+            
+            // Add month labels (left column)
+            html += '<div style="display: flex; flex-direction: column; gap: 2px; margin-right: 4px; min-width: 30px;">';
             let lastMonth = -1;
             weeksData.forEach((week, weekIndex) => {
                 if (week.length > 0) {
-                    const firstDate = new Date(week[0].date);
+                    const firstDate = new Date(week[0].date + 'T00:00:00');
                     const month = firstDate.getMonth();
-                    if (month !== lastMonth && weekIndex % 4 === 0) {
-                        html += `<div style="height: 13px; line-height: 13px; color: var(--system-secondary-label);">${firstDate.toLocaleString('default', { month: 'short' })}</div>`;
+                    // Show month label at the start of each month or every 4 weeks
+                    if (month !== lastMonth && (weekIndex === 0 || weekIndex % 4 === 0)) {
+                        html += `<div style="height: 91px; line-height: 91px; color: var(--system-secondary-label); font-size: 11px; text-align: right; padding-right: 4px;">${firstDate.toLocaleString('default', { month: 'short' })}</div>`;
                         lastMonth = month;
                     } else {
-                        html += '<div style="height: 13px;"></div>';
+                        html += '<div style="height: 91px;"></div>';
                     }
                 }
             });
             html += '</div>';
             
-            // Add weeks
-            weeksData.forEach((week, weekIndex) => {
+            // Add day labels (top row) - Sunday to Saturday
+            html += '<div style="display: flex; flex-direction: column; gap: 2px; margin-right: 2px;">';
+            const dayLabels = ['', 'M', '', 'W', '', 'F', '']; // Sunday, Monday, Wednesday, Friday
+            for (let i = 0; i < 7; i++) {
+                html += `<div style="height: 13px; line-height: 13px; color: var(--system-secondary-label); font-size: 10px; text-align: center;">${dayLabels[i] || ''}</div>`;
+            }
+            html += '</div>';
+            
+            // Add weeks (columns)
+            weeksData.forEach((week) => {
                 html += '<div style="display: flex; flex-direction: column; gap: 2px;">';
-                week.forEach((item, dayIndex) => {
+                week.forEach((item) => {
                     const d = item.data;
                     let value = 0;
                     if (metric === 'count') value = d.count || 0;
@@ -5300,12 +5394,12 @@
                     const intensity = maxValue > 0 ? Math.min(value / maxValue, 1) : 0;
                     const color = getHeatMapColor(intensity);
                     
-                    const dateObj = new Date(item.date);
+                    const dateObj = new Date(item.date + 'T00:00:00');
                     const tooltip = `${dateObj.toLocaleDateString()}: ${value.toFixed(metric === 'count' ? 0 : 1)}${metric === 'count' ? ' shots' : metric === 'quality' ? ' quality' : '% extraction'}`;
                     
                     html += `<div 
                         class="heatmap-cell" 
-                        style="width: 13px; height: 13px; background: ${color}; border-radius: 2px; cursor: pointer;"
+                        style="width: 13px; height: 13px; background: ${color}; border-radius: 2px; cursor: pointer; border: 1px solid rgba(0,0,0,0.05);"
                         title="${tooltip}"
                         data-date="${item.date}"
                         data-value="${value}"
@@ -5319,18 +5413,12 @@
             container.innerHTML = html;
             
             // Update legend
-            const legendLabels = metric === 'count' 
-                ? ['No shots', '1-2 shots', '3-5 shots', '6-10 shots', '10+ shots']
-                : metric === 'quality'
-                ? ['No data', '0-40', '40-60', '60-80', '80-100']
-                : ['No data', '0-15%', '15-18%', '18-22%', '22%+'];
-            
             legend.innerHTML = `
-                <span style="margin-right: var(--spacing-md);">Less</span>
+                <span style="margin-right: var(--spacing-md); font-size: var(--font-size-footnote);">Less</span>
                 ${[0, 0.25, 0.5, 0.75, 1].map((intensity, i) => `
                     <div style="display: inline-flex; align-items: center; gap: var(--spacing-xs);">
-                        <div style="width: 13px; height: 13px; background: ${getHeatMapColor(intensity)}; border-radius: 2px;"></div>
-                        ${i === 4 ? `<span>More</span>` : ''}
+                        <div style="width: 13px; height: 13px; background: ${getHeatMapColor(intensity)}; border-radius: 2px; border: 1px solid rgba(0,0,0,0.05);"></div>
+                        ${i === 4 ? `<span style="font-size: var(--font-size-footnote);">More</span>` : ''}
                     </div>
                 `).join('')}
             `;
