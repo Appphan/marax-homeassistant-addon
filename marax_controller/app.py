@@ -13,7 +13,11 @@ from flask_cors import CORS
 from datetime import datetime
 import threading
 import time
-from shot_database import init_database, save_shot, get_shots, get_shot, get_shot_stats, delete_shot
+from shot_database import (
+    init_database, save_shot, get_shots, get_shot, get_shot_stats, delete_shot,
+    get_best_shots, get_trend_data
+)
+from shot_analytics import calculate_shot_analytics, compare_shots
 from profile_database import (
     init_database as init_profile_database,
     save_profile, get_profile, get_all_profiles, delete_profile,
@@ -1381,6 +1385,76 @@ def api_delete_shot(shot_id):
         return jsonify({'error': 'Shot not found'}), 404
     except Exception as e:
         logger.error(f"Error deleting shot {shot_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shots/<int:shot_id>/analytics', methods=['GET'])
+def api_shot_analytics(shot_id):
+    """Get advanced analytics for a specific shot"""
+    try:
+        shot = get_shot(shot_id)
+        if not shot:
+            return jsonify({'error': 'Shot not found'}), 404
+        
+        # Calculate analytics if not already stored
+        if not shot.get('analytics'):
+            analytics = calculate_shot_analytics(shot)
+        else:
+            analytics = shot.get('analytics')
+        
+        return jsonify(analytics)
+    except Exception as e:
+        logger.error(f"Error getting analytics for shot {shot_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shots/best', methods=['GET'])
+def api_best_shots():
+    """Get best shots by quality score"""
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        profile_id = request.args.get('profile_id', type=int)
+        
+        shots = get_best_shots(limit=limit, profile_id=profile_id)
+        return jsonify(shots)
+    except Exception as e:
+        logger.error(f"Error getting best shots: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shots/trends', methods=['GET'])
+def api_shot_trends():
+    """Get trend data for shots"""
+    try:
+        days = request.args.get('days', 30, type=int)
+        profile_id = request.args.get('profile_id', type=int)
+        
+        trends = get_trend_data(days=days, profile_id=profile_id)
+        return jsonify(trends)
+    except Exception as e:
+        logger.error(f"Error getting trends: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shots/compare', methods=['POST'])
+def api_compare_shots_post():
+    """Compare multiple shots (POST method)"""
+    try:
+        data = request.json
+        shot_ids = data.get('shot_ids', [])
+        
+        if len(shot_ids) < 2:
+            return jsonify({'error': 'Need at least 2 shot IDs'}), 400
+        
+        shots = []
+        for shot_id in shot_ids:
+            shot = get_shot(shot_id)
+            if shot:
+                shots.append(shot)
+        
+        if len(shots) < 2:
+            return jsonify({'error': 'Could not find enough shots to compare'}), 404
+        
+        comparison = compare_shots(shots)
+        return jsonify(comparison)
+    except Exception as e:
+        logger.error(f"Error comparing shots: {e}")
         return jsonify({'error': str(e)}), 500
 
 # Static files

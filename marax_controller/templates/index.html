@@ -1566,9 +1566,69 @@
         
         <!-- Analytics Tab -->
         <div id="analytics" class="tab-content">
-            <div class="status-card">
-                <h2>Shot Analytics</h2>
-                <div id="analytics-content" class="loading">Loading...</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                <h2 style="margin: 0;"><i class="fas fa-chart-line"></i> Shot Analytics</h2>
+                <div style="display: flex; gap: var(--spacing-sm);">
+                    <button class="button" onclick="loadShots()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); flex-wrap: wrap; align-items: center;">
+                <select id="shotProfileFilter" class="select" onchange="loadShots()" style="min-width: 200px;">
+                    <option value="">All Profiles</option>
+                </select>
+                <input type="date" id="shotDateFrom" class="input" onchange="loadShots()" style="min-width: 150px;">
+                <input type="date" id="shotDateTo" class="input" onchange="loadShots()" style="min-width: 150px;">
+                <select id="shotSortBy" class="select" onchange="loadShots()" style="min-width: 150px;">
+                    <option value="timestamp">Date (Newest)</option>
+                    <option value="quality_score">Quality Score</option>
+                    <option value="extraction_yield_percent">Extraction Yield</option>
+                    <option value="total_time">Time</option>
+                </select>
+                <button class="button" onclick="clearShotFilters()" style="background: var(--system-secondary-fill);">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+            </div>
+            
+            <!-- Statistics Summary -->
+            <div id="analytics-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+                <!-- Stats will be loaded here -->
+            </div>
+            
+            <!-- Shot List -->
+            <div id="shots-list" style="display: grid; gap: var(--spacing-md);">
+                <div style="text-align: center; padding: var(--spacing-xl); color: var(--system-secondary-label);">
+                    Loading shots...
+                </div>
+            </div>
+            
+            <!-- Shot Detail Modal -->
+            <div id="shotDetailModal" class="modal" style="display: none;">
+                <div class="modal-content" style="max-width: 90vw; max-height: 90vh; overflow-y: auto;">
+                    <div class="modal-header">
+                        <h2 id="shotDetailTitle">Shot Details</h2>
+                        <button class="close-button" onclick="closeShotDetail()">×</button>
+                    </div>
+                    <div id="shot-detail-content">
+                        <!-- Shot details will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Comparison Modal -->
+            <div id="shotCompareModal" class="modal" style="display: none;">
+                <div class="modal-content" style="max-width: 95vw; max-height: 95vh; overflow-y: auto;">
+                    <div class="modal-header">
+                        <h2>Compare Shots</h2>
+                        <button class="close-button" onclick="closeShotCompare()">×</button>
+                    </div>
+                    <div id="shot-compare-content">
+                        <!-- Comparison will be loaded here -->
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -1820,6 +1880,7 @@
                         t.classList.add('active');
                     } else if (tabName === 'analytics' && tabText.includes('Analytics')) {
                         t.classList.add('active');
+                        loadShots(); // Load shots when analytics tab is shown
                     } else if (tabName === 'diagnostics' && tabText.includes('Diagnostics')) {
                         t.classList.add('active');
                     }
@@ -4837,51 +4898,507 @@
             }
         }
         
-        async function updateAnalytics() {
+        // Shot Analytics Functions
+        let allShots = [];
+        let selectedShotsForCompare = new Set();
+        let shotCharts = {};
+        
+        async function loadShots() {
             try {
-                const shotData = await fetchAPI('shot/data');
-                if (shotData) {
-                    // Update summary (check if elements exist)
-                    const totalShotsEl = document.getElementById('analytics-total-shots');
-                    const lastTimeEl = document.getElementById('analytics-last-time');
-                    const lastWeightEl = document.getElementById('analytics-last-weight');
-                    const lastRatioEl = document.getElementById('analytics-last-ratio');
-                    
-                    if (totalShotsEl) totalShotsEl.textContent = shotData.number || '-';
-                    
-                    if (shotData.data) {
-                        const data = shotData.data;
-                        if (lastTimeEl) lastTimeEl.textContent = data.total_time ? data.total_time.toFixed(1) + 's' : '-';
-                        if (lastWeightEl) lastWeightEl.textContent = data.total_weight ? data.total_weight.toFixed(1) + 'g' : '-';
-                        if (lastRatioEl) lastRatioEl.textContent = data.ratio ? data.ratio.toFixed(2) : '-';
-                    }
-                    
-                    // Update events list
-                    const eventsList = document.getElementById('events-list');
-                    if (eventsList && shotData.events && shotData.events.length > 0) {
-                        eventsList.innerHTML = shotData.events.slice(-10).reverse().map(event => {
-                            const eventType = event.event || 'unknown';
-                            const time = event.time ? event.time.toFixed(1) + 's' : '';
-                            return `
-                                <div style="padding: 10px; margin-bottom: 5px; background: rgba(255,255,255,0.1); border-radius: 5px;">
-                                    <strong>${eventType}</strong> ${time ? `at ${time}` : ''}
-                                    ${event.pressure ? ` | Pressure: ${event.pressure.toFixed(1)} bar` : ''}
-                                    ${event.weight ? ` | Weight: ${event.weight.toFixed(1)}g` : ''}
-                                </div>
-                            `;
-                        }).join('');
-                    } else if (eventsList) {
-                        eventsList.innerHTML = '<p style="opacity: 0.7;">No events yet</p>';
-                    }
+                const container = document.getElementById('shots-list');
+                container.innerHTML = '<div style="text-align: center; padding: var(--spacing-xl); color: var(--system-secondary-label);">Loading shots...</div>';
+                
+                const profileFilter = document.getElementById('shotProfileFilter')?.value || '';
+                const dateFrom = document.getElementById('shotDateFrom')?.value || '';
+                const dateTo = document.getElementById('shotDateTo')?.value || '';
+                const sortBy = document.getElementById('shotSortBy')?.value || 'timestamp';
+                
+                let url = 'shots?limit=100';
+                if (profileFilter) url += `&profile_id=${profileFilter}`;
+                if (dateFrom) {
+                    const fromTs = Math.floor(new Date(dateFrom).getTime() / 1000);
+                    url += `&date_from=${fromTs}`;
                 }
+                if (dateTo) {
+                    const toTs = Math.floor(new Date(dateTo).getTime() / 1000);
+                    url += `&date_to=${toTs}`;
+                }
+                
+                const shots = await fetchAPI(url);
+                if (!shots || !Array.isArray(shots)) {
+                    throw new Error('Invalid response from server');
+                }
+                
+                allShots = shots;
+                
+                // Sort shots
+                allShots.sort((a, b) => {
+                    if (sortBy === 'timestamp') return (b.timestamp || 0) - (a.timestamp || 0);
+                    if (sortBy === 'quality_score') return (b.quality_score || 0) - (a.quality_score || 0);
+                    if (sortBy === 'extraction_yield_percent') return (b.extraction_yield_percent || 0) - (a.extraction_yield_percent || 0);
+                    if (sortBy === 'total_time') return (b.total_time || 0) - (a.total_time || 0);
+                    return 0;
+                });
+                
+                displayShots(allShots);
+                loadShotStats();
+                loadProfileFilterOptions();
             } catch (error) {
-                console.error('Error updating analytics:', error);
+                console.error('Error loading shots:', error);
+                document.getElementById('shots-list').innerHTML = `
+                    <div style="text-align: center; padding: var(--spacing-xl); color: var(--system-red);">
+                        Error loading shots: ${error.message}
+                    </div>
+                `;
             }
         }
         
-        async function refreshAnalytics() {
-            await updateAnalytics();
-            showMessage('Analytics refreshed', 'info');
+        function displayShots(shots) {
+            const container = document.getElementById('shots-list');
+            
+            if (shots.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: var(--spacing-xl); color: var(--system-secondary-label);">
+                        No shots found
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = shots.map(shot => {
+                const date = new Date(shot.timestamp * 1000);
+                const qualityScore = shot.quality_score || 0;
+                const qualityClass = getQualityClass(qualityScore);
+                const eyPercent = shot.extraction_yield_percent || 0;
+                
+                return `
+                    <div class="status-card" style="cursor: pointer;" onclick="viewShotDetail(${shot.id})">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-md);">
+                            <div>
+                                <h3 style="margin: 0 0 var(--spacing-xs) 0;">Shot #${shot.shot_number}</h3>
+                                <p style="margin: 0; color: var(--system-secondary-label); font-size: var(--font-size-footnote);">
+                                    ${date.toLocaleString()}
+                                </p>
+                                ${shot.profile_name ? `<p style="margin: var(--spacing-xs) 0 0 0; color: var(--system-tertiary-label); font-size: var(--font-size-caption-1);">
+                                    <i class="fas fa-coffee"></i> ${shot.profile_name}
+                                </p>` : ''}
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: var(--font-size-title-2); font-weight: bold; color: ${getQualityColor(qualityScore)};">
+                                    ${qualityScore.toFixed(1)}
+                                </div>
+                                <div style="font-size: var(--font-size-caption-1); color: var(--system-secondary-label);">
+                                    ${qualityClass}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: var(--spacing-sm); margin-top: var(--spacing-md);">
+                            <div>
+                                <div style="font-size: var(--font-size-caption-1); color: var(--system-secondary-label);">Time</div>
+                                <div style="font-size: var(--font-size-headline); font-weight: 600;">${(shot.total_time || 0).toFixed(1)}s</div>
+                            </div>
+                            <div>
+                                <div style="font-size: var(--font-size-caption-1); color: var(--system-secondary-label);">Weight</div>
+                                <div style="font-size: var(--font-size-headline); font-weight: 600;">${(shot.total_weight || 0).toFixed(1)}g</div>
+                            </div>
+                            <div>
+                                <div style="font-size: var(--font-size-caption-1); color: var(--system-secondary-label);">Extraction</div>
+                                <div style="font-size: var(--font-size-headline); font-weight: 600;">${eyPercent.toFixed(1)}%</div>
+                            </div>
+                            <div>
+                                <div style="font-size: var(--font-size-caption-1); color: var(--system-secondary-label);">Pressure</div>
+                                <div style="font-size: var(--font-size-headline); font-weight: 600;">${(shot.peak_pressure || 0).toFixed(1)} bar</div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-md);">
+                            <button class="button" style="flex: 1; font-size: var(--font-size-footnote); padding: var(--spacing-xs) var(--spacing-sm);" 
+                                    onclick="event.stopPropagation(); toggleShotCompare(${shot.id})">
+                                <i class="fas fa-balance-scale"></i> Compare
+                            </button>
+                            <button class="button" style="flex: 1; font-size: var(--font-size-footnote); padding: var(--spacing-xs) var(--spacing-sm);" 
+                                    onclick="event.stopPropagation(); viewShotDetail(${shot.id})">
+                                <i class="fas fa-chart-line"></i> Details
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function getQualityClass(score) {
+            if (score >= 90) return 'Excellent';
+            if (score >= 75) return 'Very Good';
+            if (score >= 60) return 'Good';
+            if (score >= 45) return 'Fair';
+            return 'Needs Improvement';
+        }
+        
+        function getQualityColor(score) {
+            if (score >= 90) return 'var(--system-green)';
+            if (score >= 75) return 'var(--system-blue)';
+            if (score >= 60) return 'var(--system-orange)';
+            return 'var(--system-red)';
+        }
+        
+        async function loadShotStats() {
+            try {
+                const profileFilter = document.getElementById('shotProfileFilter')?.value || '';
+                let url = 'shots/stats';
+                if (profileFilter) url += `?profile_id=${profileFilter}`;
+                
+                const stats = await fetchAPI(url);
+                if (!stats) return;
+                
+                const container = document.getElementById('analytics-stats');
+                container.innerHTML = `
+                    <div class="analytics-card">
+                        <div class="analytics-label">Total Shots</div>
+                        <div class="analytics-value">${stats.count || 0}</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Avg Quality</div>
+                        <div class="analytics-value" style="color: ${getQualityColor(stats.avg_quality_score || 0)};">
+                            ${(stats.avg_quality_score || 0).toFixed(1)}
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Avg Extraction</div>
+                        <div class="analytics-value">${(stats.avg_extraction_yield || 0).toFixed(1)}%</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Avg Time</div>
+                        <div class="analytics-value">${(stats.avg_time || 0).toFixed(1)}s</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Target Hit Rate</div>
+                        <div class="analytics-value">${(stats.target_achieved_percent || 0).toFixed(1)}%</div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+        
+        async function loadProfileFilterOptions() {
+            try {
+                const profiles = await fetchAPI('profiles');
+                const select = document.getElementById('shotProfileFilter');
+                if (!select || !profiles || !profiles.profiles) return;
+                
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">All Profiles</option>';
+                profiles.profiles.forEach(profile => {
+                    const option = document.createElement('option');
+                    option.value = profile.id || profile.profile_id;
+                    option.textContent = profile.name || profile.profileName || `Profile ${profile.id}`;
+                    select.appendChild(option);
+                });
+                if (currentValue) select.value = currentValue;
+            } catch (error) {
+                console.error('Error loading profile options:', error);
+            }
+        }
+        
+        function clearShotFilters() {
+            document.getElementById('shotProfileFilter').value = '';
+            document.getElementById('shotDateFrom').value = '';
+            document.getElementById('shotDateTo').value = '';
+            document.getElementById('shotSortBy').value = 'timestamp';
+            loadShots();
+        }
+        
+        async function viewShotDetail(shotId) {
+            try {
+                const shot = await fetchAPI(`shots/${shotId}`);
+                if (!shot) {
+                    showMessage('Shot not found', 'error');
+                    return;
+                }
+                
+                const analytics = await fetchAPI(`shots/${shotId}/analytics`);
+                
+                const modal = document.getElementById('shotDetailModal');
+                const content = document.getElementById('shot-detail-content');
+                const title = document.getElementById('shotDetailTitle');
+                
+                title.textContent = `Shot #${shot.shot_number} - ${new Date(shot.timestamp * 1000).toLocaleString()}`;
+                
+                const qualityScore = shot.quality_score || 0;
+                const qualityClass = getQualityClass(qualityScore);
+                const analyticsData = analytics || shot.analytics || {};
+                
+                content.innerHTML = `
+                    <div style="display: grid; gap: var(--spacing-lg);">
+                        <!-- Quality Score -->
+                        <div class="status-card" style="text-align: center; padding: var(--spacing-xl);">
+                            <div style="font-size: 48px; font-weight: bold; color: ${getQualityColor(qualityScore)}; margin-bottom: var(--spacing-sm);">
+                                ${qualityScore.toFixed(1)}
+                            </div>
+                            <div style="font-size: var(--font-size-title-2); color: var(--system-label); margin-bottom: var(--spacing-xs);">
+                                ${qualityClass}
+                            </div>
+                            <div style="font-size: var(--font-size-footnote); color: var(--system-secondary-label);">
+                                Overall Quality Score
+                            </div>
+                        </div>
+                        
+                        <!-- Key Metrics -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--spacing-md);">
+                            <div class="analytics-card">
+                                <div class="analytics-label">Time</div>
+                                <div class="analytics-value">${(shot.total_time || 0).toFixed(1)}s</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div class="analytics-label">Weight</div>
+                                <div class="analytics-value">${(shot.total_weight || 0).toFixed(1)}g</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div class="analytics-label">Extraction Yield</div>
+                                <div class="analytics-value">${(shot.extraction_yield_percent || analyticsData.extraction?.extraction_yield_percent || 0).toFixed(1)}%</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div class="analytics-label">Estimated TDS</div>
+                                <div class="analytics-value">${((shot.estimated_tds || analyticsData.extraction?.estimated_tds || 0) * 100).toFixed(1)}%</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div class="analytics-label">Peak Pressure</div>
+                                <div class="analytics-value">${(shot.peak_pressure || 0).toFixed(1)} bar</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div class="analytics-label">Avg Flow</div>
+                                <div class="analytics-value">${(shot.average_flow || 0).toFixed(2)} ml/s</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Charts -->
+                        <div id="shot-detail-charts" style="display: grid; gap: var(--spacing-lg);">
+                            <!-- Charts will be rendered here -->
+                        </div>
+                        
+                        <!-- Recommendations -->
+                        ${analyticsData.recommendations && analyticsData.recommendations.length > 0 ? `
+                            <div class="status-card">
+                                <h3><i class="fas fa-lightbulb"></i> Recommendations</h3>
+                                <div style="display: grid; gap: var(--spacing-sm); margin-top: var(--spacing-md);">
+                                    ${analyticsData.recommendations.map(rec => `
+                                        <div style="padding: var(--spacing-md); background: var(--system-secondary-fill); border-radius: var(--radius-md);">
+                                            <div style="display: flex; align-items: start; gap: var(--spacing-sm);">
+                                                <i class="fas fa-${rec.priority === 'high' ? 'exclamation-circle' : rec.priority === 'medium' ? 'info-circle' : 'check-circle'}" 
+                                                   style="color: ${rec.priority === 'high' ? 'var(--system-red)' : rec.priority === 'medium' ? 'var(--system-orange)' : 'var(--system-blue)'}; margin-top: 2px;"></i>
+                                                <div style="flex: 1;">
+                                                    <div style="font-weight: 600; margin-bottom: var(--spacing-xs);">${rec.message}</div>
+                                                    <div style="font-size: var(--font-size-footnote); color: var(--system-secondary-label);">
+                                                        Target: ${rec.target_range}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                // Render charts
+                if (shot.time_series_data && shot.time_series_data.length > 0) {
+                    renderShotCharts(shot, 'shot-detail-charts');
+                }
+                
+                modal.style.display = 'block';
+            } catch (error) {
+                console.error('Error loading shot detail:', error);
+                showMessage('Error loading shot details', 'error');
+            }
+        }
+        
+        function renderShotCharts(shot, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container || !shot.time_series_data || shot.time_series_data.length === 0) return;
+            
+            const data = shot.time_series_data;
+            const times = data.map(d => d.time || 0);
+            const pressures = data.map(d => d.pressure || 0);
+            const flows = data.map(d => d.flow || 0);
+            const weights = data.map(d => d.weight || 0);
+            
+            container.innerHTML = `
+                <div style="position: relative; height: 300px;">
+                    <canvas id="shot-pressure-chart"></canvas>
+                </div>
+                <div style="position: relative; height: 300px;">
+                    <canvas id="shot-flow-chart"></canvas>
+                </div>
+                <div style="position: relative; height: 300px;">
+                    <canvas id="shot-weight-chart"></canvas>
+                </div>
+            `;
+            
+            // Pressure Chart
+            new Chart(document.getElementById('shot-pressure-chart'), {
+                type: 'line',
+                data: {
+                    labels: times,
+                    datasets: [{
+                        label: 'Pressure (bar)',
+                        data: pressures,
+                        borderColor: 'var(--chart-pressure)',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true },
+                        title: { display: true, text: 'Pressure Profile' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Pressure (bar)' } },
+                        x: { title: { display: true, text: 'Time (s)' } }
+                    }
+                }
+            });
+            
+            // Flow Chart
+            new Chart(document.getElementById('shot-flow-chart'), {
+                type: 'line',
+                data: {
+                    labels: times,
+                    datasets: [{
+                        label: 'Flow (ml/s)',
+                        data: flows,
+                        borderColor: 'var(--chart-flow)',
+                        backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true },
+                        title: { display: true, text: 'Flow Rate Profile' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Flow (ml/s)' } },
+                        x: { title: { display: true, text: 'Time (s)' } }
+                    }
+                }
+            });
+            
+            // Weight Chart
+            new Chart(document.getElementById('shot-weight-chart'), {
+                type: 'line',
+                data: {
+                    labels: times,
+                    datasets: [{
+                        label: 'Weight (g)',
+                        data: weights,
+                        borderColor: 'var(--chart-weight)',
+                        backgroundColor: 'rgba(149, 225, 211, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true },
+                        title: { display: true, text: 'Weight Profile' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Weight (g)' } },
+                        x: { title: { display: true, text: 'Time (s)' } }
+                    }
+                }
+            });
+        }
+        
+        function closeShotDetail() {
+            document.getElementById('shotDetailModal').style.display = 'none';
+            // Destroy charts
+            Object.values(shotCharts).forEach(chart => chart.destroy());
+            shotCharts = {};
+        }
+        
+        function toggleShotCompare(shotId) {
+            if (selectedShotsForCompare.has(shotId)) {
+                selectedShotsForCompare.delete(shotId);
+            } else {
+                selectedShotsForCompare.add(shotId);
+            }
+            
+            if (selectedShotsForCompare.size >= 2) {
+                compareSelectedShots();
+            } else {
+                showMessage('Select at least 2 shots to compare', 'info');
+            }
+        }
+        
+        async function compareSelectedShots() {
+            if (selectedShotsForCompare.size < 2) {
+                showMessage('Select at least 2 shots to compare', 'info');
+                return;
+            }
+            
+            try {
+                const shotIds = Array.from(selectedShotsForCompare);
+                const response = await postAPI('shots/compare', { shot_ids: shotIds });
+                
+                const modal = document.getElementById('shotCompareModal');
+                const content = document.getElementById('shot-compare-content');
+                
+                content.innerHTML = `
+                    <div style="display: grid; gap: var(--spacing-lg);">
+                        <div style="display: grid; grid-template-columns: repeat(${response.shots.length}, 1fr); gap: var(--spacing-md);">
+                            ${response.shots.map(shotData => {
+                                const shot = shotData.analytics?.comparison?.key_metrics || {};
+                                return `
+                                    <div class="status-card">
+                                        <h3>Shot #${shotData.shot_number}</h3>
+                                        <div style="display: grid; gap: var(--spacing-sm); margin-top: var(--spacing-md);">
+                                            <div><strong>Extraction:</strong> ${(shot.extraction_yield_percent || 0).toFixed(1)}%</div>
+                                            <div><strong>Time:</strong> ${(shot.total_time || 0).toFixed(1)}s</div>
+                                            <div><strong>Weight:</strong> ${(shot.total_weight || 0).toFixed(1)}g</div>
+                                            <div><strong>Pressure:</strong> ${(shot.peak_pressure || 0).toFixed(1)} bar</div>
+                                            <div><strong>Quality:</strong> ${(shot.quality_score || 0).toFixed(1)}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        
+                        ${response.differences ? `
+                            <div class="status-card">
+                                <h3>Key Differences</h3>
+                                <div style="display: grid; gap: var(--spacing-sm); margin-top: var(--spacing-md);">
+                                    ${Object.entries(response.differences).map(([metric, diff]) => `
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span>${metric.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</span>
+                                            <strong>${typeof diff === 'number' ? diff.toFixed(2) : diff}</strong>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                modal.style.display = 'block';
+                selectedShotsForCompare.clear();
+            } catch (error) {
+                console.error('Error comparing shots:', error);
+                showMessage('Error comparing shots', 'error');
+            }
+        }
+        
+        function closeShotCompare() {
+            document.getElementById('shotCompareModal').style.display = 'none';
+            selectedShotsForCompare.clear();
         }
         
         // Analytics update function is defined above
