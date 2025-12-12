@@ -2230,7 +2230,18 @@
             }
             lastPhaseIndex = currentPhaseIndex;
             
-            // Update chart
+            // Update chart with size constraints to prevent expansion
+            if (liveChart && liveChart.canvas) {
+                const container = liveChart.canvas.closest('.chart-container');
+                if (container) {
+                    const containerHeight = container.offsetHeight;
+                    if (containerHeight > 0 && containerHeight < 1000) {
+                        // Constrain canvas to container height
+                        liveChart.canvas.style.maxHeight = containerHeight + 'px';
+                        liveChart.canvas.style.height = containerHeight + 'px';
+                    }
+                }
+            }
             liveChart.update('none');
         }
         
