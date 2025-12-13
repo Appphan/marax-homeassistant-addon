@@ -2275,18 +2275,24 @@
                 return;
             }
             
-            // Track brew start time
-            if (brewState.isActive && brewStartTime === null) {
-                brewStartTime = time;
+            // Track brew start time - detect new brew (either first brew or brew after previous ended)
+            if (brewState.isActive) {
+                // New brew starting: either brewStartTime is null OR previous brew ended (brewEndTime is not null)
+                if (brewStartTime === null || brewEndTime !== null) {
+                    // Reset everything for new brew
+                    brewStartTime = time;
                     brewEndTime = null;
                     liveChartData = { labels: [], pressure: [], flow: [], weight: [] };
-                phaseTransitionTimes = [];
-                lastPhaseIndex = -1;
+                    phaseTransitionTimes = [];
+                    lastPhaseIndex = -1;
+                    console.log('New brew started - resetting chart data and timer');
+                }
             }
             
             // Track brew end time (but keep brewStartTime for x-axis alignment)
             if (!brewState.isActive && brewStartTime !== null && brewEndTime === null) {
                 brewEndTime = time;
+                console.log('Brew ended at', brewEndTime - brewStartTime, 'seconds');
             }
             
             // Calculate relative time - use brewEndTime if brew has ended
