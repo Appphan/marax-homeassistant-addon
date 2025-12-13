@@ -2989,8 +2989,8 @@
                     
                     // Calculate brew time - always start from 0 when brew begins
                     let brewTime = 0;
-                    if (brewStartTime !== null) {
-                        // Calculate from frontend start time to ensure it starts from 0
+                    if (brewStartTime !== null && brewEndTime === null) {
+                        // Brew is active - calculate from frontend start time to ensure it starts from 0
                         brewTime = currentTime - brewStartTime;
                         // Sync with ESP32's time if it's very close (within 0.5 seconds) for accuracy
                         if (brewState.brewTime !== undefined && brewState.brewTime !== null && brewState.brewTime >= 0 && brewState.brewTime < 300) {
@@ -2998,10 +2998,10 @@
                                 brewTime = brewState.brewTime;
                             }
                         }
-                            } else {
+                    } else if (brewStartTime === null) {
                         // Brew just started - set start time to now so timer starts at 0
-                                brewStartTime = currentTime;
-                                brewTime = 0;
+                        brewStartTime = currentTime;
+                        brewTime = 0;
                     }
                     
                     // Get active profile name
