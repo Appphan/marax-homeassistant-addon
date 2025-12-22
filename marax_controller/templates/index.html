@@ -1336,6 +1336,103 @@
                 </div>
             </div>
             
+            <!-- Pressure Calibration Section -->
+            <div class="status-card" style="margin-top: var(--spacing-lg);">
+                <h2><i class="fas fa-ruler"></i> Pressure Sensor Calibration</h2>
+                <div class="info-box-accent" style="margin-bottom: var(--spacing-md);">
+                    <i class="fas fa-info-circle"></i> Calibrate your pressure sensor for accurate readings. Use a calibrated reference gauge for best results.
+                </div>
+                
+                <!-- Current Calibration Status -->
+                <div class="subsection" style="margin-bottom: var(--spacing-lg);">
+                    <h3 class="subsection-title"><i class="fas fa-info-circle"></i> Current Calibration</h3>
+                    <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                        <div class="stat-item">
+                            <div class="stat-label">Zero Point</div>
+                            <div class="stat-value" id="cal-zero-point">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Full Scale</div>
+                            <div class="stat-value" id="cal-fullscale">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Slope</div>
+                            <div class="stat-value" id="cal-slope">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Status</div>
+                            <div class="stat-value" id="cal-status">-</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Calibration Controls -->
+                <div class="subsection">
+                    <h3 class="subsection-title"><i class="fas fa-tools"></i> Calibration Steps</h3>
+                    
+                    <!-- Step 1: Zero Point -->
+                    <div style="padding: var(--spacing-md); background: var(--system-grouped-background); border-radius: var(--radius-lg); margin-bottom: var(--spacing-md); border: 0.5px solid var(--system-separator);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
+                            <div>
+                                <h4 style="margin: 0; font-size: var(--font-size-headline); font-weight: 600;">
+                                    <i class="fas fa-circle-notch"></i> Step 1: Zero Point Calibration
+                                </h4>
+                                <p style="margin: var(--spacing-xs) 0 0 0; color: var(--system-secondary-label); font-size: var(--font-size-subheadline);">
+                                    Ensure pressure is at 0 bar (no pressure applied)
+                                </p>
+                            </div>
+                            <button id="btn-cal-zero" class="button primary" onclick="startZeroCalibration()" style="min-width: 150px;">
+                                <i class="fas fa-play"></i> Start
+                            </button>
+                        </div>
+                        <div id="cal-zero-progress" style="display: none; margin-top: var(--spacing-sm);">
+                            <div style="background: rgba(0, 0, 0, 0.1); border-radius: var(--radius-md); height: 24px; overflow: hidden; position: relative;">
+                                <div id="cal-zero-progress-bar" style="background: linear-gradient(90deg, var(--system-blue), var(--system-teal)); height: 100%; width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-size: var(--font-size-caption-1); font-weight: 600;"></div>
+                            </div>
+                            <div id="cal-zero-status" style="margin-top: var(--spacing-xs); font-size: var(--font-size-subheadline); color: var(--system-secondary-label);"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: Full Scale -->
+                    <div style="padding: var(--spacing-md); background: var(--system-grouped-background); border-radius: var(--radius-lg); margin-bottom: var(--spacing-md); border: 0.5px solid var(--system-separator);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
+                            <div>
+                                <h4 style="margin: 0; font-size: var(--font-size-headline); font-weight: 600;">
+                                    <i class="fas fa-arrow-up"></i> Step 2: Full Scale Calibration
+                                </h4>
+                                <p style="margin: var(--spacing-xs) 0 0 0; color: var(--system-secondary-label); font-size: var(--font-size-subheadline);">
+                                    Apply a known pressure (e.g., 9.0 bar) using a calibrated reference gauge
+                                </p>
+                            </div>
+                            <div style="display: flex; gap: var(--spacing-sm); align-items: center;">
+                                <input type="number" id="cal-pressure-input" placeholder="9.0" min="0.1" max="11" step="0.1" 
+                                       style="width: 80px; padding: var(--spacing-xs) var(--spacing-sm); border: 1px solid var(--system-separator); border-radius: var(--radius-md); background: var(--system-secondary-background); color: var(--system-label); font-size: var(--font-size-body);">
+                                <span style="color: var(--system-secondary-label); font-size: var(--font-size-subheadline);">bar</span>
+                                <button id="btn-cal-fullscale" class="button primary" onclick="startFullScaleCalibration()" style="min-width: 150px;">
+                                    <i class="fas fa-play"></i> Start
+                                </button>
+                            </div>
+                        </div>
+                        <div id="cal-fullscale-progress" style="display: none; margin-top: var(--spacing-sm);">
+                            <div style="background: rgba(0, 0, 0, 0.1); border-radius: var(--radius-md); height: 24px; overflow: hidden; position: relative;">
+                                <div id="cal-fullscale-progress-bar" style="background: linear-gradient(90deg, var(--system-green), var(--system-teal)); height: 100%; width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-size: var(--font-size-caption-1); font-weight: 600;"></div>
+                            </div>
+                            <div id="cal-fullscale-status" style="margin-top: var(--spacing-xs); font-size: var(--font-size-subheadline); color: var(--system-secondary-label);"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap; margin-top: var(--spacing-md);">
+                        <button class="button" onclick="cancelCalibration()" id="btn-cal-cancel" style="display: none;">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button class="button" onclick="resetCalibration()" style="background: var(--system-orange);">
+                            <i class="fas fa-undo"></i> Reset to Defaults
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
             <!-- PID Control Section -->
             <div class="status-card">
                 <h2><i class="fas fa-sliders-h"></i> PID Control & Learning System</h2>
@@ -4951,6 +5048,213 @@
             }
         }
         
+        // Calibration functions
+        let calibrationInProgress = false;
+        let calibrationProgressInterval = null;
+        
+        async function startZeroCalibration() {
+            if (calibrationInProgress) {
+                showMessage('Calibration already in progress', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await postAPI('/api/calibrate/zero', {});
+                if (response.ok) {
+                    calibrationInProgress = true;
+                    document.getElementById('btn-cal-zero').disabled = true;
+                    document.getElementById('btn-cal-fullscale').disabled = true;
+                    document.getElementById('btn-cal-cancel').style.display = 'inline-block';
+                    document.getElementById('cal-zero-progress').style.display = 'block';
+                    document.getElementById('cal-zero-status').textContent = 'Starting in 2 seconds...';
+                    showMessage('Zero point calibration started', 'info');
+                    startCalibrationProgress('zero');
+                } else {
+                    showMessage('Failed to start calibration', 'error');
+                }
+            } catch (error) {
+                console.error('Error starting zero calibration:', error);
+                showMessage('Error starting calibration: ' + error.message, 'error');
+            }
+        }
+        
+        async function startFullScaleCalibration() {
+            if (calibrationInProgress) {
+                showMessage('Calibration already in progress', 'warning');
+                return;
+            }
+            
+            const pressure = parseFloat(document.getElementById('cal-pressure-input').value);
+            if (!pressure || pressure <= 0 || pressure > 11) {
+                showMessage('Please enter a valid pressure between 0.1 and 11 bar', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await postAPI('/api/calibrate/fullscale', { pressure: pressure });
+                if (response.ok) {
+                    calibrationInProgress = true;
+                    document.getElementById('btn-cal-zero').disabled = true;
+                    document.getElementById('btn-cal-fullscale').disabled = true;
+                    document.getElementById('btn-cal-cancel').style.display = 'inline-block';
+                    document.getElementById('cal-fullscale-progress').style.display = 'block';
+                    document.getElementById('cal-fullscale-status').textContent = `Calibrating at ${pressure} bar...`;
+                    showMessage(`Full scale calibration started at ${pressure} bar`, 'info');
+                    startCalibrationProgress('fullscale');
+                } else {
+                    showMessage('Failed to start calibration', 'error');
+                }
+            } catch (error) {
+                console.error('Error starting full scale calibration:', error);
+                showMessage('Error starting calibration: ' + error.message, 'error');
+            }
+        }
+        
+        async function cancelCalibration() {
+            try {
+                const response = await postAPI('/api/calibrate/cancel', {});
+                if (response.ok) {
+                    stopCalibrationProgress();
+                    showMessage('Calibration cancelled', 'info');
+                }
+            } catch (error) {
+                console.error('Error cancelling calibration:', error);
+            }
+        }
+        
+        async function resetCalibration() {
+            if (!confirm('Reset calibration to defaults? This will clear your current calibration.')) {
+                return;
+            }
+            
+            try {
+                const response = await postAPI('/api/calibrate/reset', {});
+                if (response.ok) {
+                    showMessage('Calibration reset to defaults', 'info');
+                    updateCalibrationStatus();
+                } else {
+                    showMessage('Failed to reset calibration', 'error');
+                }
+            } catch (error) {
+                console.error('Error resetting calibration:', error);
+                showMessage('Error resetting calibration: ' + error.message, 'error');
+            }
+        }
+        
+        function startCalibrationProgress(type) {
+            let progress = 0;
+            const progressBar = document.getElementById(`cal-${type}-progress-bar`);
+            const statusEl = document.getElementById(`cal-${type}-status`);
+            
+            // Simulate progress (actual progress comes from MQTT)
+            calibrationProgressInterval = setInterval(() => {
+                if (progress < 95) {
+                    progress += 2;
+                    progressBar.style.width = progress + '%';
+                    progressBar.textContent = progress + '%';
+                }
+            }, 100);
+        }
+        
+        function stopCalibrationProgress() {
+            if (calibrationProgressInterval) {
+                clearInterval(calibrationProgressInterval);
+                calibrationProgressInterval = null;
+            }
+            calibrationInProgress = false;
+            document.getElementById('btn-cal-zero').disabled = false;
+            document.getElementById('btn-cal-fullscale').disabled = false;
+            document.getElementById('btn-cal-cancel').style.display = 'none';
+            document.getElementById('cal-zero-progress').style.display = 'none';
+            document.getElementById('cal-fullscale-progress').style.display = 'none';
+        }
+        
+        function updateCalibrationStatus() {
+            // Fetch calibration data from diagnostic endpoint
+            fetchAPI('/api/diagnostic').then(data => {
+                if (data && data.sensors && data.sensors.pressure) {
+                    const pressure = data.sensors.pressure;
+                    // Check for calibration data in various possible locations
+                    const zeroPoint = pressure.calibration_zero_mv || pressure.calibration?.zero_point;
+                    const slope = pressure.calibration_slope || pressure.calibration?.slope;
+                    const fullscaleVoltage = pressure.calibration_fullscale_mv || pressure.calibration?.fullscale_voltage;
+                    const fullscalePressure = pressure.calibration_fullscale_bar || pressure.calibration?.fullscale_pressure;
+                    
+                    if (zeroPoint) {
+                        document.getElementById('cal-zero-point').textContent = 
+                            parseFloat(zeroPoint).toFixed(3) + ' mV';
+                    } else {
+                        document.getElementById('cal-zero-point').textContent = '-';
+                    }
+                    
+                    if (fullscalePressure && fullscaleVoltage) {
+                        document.getElementById('cal-fullscale').textContent = 
+                            `${parseFloat(fullscalePressure).toFixed(2)} bar @ ${parseFloat(fullscaleVoltage).toFixed(3)} mV`;
+                    } else {
+                        document.getElementById('cal-fullscale').textContent = '-';
+                    }
+                    
+                    if (slope) {
+                        document.getElementById('cal-slope').textContent = 
+                            parseFloat(slope).toFixed(6) + ' bar/mV';
+                    } else {
+                        document.getElementById('cal-slope').textContent = '-';
+                    }
+                    
+                    // Check calibration status
+                    const calStatus = device_data?.calibration?.status || '';
+                    if (calStatus && calStatus.startsWith('zero_point:complete:') || 
+                        (calStatus && calStatus.startsWith('fullscale:complete:')) || 
+                        (zeroPoint && slope)) {
+                        document.getElementById('cal-status').textContent = '✓ Calibrated';
+                        document.getElementById('cal-status').style.color = 'var(--system-green)';
+                    } else {
+                        document.getElementById('cal-status').textContent = '⚠ Not Calibrated';
+                        document.getElementById('cal-status').style.color = 'var(--system-orange)';
+                    }
+                }
+            }).catch(err => console.error('Error updating calibration status:', err));
+            
+            // Also check for calibration status messages from API status
+            fetchAPI('/api/status').then(data => {
+                if (data?.calibration?.status) {
+                    handleCalibrationStatus(data.calibration.status);
+                }
+            }).catch(err => console.error('Error fetching calibration status:', err));
+        }
+        
+        // Handle calibration status from MQTT
+        function handleCalibrationStatus(status) {
+            if (status.startsWith('zero_point:complete:')) {
+                const voltage = parseFloat(status.split(':')[2]);
+                document.getElementById('cal-zero-status').textContent = `Complete! Zero point: ${voltage.toFixed(3)} mV`;
+                document.getElementById('cal-zero-progress-bar').style.width = '100%';
+                document.getElementById('cal-zero-progress-bar').textContent = '100%';
+                setTimeout(() => {
+                    stopCalibrationProgress();
+                    updateCalibrationStatus();
+                }, 1000);
+            } else if (status.startsWith('fullscale:complete:')) {
+                const parts = status.split(':');
+                const voltage = parseFloat(parts[2]);
+                const pressure = parseFloat(parts[3]);
+                document.getElementById('cal-fullscale-status').textContent = 
+                    `Complete! ${pressure} bar @ ${voltage.toFixed(3)} mV`;
+                document.getElementById('cal-fullscale-progress-bar').style.width = '100%';
+                document.getElementById('cal-fullscale-progress-bar').textContent = '100%';
+                setTimeout(() => {
+                    stopCalibrationProgress();
+                    updateCalibrationStatus();
+                }, 1000);
+            } else if (status === 'cancelled') {
+                stopCalibrationProgress();
+            } else if (status.startsWith('error:')) {
+                const error = status.substring(6);
+                showMessage('Calibration error: ' + error, 'error');
+                stopCalibrationProgress();
+            }
+        }
+        
         async function toggleLeverMode(enabled) {
             try {
                 await postAPI('settings/lever', { enabled: enabled });
@@ -5941,11 +6245,18 @@
                     console.error('Error in initial updateStatus:', err);
                 });
                 
+                // Update calibration status
+                updateCalibrationStatus();
+                
                 // Update every 2 seconds by default
                 updateInterval = setInterval(() => {
                     updateStatus().catch(err => {
                         console.error('Error in updateStatus:', err);
                     });
+                    // Update calibration status periodically
+                    if (document.getElementById('dashboard').classList.contains('active')) {
+                        updateCalibrationStatus();
+                    }
                     // Update PID and Learning status when dashboard is active
                     const dashboardEl = document.getElementById('dashboard');
                     if (dashboardEl && dashboardEl.classList.contains('active')) {

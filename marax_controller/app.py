@@ -147,6 +147,11 @@ TOPIC_SHOT_NUMBER = f"{MQTT_BASE_TOPIC}/shot/shotnumber"
 TOPIC_SHOT_SET_COUNT = f"{MQTT_BASE_TOPIC}/shot/setcount"
 TOPIC_SHOT_DATA = f"{MQTT_BASE_TOPIC}/shot/data"
 TOPIC_SHOT_EVENT = f"{MQTT_BASE_TOPIC}/shot/event"
+TOPIC_CALIBRATE_ZERO = f"{MQTT_BASE_TOPIC}/calibrate/zero"
+TOPIC_CALIBRATE_FULLSCALE = f"{MQTT_BASE_TOPIC}/calibrate/fullscale"
+TOPIC_CALIBRATE_STATUS = f"{MQTT_BASE_TOPIC}/calibrate/status"
+TOPIC_CALIBRATE_CANCEL = f"{MQTT_BASE_TOPIC}/calibrate/cancel"
+TOPIC_CALIBRATE_RESET = f"{MQTT_BASE_TOPIC}/calibrate/reset"
 TOPIC_SET_LEVER = f"{MQTT_BASE_TOPIC}/setlever"
 TOPIC_SET_TARGET_WEIGHT = f"{MQTT_BASE_TOPIC}/settargetweight"
 TOPIC_TIMER_RESET = f"{MQTT_BASE_TOPIC}/timer/reset"
@@ -224,7 +229,8 @@ def on_connect(client, userdata, flags, rc):
             (TOPIC_PROFILE_SELECTED, 0),  # Subscribe to profile selection confirmations
             (TOPIC_PROFILE_DELETED, 0),  # Subscribe to profile deletion confirmations
             (TOPIC_DIAGNOSTIC, 0),  # Subscribe to diagnostic data
-            (TOPIC_SHOT_DATA, 0)  # Subscribe to shot data
+            (TOPIC_SHOT_DATA, 0),  # Subscribe to shot data
+            (TOPIC_CALIBRATE_STATUS, 0)  # Subscribe to calibration status
         ]
         
         # Also subscribe to wildcard to catch any messages we might have missed
@@ -347,6 +353,12 @@ def on_message(client, userdata, msg):
                 device_data['learning']['shot_count'] = int(payload)
             except:
                 pass
+        elif topic == TOPIC_CALIBRATE_STATUS:
+            # Store calibration status for API access
+            if 'calibration' not in device_data:
+                device_data['calibration'] = {}
+            device_data['calibration']['status'] = payload
+            logger.info(f"📊 Calibration status: {payload}")
         elif topic == TOPIC_LEARNING_PROGRESS:
             try:
                 progress_data = json.loads(payload)
@@ -430,6 +442,17 @@ def on_message(client, userdata, msg):
             try:
                 diagnostic_data = json.loads(payload)
                 device_data['diagnostic'] = diagnostic_data
+                # Extract calibration data from sensors if available
+                if 'sensors' in diagnostic_data and 'pressure' in diagnostic_data['sensors']:
+                    pressure_data = diagnostic_data['sensors']['pressure']
+                    if 'calibration' not in device_data:
+                        device_data['calibration'] = {}
+                    # Try to extract calibration info from diagnostic data
+                    if 'calibration_zero_mv' in pressure_data or 'calibration_slope' in pressure_data:
+                        device_data['calibration']['zero_point'] = pressure_data.get('calibration_zero_mv')
+                        device_data['calibration']['slope'] = pressure_data.get('calibration_slope')
+                        device_data['calibration']['fullscale_voltage'] = pressure_data.get('calibration_fullscale_mv')
+                        device_data['calibration']['fullscale_pressure'] = pressure_data.get('calibration_fullscale_bar')
                 logger.info(f"✅ Successfully parsed diagnostic data")
                 logger.info(f"Health score: {diagnostic_data.get('health', {}).get('overall_score', 'N/A')}")
                 logger.info(f"System uptime: {diagnostic_data.get('system', {}).get('uptime_formatted', 'N/A')}")
@@ -1194,6 +1217,69 @@ def api_shot_setcount():
 def api_shot_data():
     """Get shot data"""
     return jsonify(device_data.get('shot', {}))
+
+@app.route('/api/calibrate/zero', methods=['POST'])
+def api_calibrate_zero():
+    """Start zero point calibration"""
+    try:
+        if not mqtt_connected:
+            return jsonify({'error': 'MQTT not connected'}), 503
+        
+        mqtt_client.publish(TOPIC_CALIBRATE_ZERO, '', qos=1)
+        logger.info("Published zero point calibration command")
+        return jsonify({'status': 'started', 'message': 'Zero point calibration started'})
+    except Exception as e:
+        logger.error(f"Error starting zero calibration: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/calibrate/fullscale', methods=['POST'])
+def api_calibrate_fullscale():
+    """Start full scale calibration"""
+    try:
+        if not mqtt_connected:
+            return jsonify({'error': 'MQTT not connected'}), 503
+        
+        data = request.json
+        pressure = data.get('pressure')
+        
+        if not pressure or pressure <= 0 or pressure > 11:
+            return jsonify({'error': 'Invalid pressure. Must be between 0.1 and 11 bar'}), 400
+        
+        payload = json.dumps({'pressure': pressure})
+        mqtt_client.publish(TOPIC_CALIBRATE_FULLSCALE, payload, qos=1)
+        logger.info(f"Published full scale calibration command: {pressure} bar")
+        return jsonify({'status': 'started', 'message': f'Full scale calibration started at {pressure} bar'})
+    except Exception as e:
+        logger.error(f"Error starting full scale calibration: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/calibrate/cancel', methods=['POST'])
+def api_calibrate_cancel():
+    """Cancel ongoing calibration"""
+    try:
+        if not mqtt_connected:
+            return jsonify({'error': 'MQTT not connected'}), 503
+        
+        mqtt_client.publish(TOPIC_CALIBRATE_CANCEL, '', qos=1)
+        logger.info("Published calibration cancel command")
+        return jsonify({'status': 'cancelled', 'message': 'Calibration cancelled'})
+    except Exception as e:
+        logger.error(f"Error cancelling calibration: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/calibrate/reset', methods=['POST'])
+def api_calibrate_reset():
+    """Reset calibration to defaults"""
+    try:
+        if not mqtt_connected:
+            return jsonify({'error': 'MQTT not connected'}), 503
+        
+        mqtt_client.publish(TOPIC_CALIBRATE_RESET, '', qos=1)
+        logger.info("Published calibration reset command")
+        return jsonify({'status': 'reset', 'message': 'Calibration reset to defaults'})
+    except Exception as e:
+        logger.error(f"Error resetting calibration: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/settings/lever', methods=['POST'])
 def api_settings_lever():
